@@ -1,5 +1,6 @@
 import { Location, Client, Appointment, WeddingService, ExtraMakeup, Expense, AppSettings } from '@/types';
 import initialData from '@/data/initialData.json';
+import { CloudSync } from '@/lib/supabase';
 
 const STORAGE_KEYS = {
   LOCATIONS: 'fede_locations',
@@ -61,6 +62,7 @@ export const DataService = {
       const updated = { ...clients[existingIndex], ...client };
       clients[existingIndex] = updated;
       this.saveClients(clients);
+      CloudSync.upsertClient(updated);
       return updated;
     } else {
       const newClient: Client = {
@@ -73,6 +75,7 @@ export const DataService = {
       };
       clients.unshift(newClient);
       this.saveClients(clients);
+      CloudSync.upsertClient(newClient);
       return newClient;
     }
   },
@@ -91,6 +94,7 @@ export const DataService = {
     };
     appointments.unshift(newApp);
     this.saveAppointments(appointments);
+    CloudSync.upsertAppointment(newApp);
 
     // Ensure client exists in Rubrica
     if (newApp.client_name) {
@@ -108,11 +112,13 @@ export const DataService = {
     if (idx >= 0) {
       appointments[idx] = app;
       this.saveAppointments(appointments);
+      CloudSync.upsertAppointment(app);
     }
   },
   deleteAppointment(id: string): void {
     const appointments = this.getAppointments().filter(a => a.id !== id);
     this.saveAppointments(appointments);
+    CloudSync.deleteAppointment(id);
   },
 
   getWeddings(): WeddingService[] {
@@ -129,6 +135,7 @@ export const DataService = {
     };
     weddings.unshift(newWedding);
     this.saveWeddings(weddings);
+    CloudSync.upsertWedding(newWedding);
 
     // Ensure bride exists in Rubrica
     if (newWedding.bride_name) {
@@ -146,11 +153,13 @@ export const DataService = {
     if (idx >= 0) {
       weddings[idx] = wedding;
       this.saveWeddings(weddings);
+      CloudSync.upsertWedding(wedding);
     }
   },
   deleteWedding(id: string): void {
     const weddings = this.getWeddings().filter(w => w.id !== id);
     this.saveWeddings(weddings);
+    CloudSync.deleteWedding(id);
   },
 
   getExpenses(): Expense[] {
@@ -167,11 +176,13 @@ export const DataService = {
     };
     expenses.unshift(newExpense);
     this.saveExpenses(expenses);
+    CloudSync.upsertExpense(newExpense);
     return newExpense;
   },
   deleteExpense(id: string): void {
     const expenses = this.getExpenses().filter(e => e.id !== id);
     this.saveExpenses(expenses);
+    CloudSync.deleteExpense(id);
   },
 
   getSettings(): AppSettings {
@@ -179,6 +190,41 @@ export const DataService = {
   },
   saveSettings(settings: AppSettings): void {
     setStorage(STORAGE_KEYS.SETTINGS, settings);
+  },
+
+  async syncFromCloud(): Promise<{
+    locations?: Location[];
+    clients?: Client[];
+    appointments?: Appointment[];
+    weddings?: WeddingService[];
+    expenses?: Expense[];
+  } | null> {
+    const cloud = await CloudSync.fetchAll();
+    if (!cloud) return null;
+
+    if (cloud.locations && cloud.locations.length > 0) {
+      this.saveLocations(cloud.locations);
+    }
+    if (cloud.clients && cloud.clients.length > 0) {
+      this.saveClients(cloud.clients);
+    }
+    if (cloud.appointments && cloud.appointments.length > 0) {
+      this.saveAppointments(cloud.appointments);
+    }
+    if (cloud.weddings && cloud.weddings.length > 0) {
+      this.saveWeddings(cloud.weddings);
+    }
+    if (cloud.expenses && cloud.expenses.length > 0) {
+      this.saveExpenses(cloud.expenses);
+    }
+
+    return {
+      locations: this.getLocations(),
+      clients: this.getClients(),
+      appointments: this.getAppointments(),
+      weddings: this.getWeddings(),
+      expenses: this.getExpenses(),
+    };
   },
 
   // Export full JSON backup

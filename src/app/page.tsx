@@ -40,12 +40,26 @@ export default function Home() {
 
   // Load data on mount
   useEffect(() => {
+    // 1. Immediate local cache load
     setLocations(DataService.getLocations());
     setClients(DataService.getClients());
     setAppointments(DataService.getAppointments());
     setWeddings(DataService.getWeddings());
     setExpenses(DataService.getExpenses());
     setSettings(DataService.getSettings());
+
+    // 2. Background sync with Supabase Cloud
+    DataService.syncFromCloud().then(synced => {
+      if (synced) {
+        if (synced.locations) setLocations(synced.locations);
+        if (synced.clients) setClients(synced.clients);
+        if (synced.appointments) setAppointments(synced.appointments);
+        if (synced.weddings) setWeddings(synced.weddings);
+        if (synced.expenses) setExpenses(synced.expenses);
+      }
+    }).catch(err => {
+      console.warn('Sync with Supabase was deferred:', err);
+    });
   }, []);
 
   // Save / Update PMU Appointment

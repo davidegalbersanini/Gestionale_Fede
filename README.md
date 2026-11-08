@@ -69,3 +69,4 @@ Per sincronizzare i dati sul cloud e renderli accessibili in tempo reale sia da 
 4. Apri il link dal tuo iPhone con **Safari**.
 5. Tocca il tasto **Condividi** (il quadrato con la freccia verso l'alto) e seleziona **Aggiungi alla schermata Home**.
 6. Ora avrai l'icona dell'app sul tuo iPhone e si aprirà a schermo intero come una vera app nativa!
+

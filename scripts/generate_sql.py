@@ -150,3 +150,4 @@ with open(r"c:\Users\User\Desktop\Gestionale_Fede\scripts\supabase_seed.sql", 'w
     f.write("\n".join(seed_statements))
 
 print("Generated supabase_schema.sql and supabase_seed.sql successfully!")
+

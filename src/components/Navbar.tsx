@@ -114,3 +114,4 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
     </>
   );
 }
+

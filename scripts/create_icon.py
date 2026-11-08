@@ -43,3 +43,4 @@ with open(r"c:\Users\User\Desktop\Gestionale_Fede\public\icon-512.png", "wb") as
     f.write(icon_512)
 
 print("Icons created successfully!")
+

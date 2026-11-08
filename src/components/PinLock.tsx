@@ -126,3 +126,4 @@ export default function PinLock({ correctPin, onSuccess }: PinLockProps) {
     </div>
   );
 }
+

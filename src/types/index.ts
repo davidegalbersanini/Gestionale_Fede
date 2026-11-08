@@ -90,3 +90,4 @@ export interface UnifiedEvent {
   rawPmu?: Appointment;
   rawWedding?: WeddingService;
 }
+

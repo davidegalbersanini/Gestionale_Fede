@@ -42,3 +42,4 @@ export function openInGoogleCalendar(params: GoogleCalendarEventParams): void {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 }
+

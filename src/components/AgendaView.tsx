@@ -513,3 +513,4 @@ function renderEventCard(
     </div>
   );
 }
+

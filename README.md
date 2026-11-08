@@ -1,5 +1,8 @@
 # Gestionale Fede - PMU, Make-up & Spose (Web & Mobile iPhone)
 
+> 🌐 **Applicazione Online (Vercel Live)**: [https://gestionale-fede.vercel.app/](https://gestionale-fede.vercel.app/)  
+> 🔑 **PIN di sblocco predefinito**: `1234` (modificabile nelle Impostazioni)
+
 Gestionale moderno e veloce progettato specificamente per l'attività di Dermopigmentazione (PMU), Estetica e Trucco Spose, accessibile in tempo reale da computer e da iPhone (salvabile a schermo intero come app sulla schermata Home).
 
 ---
@@ -61,12 +64,19 @@ Per sincronizzare i dati sul cloud e renderli accessibili in tempo reale sia da 
 
 ---
 
-## 3. Deploy Online per iPhone (Vercel) - Gratuito
+## 3. Applicazione Online (Live su Vercel)
 
-1. Crea un account gratuito su [vercel.com](https://vercel.com).
-2. Collega questa cartella (o caricala su GitHub come repository privato).
-3. Clicca su **Deploy**: in 1 minuto otterrai un indirizzo web sicuro (es. `https://gestionale-fede.vercel.app`).
-4. Apri il link dal tuo iPhone con **Safari**.
-5. Tocca il tasto **Condividi** (il quadrato con la freccia verso l'alto) e seleziona **Aggiungi alla schermata Home**.
-6. Ora avrai l'icona dell'app sul tuo iPhone e si aprirà a schermo intero come una vera app nativa!
+L'applicazione è pubblicata e attiva 24/7 su Vercel all'indirizzo:
+👉 **[https://gestionale-fede.vercel.app/](https://gestionale-fede.vercel.app/)**
+
+### Come installarla su iPhone per la cliente:
+1. Apri il link con **Safari** da iPhone.
+2. Tocca l'icona **Condividi** (il quadrato con la freccia verso l'alto).
+3. Seleziona **"Aggiungi alla schermata Home"**.
+4. L'icona apparirà tra le app dell'iPhone e si aprirà a schermo intero come una vera applicazione nativa, senza barra del browser.
+
+### Come usarla da PC:
+1. Apri il link con qualsiasi browser (Chrome, Safari, Edge).
+2. Inserisci il PIN: `1234`.
+3. Salva la pagina nei preferiti per un accesso istantaneo.
 

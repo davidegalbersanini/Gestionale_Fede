@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { WeddingService, Client } from '@/types';
-import { openInGoogleCalendar } from '@/lib/calendar';
+import { syncCalendarAutomatically } from '@/lib/calendar';
 import { X, Calendar as CalendarIcon, Heart, Sparkles, Users } from 'lucide-react';
 
 interface WeddingModalProps {
@@ -110,10 +110,10 @@ export default function WeddingModal({
       status: fullWeddingDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
 
-    // Google Calendar Sync
+    // Automatic Google Calendar Sync in background (no new tabs!)
     if (syncGoogleCalendar) {
       // Event 1: Wedding Day
-      openInGoogleCalendar({
+      syncCalendarAutomatically({
         title: `👰 MATRIMONIO: Sposa ${brideName.trim()}`,
         startDate: fullWeddingDateTime,
         details: `Servizio Trucco Sposa\nPersone: ${peopleCount}\nSaldo previsto: ${balNum}€ (Totale: ${totNum}€)\nNote: ${notes}`,
@@ -121,13 +121,11 @@ export default function WeddingModal({
 
       // Event 2: Trial if set
       if (fullTrialDateTime) {
-        setTimeout(() => {
-          openInGoogleCalendar({
-            title: `💄 Prova Trucco: Sposa ${brideName.trim()}`,
-            startDate: fullTrialDateTime,
-            details: `Prova trucco per matrimonio del ${weddingDate}\nAcconto prova: ${depNum}€`,
-          });
-        }, 500);
+        syncCalendarAutomatically({
+          title: `💄 Prova Trucco: Sposa ${brideName.trim()}`,
+          startDate: fullTrialDateTime,
+          details: `Prova trucco per matrimonio del ${weddingDate}\nAcconto prova: ${depNum}€`,
+        });
       }
     }
 

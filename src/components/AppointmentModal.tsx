@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Appointment, Client, Location } from '@/types';
-import { openInGoogleCalendar } from '@/lib/calendar';
+import { syncCalendarAutomatically } from '@/lib/calendar';
 import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Share2, Sparkles, AlertCircle } from 'lucide-react';
 
 interface AppointmentModalProps {
@@ -110,13 +110,18 @@ export default function AppointmentModal({
       status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
 
-    // Google Calendar Sync if checked
+    // Automatic Google Calendar Sync in background (no new tabs!)
     if (syncGoogleCalendar) {
-      openInGoogleCalendar({
+      syncCalendarAutomatically({
+        eventId: initialAppointment?.google_calendar_event_id,
         title: `PMU: ${clientName.trim()} - ${treatment.trim()}`,
         startDate: fullDateTime,
         location: loc?.name || '',
         details: `Trattamento: ${treatment}\nPagamento: ${payment || 0}€ | Saldo: ${balance || 0}€\nNote: ${notes}`,
+      }).then(res => {
+        if (res.eventId && appData) {
+          appData.google_calendar_event_id = res.eventId;
+        }
       });
     }
 

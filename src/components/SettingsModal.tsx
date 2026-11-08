@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppSettings, Location } from '@/types';
 import { DataService } from '@/lib/storage';
+import { checkGoogleCalendarStatus, startGoogleCalendarConnect, disconnectGoogleCalendar } from '@/lib/calendar';
 import {
   Settings as SettingsIcon,
   X,
@@ -14,7 +15,10 @@ import {
   MapPin,
   Plus,
   Trash2,
-  Check
+  Check,
+  Calendar as CalendarIcon,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -46,6 +50,28 @@ export default function SettingsModal({
   const [newLocName, setNewLocName] = useState('');
   const [newLocColor, setNewLocColor] = useState('#ec4899');
   const [isSaved, setIsSaved] = useState(false);
+
+  // Google Calendar state
+  const [gcalStatus, setGcalStatus] = useState<{ connected: boolean; email?: string }>({ connected: false });
+  const [isGcalLoading, setIsGcalLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      checkGoogleCalendarStatus().then(setGcalStatus);
+    }
+  }, [isOpen]);
+
+  const handleConnectGoogle = async () => {
+    setIsGcalLoading(true);
+    await startGoogleCalendarConnect();
+  };
+
+  const handleDisconnectGoogle = async () => {
+    setIsGcalLoading(true);
+    await disconnectGoogleCalendar();
+    setGcalStatus({ connected: false });
+    setIsGcalLoading(false);
+  };
 
   if (!isOpen) return null;
 
@@ -213,6 +239,63 @@ export default function SettingsModal({
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Google Calendar Automatic Sync */}
+          <div className="space-y-3 p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
+                <CalendarIcon className="w-4 h-4" /> Google Calendar (Sincronizzazione Automatica)
+              </h3>
+              {gcalStatus.connected && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Attivo
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] text-stone-400">
+              Connetti il tuo Google Calendar per salvare tutti gli appuntamenti automaticamente in background, senza aprire nuove schede o finestre.
+            </p>
+
+            {gcalStatus.connected ? (
+              <div className="flex items-center justify-between bg-stone-900/60 p-3 rounded-xl border border-stone-700/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-white">{gcalStatus.email}</p>
+                    <p className="text-[10px] text-emerald-400/90 font-medium">Sincronizzazione 100% automatica attiva</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDisconnectGoogle}
+                  disabled={isGcalLoading}
+                  className="px-2.5 py-1 text-[11px] text-stone-400 hover:text-red-400 hover:bg-stone-800 rounded-lg transition-colors"
+                >
+                  {isGcalLoading ? 'Disconnessione...' : 'Disconnetti'}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConnectGoogle}
+                disabled={isGcalLoading}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 active:scale-[0.98] transition-all rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-sky-900/30"
+              >
+                {isGcalLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Connessione in corso...
+                  </>
+                ) : (
+                  <>
+                    <CalendarIcon className="w-4 h-4" /> Connetti con Google Calendar
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Supabase Cloud Setup */}

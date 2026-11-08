@@ -37,6 +37,24 @@ export default function Home() {
   const [editingWedding, setEditingWedding] = useState<WeddingService | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Check URL params for Google Calendar connection callback
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const gcal = params.get('gcal');
+      if (gcal === 'connected') {
+        setToastMessage('Google Calendar collegato con successo! Il salvataggio automatico è attivo.');
+        window.history.replaceState({}, '', window.location.pathname);
+        setTimeout(() => setToastMessage(null), 5000);
+      } else if (gcal === 'error' || gcal === 'failed') {
+        setToastMessage('Connessione con Google Calendar non completata o annullata.');
+        window.history.replaceState({}, '', window.location.pathname);
+        setTimeout(() => setToastMessage(null), 5000);
+      }
+    }
+  }, []);
 
   // Load data on mount
   useEffect(() => {
@@ -157,6 +175,19 @@ export default function Home() {
         onSelectTab={setActiveTab}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between text-xs sm:text-sm font-medium animate-fade-in border border-emerald-400">
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="ml-3 font-bold hover:opacity-80"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 flex-1 w-full">

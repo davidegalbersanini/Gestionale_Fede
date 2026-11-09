@@ -78,6 +78,16 @@ export const CloudSync = {
     }
   },
 
+  async deleteClient(id: string) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      await (supabase.from('clients') as any).delete().eq('id', id);
+    } catch (e) {
+      console.error('deleteClient error:', e);
+    }
+  },
+
   async upsertAppointment(app: Appointment) {
     const supabase = getSupabase();
     if (!supabase) return;

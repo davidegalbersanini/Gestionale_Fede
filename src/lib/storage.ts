@@ -67,6 +67,11 @@ export const DataService = {
   saveClients(clients: Client[]): void {
     setStorage(STORAGE_KEYS.CLIENTS, clients);
   },
+  deleteClient(id: string): void {
+    const clients = this.getClients().filter(c => c.id !== id);
+    this.saveClients(clients);
+    CloudSync.deleteClient(id);
+  },
   addOrUpdateClient(client: Partial<Client> & { first_name?: string; last_name?: string; full_name?: string }): Client {
     const clients = this.getClients();
     

@@ -235,6 +235,13 @@ export default function Home() {
     setClients(DataService.getClients());
   };
 
+  const handleDeleteClient = (id: string) => {
+    DataService.deleteClient(id);
+    setClients(DataService.getClients());
+    setToastMessage('Contatto rimosso dalla rubrica.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   // Add Expense
   const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
     DataService.addExpense(expenseData);
@@ -319,6 +326,7 @@ export default function Home() {
             appointments={appointments}
             weddings={weddings}
             onSaveClient={handleSaveClient}
+            onDeleteClient={handleDeleteClient}
             onOpenNewAppointmentForClient={client => {
               setSelectedClientForPmu(client);
               setEditingPmu(null);

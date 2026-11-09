@@ -14,7 +14,9 @@ import {
   History,
   Sparkles,
   Heart,
-  DollarSign
+  DollarSign,
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 
 interface ClientsViewProps {
@@ -22,6 +24,7 @@ interface ClientsViewProps {
   appointments: Appointment[];
   weddings: WeddingService[];
   onSaveClient: (clientData: Partial<Client> & { full_name: string; first_name?: string; last_name?: string }) => void;
+  onDeleteClient: (id: string) => void;
   onOpenNewAppointmentForClient: (client: Client) => void;
   onOpenNewWeddingForClient: (client: Client) => void;
 }
@@ -31,6 +34,7 @@ export default function ClientsView({
   appointments,
   weddings,
   onSaveClient,
+  onDeleteClient,
   onOpenNewAppointmentForClient,
   onOpenNewWeddingForClient,
 }: ClientsViewProps) {
@@ -41,6 +45,7 @@ export default function ClientsView({
   const [lastName, setLastName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newNotes, setNewNotes] = useState('');
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
   // Filter clients
   const filteredClients = useMemo(() => {
@@ -58,7 +63,7 @@ export default function ClientsView({
 
   // History for selected client
   const clientHistory = useMemo(() => {
-    if (!selectedClient) return { past: [], upcoming: [], totalSpent: 0 };
+    if (!selectedClient) return { past: [], upcoming: [], totalSpent: 0, totalCount: 0 };
 
     const cName = selectedClient.full_name.trim().toLowerCase();
     const today = new Date().toISOString();
@@ -100,7 +105,7 @@ export default function ClientsView({
     past.sort((a, b) => b.date.localeCompare(a.date));
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
-    return { past, upcoming, totalSpent };
+    return { past, upcoming, totalSpent, totalCount: past.length + upcoming.length };
   }, [selectedClient, appointments, weddings]);
 
   const handleCreateClient = (e: React.FormEvent) => {
@@ -209,12 +214,33 @@ export default function ClientsView({
                 </div>
               </div>
               <button
-                onClick={() => setSelectedClient(null)}
+                onClick={() => {
+                  setSelectedClient(null);
+                  setDeleteErrorMessage(null);
+                }}
                 className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Error Message for Blocked Delete */}
+            {deleteErrorMessage && (
+              <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 flex items-start gap-3 animate-fade-in text-amber-200 text-xs">
+                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-300">Impossibile eliminare questo contatto</p>
+                  <p className="mt-0.5 leading-relaxed text-amber-200/90">{deleteErrorMessage}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeleteErrorMessage(null)}
+                  className="text-amber-400 hover:text-amber-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {/* Body */}
             <div className="p-6 space-y-5">
@@ -320,6 +346,44 @@ export default function ClientsView({
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Delete Client Section */}
+              <div className="pt-3 border-t border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const hasAppointments = clientHistory.totalCount > 0;
+                    if (hasAppointments) {
+                      setDeleteErrorMessage(
+                        `Questo contatto non può essere eliminato perché ha ${clientHistory.totalCount} appuntament${clientHistory.totalCount === 1 ? 'o' : 'i'} associat${clientHistory.totalCount === 1 ? 'o' : 'i'} (${clientHistory.past.length} passat${clientHistory.past.length === 1 ? 'o' : 'i'} e ${clientHistory.upcoming.length} futur${clientHistory.upcoming.length === 1 ? 'o' : 'i'}). Elimina prima gli appuntamenti collegati se desideri rimuovere il contatto.`
+                      );
+                    } else {
+                      if (confirm(`Sei sicura di voler eliminare definitivamente "${selectedClient.full_name}" dalla rubrica?`)) {
+                        onDeleteClient(selectedClient.id);
+                        setSelectedClient(null);
+                        setDeleteErrorMessage(null);
+                      }
+                    }
+                  }}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+                    clientHistory.totalCount > 0
+                      ? 'bg-stone-800/50 text-stone-500 border border-stone-800 hover:border-amber-700/50 hover:text-amber-400 cursor-not-allowed'
+                      : 'bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 shadow-sm active:scale-98'
+                  }`}
+                  title={
+                    clientHistory.totalCount > 0
+                      ? 'Eliminazione disattivata: ci sono appuntamenti collegati'
+                      : 'Elimina contatto dalla rubrica'
+                  }
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>
+                    {clientHistory.totalCount > 0
+                      ? `Elimina Contatto (Disattivato: ${clientHistory.totalCount} appuntament${clientHistory.totalCount === 1 ? 'o' : 'i'})`
+                      : 'Elimina Contatto dalla Rubrica'}
+                  </span>
+                </button>
               </div>
             </div>
           </div>

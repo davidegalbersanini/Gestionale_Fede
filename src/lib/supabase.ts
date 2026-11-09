@@ -48,11 +48,11 @@ export const CloudSync = {
 
     try {
       const [locsRes, clientsRes, appsRes, weddingsRes, expensesRes] = await Promise.all([
-        supabase.from('locations').select('*'),
-        supabase.from('clients').select('*').order('created_at', { ascending: false }),
-        supabase.from('appointments').select('*').order('appointment_date', { ascending: false }),
-        supabase.from('wedding_services').select('*').order('wedding_date', { ascending: false }),
-        supabase.from('expenses').select('*').order('date', { ascending: false }),
+        supabase.from('locations').select('*').limit(5000),
+        supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(5000),
+        supabase.from('appointments').select('*').order('appointment_date', { ascending: false }).limit(5000),
+        supabase.from('wedding_services').select('*').order('wedding_date', { ascending: false }).limit(5000),
+        supabase.from('expenses').select('*').order('date', { ascending: false }).limit(5000),
       ]);
 
       return {

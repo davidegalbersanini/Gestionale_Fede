@@ -7,13 +7,23 @@ export interface ExportFilterOptions {
   periodLabel: string;
 }
 
-export function exportAppointmentsToExcel(params: {
+export interface ExportExcelResult {
+  fileName: string;
+  localSuccess: boolean;
+  driveSuccess: boolean;
+  driveFileId?: string;
+  driveWebViewLink?: string;
+  driveError?: string;
+  scopeMissing?: boolean;
+}
+
+export async function exportAppointmentsToExcel(params: {
   appointments: Appointment[];
   weddings: WeddingService[];
   expenses: Expense[];
   locations: Location[];
   filter: ExportFilterOptions;
-}) {
+}): Promise<ExportExcelResult> {
   const { appointments, weddings, expenses, locations, filter } = params;
 
   const locMap = new Map<string, Location>();
@@ -174,11 +184,42 @@ export function exportAppointmentsToExcel(params: {
   XLSX.utils.book_append_sheet(wb, ws2, 'Eventi & Cerimonie');
   XLSX.utils.book_append_sheet(wb, ws3, 'Riepilogo & Metriche');
 
-  // Generate filename
+  // Generate filename with timestamp (date + hour-minute)
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  const timeStr = `${String(now.getHours()).padStart(2, '0')}-${String(now.getMinutes()).padStart(2, '0')}`;
   const cleanFilter = filter.periodLabel.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
-  const fileName = `Gestionale_Fede_Report_${cleanFilter}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const fileName = `Gestionale_Fede_Report_${cleanFilter}_${dateStr}_${timeStr}.xlsx`;
 
   // Write and trigger download in browser
   XLSX.writeFile(wb, fileName);
+
+  // Upload to Google Drive
+  try {
+    const fileBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+    const res = await fetch('/api/drive/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName, fileBase64 }),
+    });
+
+    const data = await res.json();
+    return {
+      fileName,
+      localSuccess: true,
+      driveSuccess: data.success === true,
+      driveFileId: data.fileId,
+      driveWebViewLink: data.webViewLink,
+      driveError: data.error,
+      scopeMissing: data.scopeMissing,
+    };
+  } catch (err: any) {
+    return {
+      fileName,
+      localSuccess: true,
+      driveSuccess: false,
+      driveError: err.message,
+    };
+  }
 }
 

@@ -16,6 +16,7 @@ import {
   Target,
   FileSpreadsheet,
   Download,
+  RefreshCw,
   X
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ interface DashboardViewProps {
   locations: Location[];
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
+  onShowToast?: (msg: string) => void;
 }
 
 export default function DashboardView({
@@ -35,12 +37,14 @@ export default function DashboardView({
   locations,
   settings,
   onUpdateSettings,
+  onShowToast,
 }: DashboardViewProps) {
   const currentYearStr = String(new Date().getFullYear());
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
 
   // Excel Export Modal state
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [exportRange, setExportRange] = useState<'all' | 'current_year' | 'custom'>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -164,7 +168,7 @@ export default function DashboardView({
   const targetYearly = settings.yearly_target || 35000;
   const yearlyProgress = Math.min(100, Math.round((annualStats.totalRevenue / targetYearly) * 100));
 
-  const handleExecuteExport = () => {
+  const handleExecuteExport = async () => {
     let periodLabel = 'Tutto lo storico';
     let start: string | undefined = undefined;
     let end: string | undefined = undefined;
@@ -179,19 +183,48 @@ export default function DashboardView({
       end = customEndDate || undefined;
     }
 
-    exportAppointmentsToExcel({
-      appointments,
-      weddings,
-      expenses,
-      locations,
-      filter: {
-        startDate: start,
-        endDate: end,
-        periodLabel,
-      },
-    });
+    setIsExporting(true);
+    try {
+      const result = await exportAppointmentsToExcel({
+        appointments,
+        weddings,
+        expenses,
+        locations,
+        filter: {
+          startDate: start,
+          endDate: end,
+          periodLabel,
+        },
+      });
 
-    setIsExcelModalOpen(false);
+      setIsExcelModalOpen(false);
+
+      if (result.driveSuccess) {
+        if (onShowToast) {
+          onShowToast('File Excel salvato sul dispositivo e caricato con successo su Google Drive!');
+        }
+      } else if (result.scopeMissing) {
+        if (onShowToast) {
+          onShowToast('File salvato in locale! Riconnetti l\'Account Google nelle Impostazioni per concedere i permessi Drive.');
+        }
+      } else if (result.driveError?.includes('Account Google non collegato')) {
+        if (onShowToast) {
+          onShowToast('File salvato sul dispositivo. (Account Google non collegato per Drive).');
+        }
+      } else {
+        if (onShowToast) {
+          onShowToast('File salvato sul dispositivo. Nota: caricamento su Google Drive non riuscito.');
+        }
+      }
+    } catch (err: any) {
+      console.error('Export error:', err);
+      setIsExcelModalOpen(false);
+      if (onShowToast) {
+        onShowToast('File scaricato sul dispositivo.');
+      }
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -605,17 +638,28 @@ export default function DashboardView({
                 <button
                   type="button"
                   onClick={() => setIsExcelModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold"
+                  disabled={isExporting}
+                  className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 disabled:opacity-50 text-stone-300 text-xs font-semibold"
                 >
                   Annulla
                 </button>
                 <button
                   type="button"
                   onClick={handleExecuteExport}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50"
+                  disabled={isExporting}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50"
                 >
-                  <Download className="w-4 h-4" />
-                  Scarica File (.xlsx)
+                  {isExporting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Esportazione & Drive...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>Scarica & Salva su Drive</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

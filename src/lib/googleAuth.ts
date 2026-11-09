@@ -34,7 +34,7 @@ export function getGoogleAuthUrl(redirectUri: string): string {
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/calendar.events openid email profile',
+    scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file openid email profile',
     access_type: 'offline',
     prompt: 'consent',
   });
@@ -255,4 +255,128 @@ export async function deleteGoogleCalendarEvent(eventId: string): Promise<boolea
     return false;
   }
 }
+
+export async function getOrCreateDriveFolder(accessToken: string, folderName: string): Promise<string | null> {
+  try {
+    const q = `mimeType='application/vnd.google-apps.folder' and name='${folderName.replace(/'/g, "\\'")}' and trashed=false`;
+    const searchRes = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (searchRes.ok) {
+      const data = await searchRes.json();
+      if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+      }
+    }
+
+    // Create folder if not found
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+      }),
+    });
+
+    if (!createRes.ok) {
+      const errText = await createRes.text();
+      console.error('Failed to create Drive folder:', errText);
+      return null;
+    }
+
+    const created = await createRes.json();
+    return created.id;
+  } catch (err) {
+    console.error('getOrCreateDriveFolder error:', err);
+    return null;
+  }
+}
+
+export async function uploadFileToGoogleDrive(params: {
+  fileName: string;
+  mimeType: string;
+  fileBuffer: Buffer;
+  folderName?: string;
+}): Promise<{ success: boolean; fileId?: string; webViewLink?: string; error?: string; scopeMissing?: boolean }> {
+  const accessToken = await getValidAccessToken();
+  if (!accessToken) {
+    return { success: false, error: 'Account Google non collegato' };
+  }
+
+  try {
+    const targetFolder = params.folderName || 'Gestionale Fede - Report';
+    const parentFolderId = await getOrCreateDriveFolder(accessToken, targetFolder);
+
+    const boundary = '-------GestionaleFedeBoundary' + Date.now();
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    const metadata: { name: string; parents?: string[] } = {
+      name: params.fileName,
+    };
+    if (parentFolderId) {
+      metadata.parents = [parentFolderId];
+    }
+
+    const multipartRequestBody = Buffer.concat([
+      Buffer.from(
+        delimiter +
+          'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+          JSON.stringify(metadata) +
+          delimiter +
+          `Content-Type: ${params.mimeType}\r\n\r\n`
+      ),
+      params.fileBuffer,
+      Buffer.from(closeDelimiter),
+    ]);
+
+    const uploadRes = await fetch(
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`,
+          'Content-Length': String(multipartRequestBody.length),
+        },
+        body: multipartRequestBody,
+      }
+    );
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      console.error('Drive upload error:', uploadRes.status, errText);
+      const isScopeError =
+        uploadRes.status === 403 &&
+        (errText.includes('insufficientFilePermissions') ||
+          errText.includes('insufficientPermissions') ||
+          errText.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT'));
+
+      return {
+        success: false,
+        error: errText,
+        scopeMissing: isScopeError,
+      };
+    }
+
+    const fileData = await uploadRes.json();
+    return {
+      success: true,
+      fileId: fileData.id,
+      webViewLink: fileData.webViewLink,
+    };
+  } catch (err: any) {
+    console.error('uploadFileToGoogleDrive exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+
 

@@ -54,17 +54,17 @@ export default function Home() {
   } | null>(null);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<Appointment | null>(null);
 
-  // Check URL params for Google Calendar connection callback
+  // Check URL params for Google connection callback
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const gcal = params.get('gcal');
       if (gcal === 'connected') {
-        setToastMessage('Google Calendar collegato con successo! Il salvataggio automatico è attivo.');
+        setToastMessage('Account Google collegato con successo! Sincronizzazione calendario e salvataggio Drive attivi.');
         window.history.replaceState({}, '', window.location.pathname);
         setTimeout(() => setToastMessage(null), 5000);
       } else if (gcal === 'error' || gcal === 'failed') {
-        setToastMessage('Connessione con Google Calendar non completata o annullata.');
+        setToastMessage('Connessione con l\'Account Google non completata o annullata.');
         window.history.replaceState({}, '', window.location.pathname);
         setTimeout(() => setToastMessage(null), 5000);
       }
@@ -358,6 +358,10 @@ export default function Home() {
             locations={locations}
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
+            onShowToast={msg => {
+              setToastMessage(msg);
+              setTimeout(() => setToastMessage(null), 5000);
+            }}
           />
         )}
       </main>

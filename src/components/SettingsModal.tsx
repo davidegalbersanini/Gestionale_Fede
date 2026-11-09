@@ -15,6 +15,7 @@ import {
   Trash2,
   Check,
   Calendar as CalendarIcon,
+  Cloud,
   RefreshCw,
   ExternalLink,
   Edit2
@@ -298,11 +299,11 @@ export default function SettingsModal({
             </div>
           </div>
 
-          {/* Google Calendar Automatic Sync */}
+          {/* Google Account Integration */}
           <div className="space-y-3 p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5">
-                <CalendarIcon className="w-4 h-4" /> Google Calendar (Sincronizzazione)
+                <Cloud className="w-4 h-4" /> Account Google
               </h3>
               {gcalStatus.connected && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -312,7 +313,7 @@ export default function SettingsModal({
             </div>
 
             <p className="text-[11px] text-stone-400">
-              Sincronizza automaticamente appuntamenti, orari e indirizzi sul tuo account Google Calendar personale.
+              Collega il tuo Account Google per sincronizzare automaticamente gli appuntamenti con il calendario e archiviare le copie di backup dei report Excel su Google Drive.
             </p>
 
             {gcalStatus.connected ? (
@@ -323,7 +324,7 @@ export default function SettingsModal({
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-white">{gcalStatus.email}</p>
-                    <p className="text-[10px] text-emerald-400/90 font-medium">Sincronizzazione automatica attiva</p>
+                    <p className="text-[10px] text-emerald-400/90 font-medium">Sincronizzazione calendario & Drive attiva</p>
                   </div>
                 </div>
                 <button
@@ -348,7 +349,7 @@ export default function SettingsModal({
                   </>
                 ) : (
                   <>
-                    <CalendarIcon className="w-4 h-4" /> Connetti con Google Calendar
+                    <Cloud className="w-4 h-4" /> Connetti Account Google
                   </>
                 )}
               </button>

@@ -41,26 +41,59 @@ export function getSupabase() {
   return supabaseInstance;
 }
 
+async function fetchAllRows<T>(
+  supabase: any,
+  table: string,
+  orderCol?: string
+): Promise<T[]> {
+  const allRows: T[] = [];
+  const pageSize = 1000;
+  let from = 0;
+
+  while (true) {
+    const to = from + pageSize - 1;
+    let query = supabase.from(table).select('*').range(from, to);
+    if (orderCol) {
+      query = query.order(orderCol, { ascending: false });
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.warn(`Error fetching ${table} range ${from}-${to}:`, error);
+      break;
+    }
+    if (!data || data.length === 0) {
+      break;
+    }
+    allRows.push(...data);
+    if (data.length < pageSize) {
+      break;
+    }
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
 export const CloudSync = {
   async fetchAll() {
     const supabase = getSupabase();
     if (!supabase) return null;
 
     try {
-      const [locsRes, clientsRes, appsRes, weddingsRes, expensesRes] = await Promise.all([
-        supabase.from('locations').select('*').limit(10000),
-        supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(10000),
-        supabase.from('appointments').select('*').order('appointment_date', { ascending: false }).limit(10000),
-        supabase.from('wedding_services').select('*').order('wedding_date', { ascending: false }).limit(10000),
-        supabase.from('expenses').select('*').order('date', { ascending: false }).limit(10000),
+      const [locations, clients, appointments, weddings, expenses] = await Promise.all([
+        supabase.from('locations').select('*').then((r: any) => (r.data as Location[]) || []),
+        fetchAllRows<Client>(supabase, 'clients', 'created_at'),
+        fetchAllRows<Appointment>(supabase, 'appointments', 'appointment_date'),
+        fetchAllRows<WeddingService>(supabase, 'wedding_services', 'wedding_date'),
+        fetchAllRows<Expense>(supabase, 'expenses', 'date'),
       ]);
 
       return {
-        locations: locsRes.data as Location[] | null,
-        clients: clientsRes.data as Client[] | null,
-        appointments: appsRes.data as Appointment[] | null,
-        weddings: weddingsRes.data as WeddingService[] | null,
-        expenses: expensesRes.data as Expense[] | null,
+        locations,
+        clients,
+        appointments,
+        weddings,
+        expenses,
       };
     } catch (err) {
       console.warn('CloudSync fetchAll failed, offline or error:', err);

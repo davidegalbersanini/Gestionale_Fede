@@ -31,8 +31,9 @@ export interface Appointment {
   treatment: string;
   appointment_date: string; // ISO datetime
   end_time?: string; // e.g. "12:00"
-  payment: number;
-  balance: number;
+  total_price?: number; // Costo totale concordato del trattamento
+  payment: number; // Denaro ricevuto / acconto incassato
+  balance: number; // Importo rimanente da saldare (calcolato)
   touch_up_date?: string | null; // ISO date
   touch_up_time?: string; // e.g. "10:30"
   touch_up_end_time?: string; // e.g. "12:00"

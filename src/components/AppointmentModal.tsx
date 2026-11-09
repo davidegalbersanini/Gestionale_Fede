@@ -39,8 +39,8 @@ export default function AppointmentModal({
   const [appointmentDate, setAppointmentDate] = useState(defaultDate || new Date().toISOString().slice(0, 10));
   const [appointmentTime, setAppointmentTime] = useState('10:00');
   const [appointmentEndTime, setAppointmentEndTime] = useState('12:00');
+  const [totalPrice, setTotalPrice] = useState('');
   const [payment, setPayment] = useState('');
-  const [balance, setBalance] = useState('');
   const [touchUpDate, setTouchUpDate] = useState('');
   const [touchUpTime, setTouchUpTime] = useState('10:00');
   const [touchUpEndTime, setTouchUpEndTime] = useState('11:30');
@@ -98,8 +98,12 @@ export default function AppointmentModal({
       setAppointmentDate(d || defaultDate || new Date().toISOString().slice(0, 10));
       setAppointmentTime(startT);
       setAppointmentEndTime(initialAppointment.end_time || addHoursToTime(startT, 2));
+      
+      const existingTotal = initialAppointment.total_price !== undefined
+        ? initialAppointment.total_price
+        : (initialAppointment.payment || 0) + (initialAppointment.balance || 0);
+      setTotalPrice(existingTotal > 0 ? String(existingTotal) : '');
       setPayment(initialAppointment.payment > 0 ? String(initialAppointment.payment) : '');
-      setBalance(initialAppointment.balance > 0 ? String(initialAppointment.balance) : '');
       setTouchUpDate(initialAppointment.touch_up_date || '');
       setTouchUpTime(initialAppointment.touch_up_time || '10:00');
       setTouchUpEndTime(initialAppointment.touch_up_end_time || '11:30');
@@ -122,8 +126,8 @@ export default function AppointmentModal({
       setAppointmentDate(defaultDate || new Date().toISOString().slice(0, 10));
       setAppointmentTime('10:00');
       setAppointmentEndTime('12:00');
+      setTotalPrice('');
       setPayment('');
-      setBalance('');
       setTouchUpDate('');
       setTouchUpTime('10:00');
       setTouchUpEndTime('11:30');
@@ -159,8 +163,14 @@ export default function AppointmentModal({
     return nameMatch || idMatch;
   });
 
-  // Read-only calculated total (payment received + remaining balance)
-  const totalCalculated = (parseFloat(payment) || 0) + (parseFloat(balance) || 0);
+  // Economic calculations:
+  const totalNum = parseFloat(totalPrice) || 0;
+  const voucherDeductNum = usedGiftVoucher ? (parseFloat(voucherDeduction) || 0) : 0;
+  // Maximum cash/card payment acceptable (cannot exceed total minus voucher)
+  const maxAcceptablePayment = Math.max(0, totalNum - voucherDeductNum);
+  const paymentNum = Math.min(parseFloat(payment) || 0, maxAcceptablePayment);
+  // Real-time remaining balance to be collected (cannot go below 0)
+  const calculatedBalance = Math.max(0, totalNum - voucherDeductNum - paymentNum);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,15 +187,16 @@ export default function AppointmentModal({
       treatment: treatment.trim(),
       appointment_date: fullDateTime,
       end_time: appointmentEndTime,
-      payment: parseFloat(payment) || 0,
-      balance: parseFloat(balance) || 0,
+      total_price: totalNum,
+      payment: paymentNum,
+      balance: calculatedBalance,
       touch_up_date: touchUpDate || null,
       touch_up_time: touchUpDate ? touchUpTime : undefined,
       touch_up_end_time: touchUpDate ? touchUpEndTime : undefined,
       notes: notes.trim(),
       used_gift_voucher: usedGiftVoucher,
       used_gift_voucher_id: usedGiftVoucher && selectedVoucherId ? selectedVoucherId : undefined,
-      used_gift_voucher_amount: usedGiftVoucher && parseFloat(voucherDeduction) > 0 ? parseFloat(voucherDeduction) : undefined,
+      used_gift_voucher_amount: usedGiftVoucher && voucherDeductNum > 0 ? voucherDeductNum : undefined,
       sync_google_calendar: syncGoogleCalendar,
       status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
@@ -202,7 +213,7 @@ export default function AppointmentModal({
         startDate: fullDateTime,
         endDate: fullEndDateTime,
         location: locationString,
-        details: `Tipo: ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento Generico'}\nTrattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nIncasso Ricevuto: ${payment || 0}€ | Saldo Dovuto: ${balance || 0}€ (Totale Trattamento: ${totalCalculated}€)\nNote: ${notes}`,
+        details: `Tipo: ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento Generico'}\nTrattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nTotale Trattamento: ${totalNum}€\nDenaro Ricevuto: ${paymentNum}€\nDa Saldare: ${calculatedBalance}€\nNote: ${notes}`,
       }).then(res => {
         if (res.eventId && appData) {
           appData.google_calendar_event_id = res.eventId;
@@ -423,45 +434,71 @@ export default function AppointmentModal({
             </div>
           </div>
 
-          {/* Pagamento, Saldo e Totale Complessivo Calcolato */}
-          <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50 space-y-3">
+          {/* Aspetti Economici: Totale Trattamento (input), Denaro Ricevuto (input), Da saldare (calcolato) */}
+          <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5">
-                  Incasso Ricevuto (€)
+                <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Totale Trattamento (€)</span>
+                  <span className="text-[10px] text-stone-400 font-normal">Costo concordato</span>
                 </label>
                 <input
                   type="number"
                   step="any"
+                  min="0"
+                  placeholder="0.00"
+                  value={totalPrice}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTotalPrice(val);
+                    // If current payment exceeds the new total (net of voucher), cap payment
+                    const newTotal = parseFloat(val) || 0;
+                    const maxPay = Math.max(0, newTotal - voucherDeductNum);
+                    if ((parseFloat(payment) || 0) > maxPay) {
+                      setPayment(maxPay > 0 ? String(maxPay) : '');
+                    }
+                  }}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white font-bold placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Denaro Ricevuto (€)</span>
+                  <span className="text-[10px] text-stone-400 font-normal">
+                    Max: {maxAcceptablePayment.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}€
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  max={maxAcceptablePayment}
                   placeholder="0.00"
                   value={payment}
-                  onChange={e => setPayment(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                  onChange={e => {
+                    const rawVal = e.target.value;
+                    if (rawVal === '') {
+                      setPayment('');
+                      return;
+                    }
+                    const numVal = parseFloat(rawVal);
+                    if (isNaN(numVal)) {
+                      setPayment('');
+                      return;
+                    }
+                    // Prevent entering more money than what is owed
+                    if (numVal > maxAcceptablePayment) {
+                      setPayment(String(maxAcceptablePayment));
+                    } else if (numVal < 0) {
+                      setPayment('0');
+                    } else {
+                      setPayment(rawVal);
+                    }
+                  }}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white font-bold placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5">
-                  Saldo Rimanente (€)
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="0.00"
-                  value={balance}
-                  onChange={e => setBalance(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Read-only calculated total */}
-            <div className="pt-2 border-t border-stone-700/60 flex items-center justify-between">
-              <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
-                Totale Trattamento (Ricevuto + Saldo):
-              </span>
-              <span className="text-base font-black text-emerald-400 bg-emerald-950/40 px-3 py-1 rounded-xl border border-emerald-800/50">
-                {totalCalculated.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-              </span>
             </div>
 
             {/* Buono Regalo Checkbox */}
@@ -569,9 +606,25 @@ export default function AppointmentModal({
                   )}
 
                   <p className="text-[11px] text-stone-400 italic">
-                    Se il cliente paga una differenza in contanti o POS, inseriscila nell&apos;incasso qui sopra. I dettagli del buono puoi scriverli nel campo Note.
+                    Se il cliente paga una differenza in contanti o POS, inseriscila in &quot;Denaro Ricevuto&quot;. I dettagli del buono puoi scriverli nel campo Note.
                   </p>
                 </div>
+              )}
+            </div>
+
+            {/* Read-only Display: Da saldare (o Completamente saldato) */}
+            <div className="pt-2.5 border-t border-stone-700/60 flex items-center justify-between">
+              <span className="text-xs font-semibold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
+                Da saldare:
+              </span>
+              {calculatedBalance <= 0 ? (
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-xl border border-emerald-800/60 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> Completamente Saldato (0,00 €)
+                </span>
+              ) : (
+                <span className="text-sm font-black text-amber-300 bg-amber-950/50 px-3.5 py-1 rounded-xl border border-amber-600/50 shadow-sm animate-pulse">
+                  {calculatedBalance.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
               )}
             </div>
           </div>

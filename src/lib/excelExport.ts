@@ -56,7 +56,7 @@ export async function exportAppointmentsToExcel(params: {
     const datePart = a.appointment_date.slice(0, 10);
     const hasExplicitTime = a.appointment_date.includes('T') && !a.appointment_date.endsWith('T00:00:00') && !a.appointment_date.endsWith('T00:00:00+00:00');
     const timePart = hasExplicitTime ? a.appointment_date.split('T')[1].slice(0, 5) : '';
-    const total = (Number(a.payment) || 0) + (Number(a.balance) || 0);
+    const total = a.total_price !== undefined ? a.total_price : ((Number(a.payment) || 0) + (Number(a.balance) || 0));
 
     return {
       'Data': datePart,
@@ -67,9 +67,9 @@ export async function exportAppointmentsToExcel(params: {
       'Sede': loc?.name || 'Studio',
       'Indirizzo Sede': loc?.address || '',
       'Trattamento': a.treatment,
-      'Incasso Ricevuto (€)': Number(a.payment) || 0,
-      'Saldo Rimanente (€)': Number(a.balance) || 0,
       'Totale Servizio (€)': total,
+      'Incasso Ricevuto (€)': Number(a.payment) || 0,
+      'Da saldare (€)': Number(a.balance) || 0,
       'Stato': a.status,
       'Data Ritocco Prevista': a.touch_up_date || '',
       'Orario Ritocco': a.touch_up_time ? `${a.touch_up_time}${a.touch_up_end_time ? ' - ' + a.touch_up_end_time : ''}` : '',
@@ -79,16 +79,16 @@ export async function exportAppointmentsToExcel(params: {
 
   // --- SHEET 2: Eventi & Cerimonie ---
   const sheet2Data = filteredWeddings.map(w => {
-    const total = (Number(w.trial_deposit) || 0) + (Number(w.wedding_balance) || 0);
+    const total = w.total_price !== undefined ? w.total_price : ((Number(w.trial_deposit) || 0) + (Number(w.wedding_balance) || 0));
     return {
       'Data Evento': w.wedding_date.slice(0, 10),
       'Tipologia Evento': w.event_type || 'Matrimonio',
       'Cliente / Sposa': w.bride_name,
       'Indirizzo / Location': w.address || '',
       'Persone Truccate': w.people_count || 1,
-      'Acconto Prova (€)': Number(w.trial_deposit) || 0,
-      'Saldo Evento (€)': Number(w.wedding_balance) || 0,
-      'Totale Evento (€)': total > 0 ? total : (Number(w.total_price) || 0),
+      'Totale Evento (€)': total,
+      'Acconto Ricevuto (€)': Number(w.trial_deposit) || 0,
+      'Da saldare (€)': Number(w.wedding_balance) || 0,
       'Data Prova Trucco': w.trial_date ? w.trial_date.slice(0, 10) : '',
       'Stato': w.status,
       'Note': w.notes || '',

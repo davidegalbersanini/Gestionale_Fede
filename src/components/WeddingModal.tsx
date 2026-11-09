@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { WeddingService, Client, GiftVoucher } from '@/types';
 import { syncCalendarAutomatically } from '@/lib/calendar';
-import { X, Calendar as CalendarIcon, Heart, Sparkles, Users, MapPin, ExternalLink, Gift } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Heart, Sparkles, Users, MapPin, ExternalLink, Gift, Check } from 'lucide-react';
 
 interface WeddingModalProps {
   isOpen: boolean;
@@ -38,8 +38,8 @@ export default function WeddingModal({
   const [trialDate, setTrialDate] = useState('');
   const [trialTime, setTrialTime] = useState('15:00');
   const [peopleCount, setPeopleCount] = useState(1);
+  const [totalPrice, setTotalPrice] = useState('');
   const [trialDeposit, setTrialDeposit] = useState('');
-  const [weddingBalance, setWeddingBalance] = useState('');
   const [notes, setNotes] = useState('');
   const [usedGiftVoucher, setUsedGiftVoucher] = useState(false);
   const [selectedVoucherId, setSelectedVoucherId] = useState<string>('');
@@ -72,8 +72,9 @@ export default function WeddingModal({
         setTrialTime('15:00');
       }
       setPeopleCount(initialWedding.people_count || 1);
+      const existingTot = initialWedding.total_price || (initialWedding.trial_deposit + initialWedding.wedding_balance);
+      setTotalPrice(existingTot > 0 ? String(existingTot) : '');
       setTrialDeposit(initialWedding.trial_deposit > 0 ? String(initialWedding.trial_deposit) : '');
-      setWeddingBalance(initialWedding.wedding_balance > 0 ? String(initialWedding.wedding_balance) : '');
       setNotes(initialWedding.notes || '');
       setUsedGiftVoucher(Boolean(initialWedding.used_gift_voucher));
       setSelectedVoucherId(initialWedding.used_gift_voucher_id || '');
@@ -94,8 +95,8 @@ export default function WeddingModal({
       setTrialDate('');
       setTrialTime('15:00');
       setPeopleCount(1);
+      setTotalPrice('');
       setTrialDeposit('');
-      setWeddingBalance('');
       setNotes('');
       setUsedGiftVoucher(false);
       setSelectedVoucherId('');
@@ -110,10 +111,14 @@ export default function WeddingModal({
     ? clients.filter(c => c.full_name.toLowerCase().includes(brideName.toLowerCase())).slice(0, 5)
     : [];
 
-  // Read-only calculated total (trial deposit + wedding balance)
-  const depNum = parseFloat(trialDeposit) || 0;
-  const balNum = parseFloat(weddingBalance) || 0;
-  const totalCalculated = depNum + balNum;
+  // Economic calculations:
+  const totalNum = parseFloat(totalPrice) || 0;
+  const voucherDeductNum = usedGiftVoucher ? (parseFloat(voucherDeduction) || 0) : 0;
+  // Maximum acceptable cash/deposit payment (cannot exceed total minus voucher)
+  const maxAcceptableDeposit = Math.max(0, totalNum - voucherDeductNum);
+  const depositNum = Math.min(parseFloat(trialDeposit) || 0, maxAcceptableDeposit);
+  // Real-time remaining balance to be collected (cannot go below 0)
+  const calculatedBalance = Math.max(0, totalNum - voucherDeductNum - depositNum);
 
   // Available vouchers with remaining amount > 0, plus the currently linked voucher if editing
   const availableVouchers = vouchers.filter(v => {
@@ -145,13 +150,13 @@ export default function WeddingModal({
       wedding_date: fullWeddingDateTime,
       trial_date: fullTrialDateTime,
       people_count: peopleCount,
-      trial_deposit: depNum,
-      wedding_balance: balNum,
-      total_price: totalCalculated,
+      trial_deposit: depositNum,
+      wedding_balance: calculatedBalance,
+      total_price: totalNum,
       notes: notes.trim(),
       used_gift_voucher: usedGiftVoucher,
       used_gift_voucher_id: usedGiftVoucher && selectedVoucherId ? selectedVoucherId : undefined,
-      used_gift_voucher_amount: usedGiftVoucher && parseFloat(voucherDeduction) > 0 ? parseFloat(voucherDeduction) : undefined,
+      used_gift_voucher_amount: usedGiftVoucher && voucherDeductNum > 0 ? voucherDeductNum : undefined,
       sync_google_calendar: syncGoogleCalendar,
       status: fullWeddingDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
@@ -163,7 +168,7 @@ export default function WeddingModal({
         title: `✨ ${eventType.toUpperCase()}: ${brideName.trim()}`,
         startDate: fullWeddingDateTime,
         location: address.trim() || '',
-        details: `Tipo: ${eventType}\nCliente: ${brideName}\nPersone da truccare: ${peopleCount}\nIndirizzo/Luogo: ${address || 'Non specificato'}\nAcconto versato: ${depNum}€ | Saldo: ${balNum}€ (Totale: ${totalCalculated}€)\nNote: ${notes}`,
+        details: `Tipo: ${eventType}\nCliente: ${brideName}\nPersone da truccare: ${peopleCount}\nIndirizzo/Luogo: ${address || 'Non specificato'}\nTotale Servizio: ${totalNum}€\nAcconto/Ricevuto: ${depositNum}€\nDa saldare: ${calculatedBalance}€\nNote: ${notes}`,
       });
 
       // Event 2: Trial if set
@@ -172,7 +177,7 @@ export default function WeddingModal({
           title: `💄 Prova Trucco: ${brideName.trim()} (${eventType})`,
           startDate: fullTrialDateTime,
           location: address.trim() || '',
-          details: `Prova trucco per evento del ${weddingDate}\nAcconto prova: ${depNum}€\nNote: ${notes}`,
+          details: `Prova trucco per evento del ${weddingDate}\nAcconto prova: ${depositNum}€\nNote: ${notes}`,
         });
       }
     }
@@ -375,41 +380,69 @@ export default function WeddingModal({
             </div>
           </div>
 
-          {/* Aspetti Economici: Acconto, Saldo e Totale NON Modificabile */}
-          <div className="p-4 bg-stone-800/50 rounded-2xl border border-stone-700/60 space-y-3">
+          {/* Aspetti Economici: Totale Servizio (input), Acconto Ricevuto (input), Da saldare (calcolato) */}
+          <div className="p-4 bg-stone-800/50 rounded-2xl border border-stone-700/60 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-stone-300 mb-1 font-medium">Acconto Ricevuto (€)</label>
+                <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Totale Servizio (€)</span>
+                  <span className="text-[10px] text-stone-400 font-normal">Costo pattuito</span>
+                </label>
                 <input
                   type="number"
                   step="any"
+                  min="0"
+                  placeholder="0.00"
+                  value={totalPrice}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTotalPrice(val);
+                    const newTot = parseFloat(val) || 0;
+                    const maxDep = Math.max(0, newTot - voucherDeductNum);
+                    if ((parseFloat(trialDeposit) || 0) > maxDep) {
+                      setTrialDeposit(maxDep > 0 ? String(maxDep) : '');
+                    }
+                  }}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Acconto Ricevuto (€)</span>
+                  <span className="text-[10px] text-stone-400 font-normal">
+                    Max: {maxAcceptableDeposit.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}€
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  min="0"
+                  max={maxAcceptableDeposit}
                   placeholder="0.00"
                   value={trialDeposit}
-                  onChange={e => setTrialDeposit(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+                  onChange={e => {
+                    const rawVal = e.target.value;
+                    if (rawVal === '') {
+                      setTrialDeposit('');
+                      return;
+                    }
+                    const numVal = parseFloat(rawVal);
+                    if (isNaN(numVal)) {
+                      setTrialDeposit('');
+                      return;
+                    }
+                    if (numVal > maxAcceptableDeposit) {
+                      setTrialDeposit(String(maxAcceptableDeposit));
+                    } else if (numVal < 0) {
+                      setTrialDeposit('0');
+                    } else {
+                      setTrialDeposit(rawVal);
+                    }
+                  }}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-stone-300 mb-1 font-medium">Saldo Rimanente (€)</label>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="0.00"
-                  value={weddingBalance}
-                  onChange={e => setWeddingBalance(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Read-only calculated total */}
-            <div className="pt-2 border-t border-stone-700/60 flex items-center justify-between">
-              <span className="text-xs font-semibold text-pink-300 uppercase tracking-wider">
-                Totale Servizio (Ricevuto + Saldo):
-              </span>
-              <span className="text-base font-black text-pink-300 bg-pink-950/40 px-3 py-1 rounded-xl border border-pink-800/50">
-                {totalCalculated.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
-              </span>
             </div>
 
             {/* Buono Regalo Checkbox */}
@@ -517,9 +550,25 @@ export default function WeddingModal({
                   )}
 
                   <p className="text-[11px] text-stone-400 italic">
-                    Se il cliente paga una differenza in contanti o POS, inseriscila nell&apos;acconto/saldo qui sopra. I dettagli del buono puoi scriverli nel campo Note.
+                    Se il cliente paga una differenza in contanti o POS, inseriscila in &quot;Acconto Ricevuto&quot;. I dettagli del buono puoi scriverli nel campo Note.
                   </p>
                 </div>
+              )}
+            </div>
+
+            {/* Read-only Display: Da saldare (o Completamente saldato) */}
+            <div className="pt-2.5 border-t border-stone-700/60 flex items-center justify-between">
+              <span className="text-xs font-semibold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
+                Da saldare:
+              </span>
+              {calculatedBalance <= 0 ? (
+                <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-xl border border-emerald-800/60 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> Completamente Saldato (0,00 €)
+                </span>
+              ) : (
+                <span className="text-sm font-black text-amber-300 bg-amber-950/50 px-3.5 py-1 rounded-xl border border-amber-600/50 shadow-sm animate-pulse">
+                  {calculatedBalance.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                </span>
               )}
             </div>
           </div>

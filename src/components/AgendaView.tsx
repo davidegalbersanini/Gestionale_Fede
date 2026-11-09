@@ -108,8 +108,8 @@ export default function AgendaView({
         location_name: 'Location Evento',
         location_color: '#f43f5e',
         address: w.address,
-        amount: w.wedding_balance || w.total_price,
-        balance: 0,
+        amount: w.trial_deposit,
+        balance: w.wedding_balance,
         status: w.status,
         rawWedding: w,
       });
@@ -575,15 +575,15 @@ function renderEventCard(
           <p className="text-stone-300 text-xs truncate">{ev.title}</p>
         </div>
 
-        {/* Amount Badge */}
-        <div className="text-right flex-shrink-0">
+        {/* Amount & Balance Badge */}
+        <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
           <span className="text-sm font-bold text-emerald-400">
             {ev.amount > 0 ? `${ev.amount}€` : '0€'}
           </span>
           {ev.balance && ev.balance > 0 ? (
-            <p className="text-[10px] text-amber-400 font-semibold">
-              Saldo: {ev.balance}€
-            </p>
+            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-600/50 px-2 py-0.5 rounded-md shadow-xs">
+              Da saldare: {ev.balance}€
+            </span>
           ) : null}
         </div>
       </div>

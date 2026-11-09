@@ -8,7 +8,6 @@ import {
   Settings as SettingsIcon,
   X,
   Lock,
-  Download,
   Target,
   LogOut,
   MapPin,
@@ -122,17 +121,6 @@ export default function SettingsModal({
     const updated = locations.filter(l => l.id !== id);
     onUpdateLocations(updated);
     DataService.saveLocations(updated);
-  };
-
-  const handleExportBackup = () => {
-    const jsonStr = DataService.exportFullBackup();
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gestionale-fede-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -367,17 +355,8 @@ export default function SettingsModal({
             )}
           </div>
 
-          {/* Backup & Actions */}
+          {/* Actions */}
           <div className="pt-2 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={handleExportBackup}
-              className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 text-xs font-semibold flex items-center justify-center gap-2"
-            >
-              <Download className="w-4 h-4 text-rose-400" />
-              Scarica Backup Completo (.JSON)
-            </button>
-
             <button
               type="button"
               onClick={() => {

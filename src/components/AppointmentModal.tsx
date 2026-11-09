@@ -30,7 +30,6 @@ export default function AppointmentModal({
   defaultDate,
   defaultClient,
 }: AppointmentModalProps) {
-  const [category, setCategory] = useState<'pmu' | 'generico'>('pmu');
   const [clientName, setClientName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
@@ -64,7 +63,7 @@ export default function AppointmentModal({
     }
   };
 
-  // Treatment presets
+  // Treatment presets (strictly PMU)
   const pmuTreatments = [
     'Ritocco',
     'Prima seduta Micro',
@@ -73,22 +72,12 @@ export default function AppointmentModal({
     'Labbra Contorno & Sfumatura',
     'Combo laminazione',
     'Tatuaggio Fine Line',
-    'Infracigliare / Eyeliner'
-  ];
-
-  const genericTreatments = [
-    'Consulenza PMU',
-    'Consulenza Trucco',
-    'Laminazione Ciglia',
-    'Laminazione Sopracciglia',
-    'Trucco Giorno / Sera',
-    'Correzione PMU Esistente',
-    'Trattamento Viso / Estetica'
+    'Infracigliare / Eyeliner',
+    'Consulenza PMU'
   ];
 
   useEffect(() => {
     if (initialAppointment) {
-      setCategory(initialAppointment.category === 'generico' ? 'generico' : 'pmu');
       setClientName(initialAppointment.client_name);
       setSelectedClientId(initialAppointment.client_id);
       setLocationId(initialAppointment.location_id);
@@ -113,7 +102,6 @@ export default function AppointmentModal({
       setVoucherDeduction(initialAppointment.used_gift_voucher_amount ? String(initialAppointment.used_gift_voucher_amount) : '');
       setSyncGoogleCalendar(initialAppointment.sync_google_calendar !== false);
     } else {
-      setCategory('pmu');
       if (defaultClient) {
         setClientName(defaultClient.full_name);
         setSelectedClientId(defaultClient.id);
@@ -183,7 +171,7 @@ export default function AppointmentModal({
       client_id: selectedClientId,
       client_name: clientName.trim(),
       location_id: locationId,
-      category,
+      category: 'pmu',
       treatment: treatment.trim(),
       appointment_date: fullDateTime,
       end_time: appointmentEndTime,
@@ -209,11 +197,11 @@ export default function AppointmentModal({
 
       syncCalendarAutomatically({
         eventId: initialAppointment?.google_calendar_event_id,
-        title: `${category === 'pmu' ? 'PMU' : 'Appuntamento'}: ${clientName.trim()} - ${treatment.trim()}`,
+        title: `PMU: ${clientName.trim()} - ${treatment.trim()}`,
         startDate: fullDateTime,
         endDate: fullEndDateTime,
         location: locationString,
-        details: `Tipo: ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento Generico'}\nTrattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nTotale Trattamento: ${totalNum}€\nDenaro Ricevuto: ${paymentNum}€\nDa Saldare: ${calculatedBalance}€\nNote: ${notes}`,
+        details: `Tipo: Trattamento PMU\nTrattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nTotale Trattamento: ${totalNum}€\nDenaro Ricevuto: ${paymentNum}€\nDa Saldare: ${calculatedBalance}€\nNote: ${notes}`,
       }).then(res => {
         if (res.eventId && appData) {
           appData.google_calendar_event_id = res.eventId;
@@ -231,11 +219,9 @@ export default function AppointmentModal({
         {/* Header */}
         <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full animate-pulse ${category === 'pmu' ? 'bg-rose-500' : 'bg-amber-400'}`} />
+            <span className="w-3 h-3 rounded-full animate-pulse bg-rose-500" />
             <h2 className="text-lg font-bold text-white">
-              {initialAppointment
-                ? `Modifica ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento'}`
-                : `Nuovo ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento Generico'}`}
+              {initialAppointment ? 'Modifica Trattamento PMU' : 'Nuovo Trattamento PMU'}
             </h2>
           </div>
           <button
@@ -248,43 +234,6 @@ export default function AppointmentModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Category Toggle: PMU vs Generico */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Tipologia Appuntamento
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setCategory('pmu');
-                  if (!pmuTreatments.includes(treatment)) setTreatment('Ritocco');
-                }}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
-                  category === 'pmu'
-                    ? 'bg-rose-600/20 border-rose-500 text-rose-300 shadow-sm'
-                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
-                }`}
-              >
-                Trattamento PMU
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCategory('generico');
-                  if (!genericTreatments.includes(treatment)) setTreatment('Consulenza PMU');
-                }}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
-                  category === 'generico'
-                    ? 'bg-amber-600/20 border-amber-500 text-amber-300 shadow-sm'
-                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
-                }`}
-              >
-                Appuntamento Generico / Altro
-              </button>
-            </div>
-          </div>
-
           {/* Cliente with Autocomplete */}
           <div className="relative">
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
@@ -363,10 +312,10 @@ export default function AppointmentModal({
             )}
           </div>
 
-          {/* Trattamento / Servizio */}
+          {/* Trattamento / Servizio PMU */}
           <div>
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              {category === 'pmu' ? 'Tipo Trattamento PMU' : 'Descrizione Appuntamento Generico'}
+              Tipo Trattamento PMU
             </label>
             <input
               type="text"
@@ -375,9 +324,9 @@ export default function AppointmentModal({
               onChange={e => setTreatment(e.target.value)}
               className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm mb-2"
             />
-            {/* Quick chips */}
+            {/* Quick chips PMU */}
             <div className="flex flex-wrap gap-1.5">
-              {(category === 'pmu' ? pmuTreatments : genericTreatments).map(t => (
+              {pmuTreatments.map(t => (
                 <button
                   type="button"
                   key={t}
@@ -415,7 +364,7 @@ export default function AppointmentModal({
                 onChange={e => {
                   const val = e.target.value;
                   setAppointmentTime(val);
-                  setAppointmentEndTime(addHoursToTime(val, category === 'pmu' ? 2 : 1));
+                  setAppointmentEndTime(addHoursToTime(val, 2));
                 }}
                 className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
               />

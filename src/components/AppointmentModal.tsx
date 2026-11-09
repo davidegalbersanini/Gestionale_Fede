@@ -37,7 +37,6 @@ export default function AppointmentModal({
   const [touchUpDate, setTouchUpDate] = useState('');
   const [touchUpTime, setTouchUpTime] = useState('10:00');
   const [createTouchUpFollowup, setCreateTouchUpFollowup] = useState(true);
-  const [leadSource, setLeadSource] = useState('Instagram');
   const [notes, setNotes] = useState('');
   const [syncGoogleCalendar, setSyncGoogleCalendar] = useState(true);
 
@@ -80,7 +79,6 @@ export default function AppointmentModal({
       setBalance(initialAppointment.balance > 0 ? String(initialAppointment.balance) : '');
       setTouchUpDate(initialAppointment.touch_up_date || '');
       setTouchUpTime(initialAppointment.touch_up_time || '10:00');
-      setLeadSource(initialAppointment.lead_source || 'Instagram');
       setNotes(initialAppointment.notes || '');
       setSyncGoogleCalendar(initialAppointment.sync_google_calendar || false);
     } else {
@@ -96,7 +94,6 @@ export default function AppointmentModal({
       setTouchUpDate('');
       setTouchUpTime('10:00');
       setCreateTouchUpFollowup(true);
-      setLeadSource('Instagram');
       setNotes('');
       setSyncGoogleCalendar(true);
     }
@@ -127,7 +124,6 @@ export default function AppointmentModal({
       balance: parseFloat(balance) || 0,
       touch_up_date: touchUpDate || null,
       touch_up_time: touchUpDate ? touchUpTime : undefined,
-      lead_source: leadSource,
       notes: notes.trim(),
       sync_google_calendar: syncGoogleCalendar,
       status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
@@ -374,28 +370,6 @@ export default function AppointmentModal({
                 <span>Crea subito appuntamento di ritocco in agenda per quella data e ora ({touchUpTime})</span>
               </label>
             )}
-          </div>
-
-          {/* Fonte Contatto */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: 'The Touch', label: 'The Touch' },
-              { id: 'Instagram', label: 'Instagram' },
-              { id: 'Privato / Passaparola', label: 'Passaparola' },
-            ].map(src => (
-              <button
-                type="button"
-                key={src.id}
-                onClick={() => setLeadSource(src.id)}
-                className={`py-2 px-2 text-xs font-medium rounded-xl border text-center transition-all ${
-                  leadSource === src.id
-                    ? 'bg-rose-950/60 border-rose-500 text-rose-200'
-                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
-                }`}
-              >
-                {src.label}
-              </button>
-            ))}
           </div>
 
           {/* Google Calendar Checkbox */}

@@ -116,7 +116,6 @@ export default function Home() {
           payment: 0,
           balance: 0,
           touch_up_date: null,
-          lead_source: createdPrimary.lead_source,
           notes: `Promemoria ritocco programmato da prima seduta del ${createdPrimary.appointment_date.slice(0, 10)}`,
           sync_google_calendar: createdPrimary.sync_google_calendar,
           status: 'programmato',

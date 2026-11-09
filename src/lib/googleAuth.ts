@@ -20,20 +20,13 @@ export interface GoogleTokens {
 export function getRedirectUri(requestUrl: string, headers?: Headers): string {
   if (headers) {
     const forwardedHost = headers.get('x-forwarded-host') || headers.get('host');
-    if (forwardedHost) {
-      const proto = headers.get('x-forwarded-proto') || (forwardedHost.includes('localhost') ? 'http' : 'https');
-      return `${proto}://${forwardedHost}/api/auth/google/callback`;
+    if (forwardedHost && forwardedHost.includes('localhost')) {
+      return `http://${forwardedHost}/api/auth/google/callback`;
     }
   }
 
-  try {
-    const url = new URL(requestUrl);
-    const host = url.host;
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    return `${protocol}://${host}/api/auth/google/callback`;
-  } catch {
-    return 'https://gestionale-fede.vercel.app/api/auth/google/callback';
-  }
+  // Always use the official registered domain on Vercel / Production
+  return 'https://gestionale-fede.vercel.app/api/auth/google/callback';
 }
 
 export function getGoogleAuthUrl(redirectUri: string): string {

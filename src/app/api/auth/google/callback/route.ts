@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/?gcal=error`);
   }
 
-  const redirectUri = getRedirectUri(request.url);
+  const redirectUri = getRedirectUri(request.url, request.headers);
   const tokens = await exchangeCodeForTokens(code, redirectUri);
 
   if (!tokens) {

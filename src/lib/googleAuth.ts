@@ -17,10 +17,17 @@ export interface GoogleTokens {
   email?: string;
 }
 
-export function getRedirectUri(requestUrl: string): string {
+export function getRedirectUri(requestUrl: string, headers?: Headers): string {
+  if (headers) {
+    const forwardedHost = headers.get('x-forwarded-host') || headers.get('host');
+    if (forwardedHost) {
+      const proto = headers.get('x-forwarded-proto') || (forwardedHost.includes('localhost') ? 'http' : 'https');
+      return `${proto}://${forwardedHost}/api/auth/google/callback`;
+    }
+  }
+
   try {
     const url = new URL(requestUrl);
-    // In production Vercel or custom domain, respect forwarded host
     const host = url.host;
     const protocol = host.includes('localhost') ? 'http' : 'https';
     return `${protocol}://${host}/api/auth/google/callback`;

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Appointment, WeddingService, Expense, AppSettings } from '@/types';
+import { Appointment, WeddingService, Expense, Location, AppSettings } from '@/types';
+import { exportAppointmentsToExcel } from '@/lib/excelExport';
 import {
   TrendingUp,
   DollarSign,
@@ -12,13 +13,17 @@ import {
   Award,
   ChevronRight,
   ArrowUpRight,
-  Target
+  Target,
+  FileSpreadsheet,
+  Download,
+  X
 } from 'lucide-react';
 
 interface DashboardViewProps {
   appointments: Appointment[];
   weddings: WeddingService[];
   expenses: Expense[];
+  locations: Location[];
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
 }
@@ -27,24 +32,33 @@ export default function DashboardView({
   appointments,
   weddings,
   expenses,
+  locations,
   settings,
   onUpdateSettings,
 }: DashboardViewProps) {
-  const [selectedYear, setSelectedYear] = useState<string>('2024');
+  const currentYearStr = String(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
+
+  // Excel Export Modal state
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+  const [exportRange, setExportRange] = useState<'all' | 'current_year' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   const monthNames = [
     'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
     'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
   ];
 
-  // Distinct years
+  // Distinct years available in data
   const availableYears = useMemo(() => {
     const years = new Set<string>();
-    appointments.forEach(a => years.add(a.appointment_date.slice(0, 4)));
-    weddings.forEach(w => years.add(w.wedding_date.slice(0, 4)));
-    expenses.forEach(e => years.add(e.date.slice(0, 4)));
+    years.add(currentYearStr);
+    appointments.forEach(a => { if (a.appointment_date) years.add(a.appointment_date.slice(0, 4)); });
+    weddings.forEach(w => { if (w.wedding_date) years.add(w.wedding_date.slice(0, 4)); });
+    expenses.forEach(e => { if (e.date) years.add(e.date.slice(0, 4)); });
     return Array.from(years).sort().reverse();
-  }, [appointments, weddings, expenses]);
+  }, [appointments, weddings, expenses, currentYearStr]);
 
   // Aggregate monthly stats for selected year
   const monthlyData = useMemo(() => {
@@ -65,9 +79,9 @@ export default function DashboardView({
       };
     });
 
-    // PMU
+    // PMU / Trattamenti
     appointments.forEach(app => {
-      if (app.appointment_date.startsWith(selectedYear)) {
+      if (app.appointment_date && app.appointment_date.startsWith(selectedYear)) {
         const m = parseInt(app.appointment_date.slice(5, 7), 10) - 1;
         if (m >= 0 && m < 12) {
           months[m].pmuRevenue += (app.payment || 0);
@@ -76,10 +90,10 @@ export default function DashboardView({
       }
     });
 
-    // Weddings
+    // Eventi & Matrimoni
     weddings.forEach(w => {
-      // Wedding day income
-      if (w.wedding_date.startsWith(selectedYear)) {
+      // Event day income
+      if (w.wedding_date && w.wedding_date.startsWith(selectedYear)) {
         const m = parseInt(w.wedding_date.slice(5, 7), 10) - 1;
         if (m >= 0 && m < 12) {
           months[m].weddingRevenue += (w.wedding_balance || 0);
@@ -97,7 +111,7 @@ export default function DashboardView({
 
     // Expenses
     expenses.forEach(e => {
-      if (e.date.startsWith(selectedYear)) {
+      if (e.date && e.date.startsWith(selectedYear)) {
         const m = parseInt(e.date.slice(5, 7), 10) - 1;
         if (m >= 0 && m < 12) {
           months[m].expensesTotal += (e.amount || 0);
@@ -114,7 +128,7 @@ export default function DashboardView({
     return months;
   }, [selectedYear, appointments, weddings, expenses]);
 
-  // Annual Totals
+  // Annual Totals & Elapsed Months calculation
   const annualStats = useMemo(() => {
     let totPmu = 0;
     let totWedding = 0;
@@ -128,8 +142,11 @@ export default function DashboardView({
 
     const totalRev = totPmu + totWedding;
     const netProf = totalRev - totExp;
-    const activeMonths = monthlyData.filter(m => m.totalRevenue > 0).length || 1;
-    const monthlyAverage = totalRev / activeMonths;
+
+    // Monthly average: for current year, divide ONLY by elapsed months up to now!
+    const isCurrentYear = selectedYear === currentYearStr;
+    const elapsedMonths = isCurrentYear ? (new Date().getMonth() + 1) : 12;
+    const monthlyAverage = totalRev / Math.max(1, elapsedMonths);
 
     return {
       totalRevenue: totalRev,
@@ -138,170 +155,232 @@ export default function DashboardView({
       totalExpenses: totExp,
       netProfit: netProf,
       monthlyAverage,
-      activeMonths,
+      elapsedMonths,
+      isCurrentYear,
     };
-  }, [monthlyData]);
+  }, [monthlyData, selectedYear, currentYearStr]);
 
-  // Target Progress
-  const targetMonthly = settings.monthly_target || 2700;
+  // Annual Target (only annual target as requested)
   const targetYearly = settings.yearly_target || 35000;
-  const monthlyProgress = Math.min(100, Math.round((annualStats.monthlyAverage / targetMonthly) * 100));
   const yearlyProgress = Math.min(100, Math.round((annualStats.totalRevenue / targetYearly) * 100));
+
+  const handleExecuteExport = () => {
+    let periodLabel = 'Tutto lo storico';
+    let start: string | undefined = undefined;
+    let end: string | undefined = undefined;
+
+    if (exportRange === 'current_year') {
+      periodLabel = `Anno ${currentYearStr}`;
+      start = `${currentYearStr}-01-01`;
+      end = `${currentYearStr}-12-31`;
+    } else if (exportRange === 'custom') {
+      periodLabel = `Dal ${customStartDate || 'inizio'} al ${customEndDate || 'oggi'}`;
+      start = customStartDate || undefined;
+      end = customEndDate || undefined;
+    }
+
+    exportAppointmentsToExcel({
+      appointments,
+      weddings,
+      expenses,
+      locations,
+      filter: {
+        startDate: start,
+        endDate: end,
+        periodLabel,
+      },
+    });
+
+    setIsExcelModalOpen(false);
+  };
 
   return (
     <div className="space-y-5">
-      {/* Header & Year Switcher */}
+      {/* Header & Year Switcher & Excel Export Button */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-900/90 border border-stone-800 p-4 rounded-3xl">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-rose-500" />
-            Riepilogo & Obiettivi
+            Riepilogo & Performance
           </h1>
           <p className="text-stone-400 text-xs">
-            Performance economica, fatturato e avanzamento obiettivi
+            Fatturato annuale, spese, PMU, eventi e obiettivi
           </p>
         </div>
 
-        {/* Year Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          {availableYears.map(yr => (
-            <button
-              key={yr}
-              onClick={() => setSelectedYear(yr)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                selectedYear === yr
-                  ? 'bg-rose-600 text-white shadow-md shadow-rose-950/40'
-                  : 'bg-stone-800 text-stone-400 hover:text-white'
-              }`}
-            >
-              {yr}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Year Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto">
+            {availableYears.map(yr => (
+              <button
+                key={yr}
+                onClick={() => setSelectedYear(yr)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  selectedYear === yr
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-950/40'
+                    : 'bg-stone-800 text-stone-400 hover:text-white'
+                }`}
+              >
+                {yr}
+              </button>
+            ))}
+          </div>
+
+          {/* Excel Export Button */}
+          <button
+            onClick={() => setIsExcelModalOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Esporta Excel (.xlsx)</span>
+          </button>
         </div>
       </div>
 
-      {/* Target Box: OBIETTIVO RANGE ROVER */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-rose-950/40 via-stone-900 to-purple-950/30 border border-rose-900/40 p-5 rounded-3xl shadow-lg">
+      {/* Target Box: OBIETTIVO ANNUALE RANGE ROVER */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-rose-950/40 via-stone-900 to-purple-950/30 border border-rose-900/40 p-4 sm:p-5 rounded-3xl shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-amber-900/40">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-amber-900/40 flex-shrink-0">
               <Award className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-extrabold text-white">Obiettivo Range Rover</h3>
+                <h3 className="text-base font-extrabold text-white">Target Annuale</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  Target {selectedYear}
+                  Anno {selectedYear}
                 </span>
               </div>
               <p className="text-stone-400 text-xs mt-0.5">
-                Obiettivo Media Mensile: <span className="font-bold text-white">{targetMonthly} €/mese</span>
+                Obiettivo Annuo: <span className="font-bold text-white">{targetYearly.toLocaleString('it-IT')} €</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-right">
+          <div className="flex items-center justify-between sm:justify-end gap-4 text-right border-t sm:border-t-0 border-stone-800 pt-2 sm:pt-0">
             <div>
-              <p className="text-stone-400 text-[11px] uppercase font-semibold">Media Attuale / Mese</p>
-              <p className="text-xl font-black text-rose-400">
-                {annualStats.monthlyAverage.toLocaleString('it-IT', { maximumFractionDigits: 0 })} €
+              <p className="text-stone-400 text-[11px] uppercase font-semibold">
+                Media Mensile ({annualStats.elapsedMonths} mesi {annualStats.isCurrentYear ? 'trascorsi' : ''})
+              </p>
+              <p className="text-lg sm:text-xl font-black text-rose-400">
+                {annualStats.monthlyAverage.toLocaleString('it-IT', { maximumFractionDigits: 0 })} €/m
               </p>
             </div>
             <div className="border-l border-stone-800 pl-4">
               <p className="text-stone-400 text-[11px] uppercase font-semibold">Fatturato Annuo</p>
-              <p className="text-xl font-black text-emerald-400">
+              <p className="text-lg sm:text-xl font-black text-emerald-400">
                 {annualStats.totalRevenue.toLocaleString('it-IT', { maximumFractionDigits: 0 })} €
               </p>
             </div>
           </div>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar towards Annual Target */}
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs font-semibold">
-            <span className="text-stone-300">Avanzamento target media ({annualStats.activeMonths} mesi attivi)</span>
-            <span className="text-amber-400 font-bold">{monthlyProgress}%</span>
+            <span className="text-stone-300">
+              Avanzamento target annuale ({annualStats.totalRevenue.toLocaleString('it-IT')}€ su {targetYearly.toLocaleString('it-IT')}€)
+            </span>
+            <span className="text-amber-400 font-bold">{yearlyProgress}%</span>
           </div>
           <div className="w-full h-3 rounded-full bg-stone-800 overflow-hidden p-0.5 border border-stone-700/50">
             <div
               className="h-full rounded-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 transition-all duration-700 shadow-sm"
-              style={{ width: `${monthlyProgress}%` }}
+              style={{ width: `${yearlyProgress}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* Main KPI Cards Grid */}
+      {/* The 4 Requested Specific KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Ricavi Totali */}
-        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl">
+        {/* 1. Fatturato Annuo */}
+        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl flex flex-col justify-between">
           <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-1">
-            <span>Fatturato {selectedYear}</span>
+            <span>Fatturato Annuo</span>
             <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
-          <p className="text-2xl font-black text-white">
-            {annualStats.totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
-          </p>
-          <div className="flex items-center gap-2 mt-1 text-[11px] text-stone-400">
-            <span>PMU: {annualStats.pmuRevenue.toLocaleString('it-IT', { maximumFractionDigits: 0 })}€</span>
-            <span>•</span>
-            <span className="text-pink-400">Spose: {annualStats.weddingRevenue.toLocaleString('it-IT', { maximumFractionDigits: 0 })}€</span>
+          <div>
+            <p className="text-xl sm:text-2xl font-black text-white">
+              {annualStats.totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
+            </p>
+            <p className="text-[11px] text-stone-400 mt-0.5">PMU + Eventi</p>
           </div>
         </div>
 
-        {/* Spese Totali */}
-        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl">
+        {/* 2. Spese Annue */}
+        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl flex flex-col justify-between">
           <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-1">
-            <span>Spese {selectedYear}</span>
+            <span>Spese Annue</span>
             <Receipt className="w-4 h-4 text-rose-400" />
           </div>
-          <p className="text-2xl font-black text-rose-400">
-            {annualStats.totalExpenses.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
-          </p>
-          <p className="text-[11px] text-stone-500 mt-1">Materiali e gestione</p>
-        </div>
-
-        {/* Guadagno Netto */}
-        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl">
-          <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-1">
-            <span>Guadagno Netto</span>
-            <ArrowUpRight className="w-4 h-4 text-emerald-400" />
+          <div>
+            <p className="text-xl sm:text-2xl font-black text-rose-400">
+              {annualStats.totalExpenses.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
+            </p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Materiali e gestione</p>
           </div>
-          <p className="text-2xl font-black text-emerald-400">
-            {annualStats.netProfit.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
-          </p>
-          <p className="text-[11px] text-stone-500 mt-1">Al netto delle spese</p>
         </div>
 
-        {/* Spose & Matrimoni */}
-        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl">
+        {/* 3. Fatturato da PMU */}
+        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl flex flex-col justify-between">
           <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-1">
-            <span>Incasso Matrimoni</span>
+            <span>Fatturato PMU</span>
+            <Sparkles className="w-4 h-4 text-rose-400" />
+          </div>
+          <div>
+            <p className="text-xl sm:text-2xl font-black text-rose-300">
+              {annualStats.pmuRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
+            </p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Trattamenti studio</p>
+          </div>
+        </div>
+
+        {/* 4. Fatturato dai Matrimoni / Eventi */}
+        <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl flex flex-col justify-between">
+          <div className="flex items-center justify-between text-stone-400 text-xs font-semibold mb-1">
+            <span>Fatturato Eventi</span>
             <Heart className="w-4 h-4 text-pink-400 fill-pink-400" />
           </div>
-          <p className="text-2xl font-black text-pink-300">
-            {annualStats.weddingRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
-          </p>
-          <p className="text-[11px] text-stone-500 mt-1">Prove e matrimoni</p>
+          <div>
+            <p className="text-xl sm:text-2xl font-black text-pink-300">
+              {annualStats.weddingRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
+            </p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Matrimoni & cerimonie</p>
+          </div>
         </div>
       </div>
 
-      {/* Monthly Breakdown Table (Excel-like view) */}
+      {/* Guadagno Netto Highlight Banner */}
+      <div className="bg-stone-900/90 border border-stone-800 px-5 py-3 rounded-2xl flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ArrowUpRight className="w-4 h-4 text-emerald-400" />
+          <span className="text-xs font-semibold text-stone-300">
+            Utile Netto {selectedYear} (Fatturato - Spese):
+          </span>
+        </div>
+        <span className="text-lg font-black text-emerald-400">
+          {annualStats.netProfit.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+        </span>
+      </div>
+
+      {/* Monthly Breakdown Container: Zero Horizontal Scroll on iPhone 17 */}
       <div className="bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-stone-800 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-white">Dettaglio Mese per Mese ({selectedYear})</h3>
-            <p className="text-stone-500 text-xs">Confronto ricavi, spese e guadagno netto</p>
+            <p className="text-stone-500 text-xs">Ricavi PMU, Eventi, Totale, Spese e Guadagno Netto</p>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop / Tablet Table View (hidden on mobile) */}
+        <div className="hidden md:block">
           <table className="w-full text-left text-xs">
             <thead className="bg-stone-800/60 text-stone-400 font-semibold uppercase tracking-wider border-b border-stone-800">
               <tr>
                 <th className="py-3 px-4">Mese</th>
                 <th className="py-3 px-3 text-right">Ricavi PMU</th>
-                <th className="py-3 px-3 text-right">Matrimoni</th>
+                <th className="py-3 px-3 text-right">Eventi / Spose</th>
                 <th className="py-3 px-3 text-right font-bold text-white">Totale Ricavi</th>
                 <th className="py-3 px-3 text-right text-rose-400">Spese</th>
                 <th className="py-3 px-4 text-right font-black text-emerald-400">Guadagno Netto</th>
@@ -346,8 +425,203 @@ export default function DashboardView({
             </tfoot>
           </table>
         </div>
+
+        {/* Mobile View (iPhone 17 & smartphones): Zero horizontal scroll cards */}
+        <div className="block md:hidden divide-y divide-stone-800/70 p-3 space-y-2.5">
+          {monthlyData.map(m => {
+            const hasActivity = m.totalRevenue > 0 || m.expensesTotal > 0;
+            return (
+              <div
+                key={m.monthIndex}
+                className={`p-3 rounded-2xl border transition-all ${
+                  hasActivity
+                    ? 'bg-stone-800/50 border-stone-700/60'
+                    : 'bg-stone-800/20 border-stone-800/40 opacity-60'
+                }`}
+              >
+                {/* Month Name & Net Profit Header */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-white text-sm">{m.monthName}</span>
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded-lg ${
+                      m.netProfit > 0
+                        ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/50'
+                        : m.netProfit < 0
+                        ? 'bg-rose-950/60 text-rose-400 border border-rose-800/50'
+                        : 'text-stone-500'
+                    }`}
+                  >
+                    {hasActivity ? `Netto: ${m.netProfit.toLocaleString('it-IT')} €` : 'Nessuna attività'}
+                  </span>
+                </div>
+
+                {/* 2x2 Grid with exact metrics */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-stone-900/60 p-2 rounded-xl border border-stone-800/60">
+                    <span className="text-[10px] text-stone-400 block uppercase font-medium">PMU</span>
+                    <span className="text-stone-200 font-bold">{m.pmuRevenue.toLocaleString('it-IT')} €</span>
+                  </div>
+                  <div className="bg-stone-900/60 p-2 rounded-xl border border-stone-800/60">
+                    <span className="text-[10px] text-pink-400 block uppercase font-medium">Eventi</span>
+                    <span className="text-pink-300 font-bold">{m.weddingRevenue.toLocaleString('it-IT')} €</span>
+                  </div>
+                  <div className="bg-stone-900/60 p-2 rounded-xl border border-stone-800/60">
+                    <span className="text-[10px] text-white block uppercase font-bold">Totale Ricavi</span>
+                    <span className="text-white font-black">{m.totalRevenue.toLocaleString('it-IT')} €</span>
+                  </div>
+                  <div className="bg-stone-900/60 p-2 rounded-xl border border-stone-800/60">
+                    <span className="text-[10px] text-rose-400 block uppercase font-medium">Spese</span>
+                    <span className="text-rose-400 font-bold">-{m.expensesTotal.toLocaleString('it-IT')} €</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Mobile Footer Totals Card */}
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-stone-800 to-stone-900 border-2 border-stone-700 mt-3 space-y-2">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-700/60">
+              <span className="text-xs font-black uppercase text-rose-400">TOTALE {selectedYear}</span>
+              <span className="text-base font-black text-emerald-400">
+                Netto: {annualStats.netProfit.toLocaleString('it-IT')} €
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-[10px] text-stone-400 block">Ricavi PMU</span>
+                <span className="font-bold text-white">{annualStats.pmuRevenue.toLocaleString('it-IT')} €</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-pink-400 block">Ricavi Eventi</span>
+                <span className="font-bold text-pink-300">{annualStats.weddingRevenue.toLocaleString('it-IT')} €</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-emerald-400 block font-bold">Totale Fatturato</span>
+                <span className="font-black text-emerald-400 text-sm">{annualStats.totalRevenue.toLocaleString('it-IT')} €</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-rose-400 block font-medium">Totale Spese</span>
+                <span className="font-black text-rose-400 text-sm">-{annualStats.totalExpenses.toLocaleString('it-IT')} €</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Excel Export Modal */}
+      {isExcelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl text-stone-100">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-bold text-white">Esporta Report Excel (.xlsx)</h3>
+              </div>
+              <button
+                onClick={() => setIsExcelModalOpen(false)}
+                className="text-stone-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-xs text-stone-300 leading-relaxed">
+                Il file Excel generato conterrà 3 tab complete:
+              </p>
+              <ul className="text-xs text-stone-400 space-y-1 list-disc pl-5">
+                <li><strong className="text-stone-200">PMU & Trattamenti</strong>: tutti gli appuntamenti con cliente, importo, saldo e sede</li>
+                <li><strong className="text-stone-200">Eventi & Cerimonie</strong>: eventi e matrimoni con acconto, saldo, totale e indirizzo</li>
+                <li><strong className="text-stone-200">Riepilogo & Metriche</strong>: totale fatturato, spese, utile netto e percentuali</li>
+              </ul>
+
+              <div className="space-y-2 pt-2">
+                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider">
+                  Intervallo Temporale da Esportare
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExportRange('all')}
+                    className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
+                      exportRange === 'all'
+                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                        : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Tutto il periodo storico (Default - Consigliato)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExportRange('current_year')}
+                    className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
+                      exportRange === 'current_year'
+                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                        : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Solo l&apos;anno in corso ({currentYearStr})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExportRange('custom')}
+                    className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
+                      exportRange === 'custom'
+                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                        : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Personalizzato (Da data a data)
+                  </button>
+                </div>
+              </div>
+
+              {exportRange === 'custom' && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label className="block text-xs text-stone-400 mb-1">Da data</label>
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={e => setCustomStartDate(e.target.value)}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-400 mb-1">A data</label>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={e => setCustomEndDate(e.target.value)}
+                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsExcelModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteExport}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50"
+                >
+                  <Download className="w-4 h-4" />
+                  Scarica File (.xlsx)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

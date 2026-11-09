@@ -4,22 +4,27 @@ export interface Location {
   id: string;
   name: string;
   color: string;
+  address?: string; // Google Maps address
   active: boolean;
 }
 
 export interface Client {
   id: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
+  full_name: string; // generated as `${first_name} ${last_name}`
   phone?: string;
-  email?: string;
   notes?: string;
   created_at?: string;
 }
 
 export type AppointmentStatus = 'completato' | 'programmato' | 'annullato';
 
+export type AppointmentCategory = 'pmu' | 'generico';
+
 export interface Appointment {
   id: string;
+  category?: AppointmentCategory; // 'pmu' or 'generico'
   client_id?: string;
   client_name: string;
   location_id: string;
@@ -30,6 +35,7 @@ export interface Appointment {
   balance: number;
   touch_up_date?: string | null; // ISO date
   touch_up_time?: string; // e.g. "10:30"
+  touch_up_end_time?: string; // e.g. "12:00"
   linked_appointment_id?: string; // ID of linked first session / touch-up
   is_touch_up?: boolean;
   lead_source?: string;
@@ -41,16 +47,21 @@ export interface Appointment {
 
 export interface WeddingService {
   id: string;
-  bride_name: string;
+  bride_name: string; // client / event contact name
   client_id?: string;
+  event_type?: string; // 'Matrimonio', 'Cerimonia', 'Trucco Evento', 'Shooting'
+  address?: string; // specific event/client home address
   wedding_date: string; // ISO datetime
   trial_date?: string | null; // ISO datetime
+  trial_end_time?: string;
+  end_time?: string;
   people_count: number;
   trial_deposit: number;
   wedding_balance: number;
   total_price: number;
   notes?: string;
   sync_google_calendar?: boolean;
+  google_calendar_event_id?: string;
   status: AppointmentStatus;
 }
 
@@ -73,8 +84,8 @@ export interface Expense {
 
 export interface AppSettings {
   pin_hash: string;
-  monthly_target: number;
   yearly_target: number;
+  monthly_target?: number;
   supabase_url?: string;
   supabase_anon_key?: string;
   google_calendar_email?: string;
@@ -82,17 +93,17 @@ export interface AppSettings {
 
 export interface UnifiedEvent {
   id: string;
-  type: 'pmu' | 'wedding_day' | 'wedding_trial';
+  type: 'pmu' | 'generico' | 'wedding_day' | 'wedding_trial';
   title: string;
   client_name: string;
   date: string; // ISO string
   end_time?: string;
   location_name?: string;
   location_color?: string;
+  address?: string; // specific event address or location address
   amount: number;
   balance?: number;
   status: AppointmentStatus;
   rawPmu?: Appointment;
   rawWedding?: WeddingService;
 }
-

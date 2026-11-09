@@ -47,19 +47,51 @@ export const DataService = {
   },
 
   getClients(): Client[] {
-    return getStorage<Client[]>(STORAGE_KEYS.CLIENTS, initialData.clients as Client[]);
+    const rawClients = getStorage<any[]>(STORAGE_KEYS.CLIENTS, initialData.clients as any[]);
+    // Ensure first_name and last_name exist on all clients
+    return rawClients.map(c => {
+      if (!c.first_name || !c.last_name) {
+        const parts = (c.full_name || '').trim().split(' ');
+        const first = parts[0] || 'Cliente';
+        const last = parts.slice(1).join(' ') || '-';
+        return {
+          ...c,
+          first_name: c.first_name || first,
+          last_name: c.last_name || last,
+          full_name: `${c.first_name || first} ${c.last_name || last}`.trim(),
+        };
+      }
+      return c as Client;
+    });
   },
   saveClients(clients: Client[]): void {
     setStorage(STORAGE_KEYS.CLIENTS, clients);
   },
-  addOrUpdateClient(client: Partial<Client> & { full_name: string }): Client {
+  addOrUpdateClient(client: Partial<Client> & { first_name?: string; last_name?: string; full_name?: string }): Client {
     const clients = this.getClients();
+    
+    // Compute first_name, last_name, full_name
+    let first = (client.first_name || '').trim();
+    let last = (client.last_name || '').trim();
+    if (!first && client.full_name) {
+      const parts = client.full_name.trim().split(' ');
+      first = parts[0] || 'Cliente';
+      last = parts.slice(1).join(' ') || '-';
+    }
+    const computedFullName = `${first} ${last}`.trim();
+
     const existingIndex = client.id 
       ? clients.findIndex(c => c.id === client.id)
-      : clients.findIndex(c => c.full_name.trim().toLowerCase() === client.full_name.trim().toLowerCase());
+      : clients.findIndex(c => c.full_name.trim().toLowerCase() === computedFullName.toLowerCase());
 
     if (existingIndex >= 0) {
-      const updated = { ...clients[existingIndex], ...client };
+      const updated: Client = {
+        ...clients[existingIndex],
+        ...client,
+        first_name: first || clients[existingIndex].first_name,
+        last_name: last || clients[existingIndex].last_name,
+        full_name: computedFullName || clients[existingIndex].full_name,
+      };
       clients[existingIndex] = updated;
       this.saveClients(clients);
       CloudSync.upsertClient(updated);
@@ -67,9 +99,10 @@ export const DataService = {
     } else {
       const newClient: Client = {
         id: client.id || `client-${Date.now()}`,
-        full_name: client.full_name.trim(),
+        first_name: first || 'Nuovo',
+        last_name: last || 'Cliente',
+        full_name: computedFullName || 'Nuovo Cliente',
         phone: client.phone || '',
-        email: client.email || '',
         notes: client.notes || '',
         created_at: new Date().toISOString(),
       };

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="roseGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185" />
+      <stop offset="60%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#e11d48" />
+    </linearGradient>
+    <linearGradient id="goldGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e11d48" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Ambient Glow -->
+  <circle cx="50" cy="50" r="46" fill="url(#bgGlow)" />
+
+  <!-- Outer Rounded Squircle -->
+  <rect x="4" y="4" width="92" height="92" rx="22" fill="#15121b" stroke="url(#roseGold)" stroke-opacity="0.4" stroke-width="1.5" />
+
+  <!-- Elegant 'F' Monogram -->
+  <!-- Stem -->
+  <rect x="36" y="24" width="7" height="52" rx="3.5" fill="url(#roseGold)" />
+  <!-- Top Arm -->
+  <path d="M 36 24 L 66 24 C 68 24 69 26 68 28 L 65 31 C 64 32 63 32 61 32 L 36 32 Z" fill="url(#roseGold)" />
+  <!-- Mid Arm -->
+  <rect x="36" y="47" width="22" height="6" rx="3" fill="url(#roseGold)" />
+  <!-- Base Serif -->
+  <rect x="31" y="73" width="17" height="4" rx="2" fill="url(#roseGold)" />
+
+  <!-- Sparkle Elements -->
+  <!-- Large Sparkle Top-Right -->
+  <path d="M 72 20 Q 72 28 80 28 Q 72 28 72 36 Q 72 28 64 28 Q 72 28 72 20 Z" fill="#ffffff" filter="drop-shadow(0 0 3px #fb7185)" />
+  
+  <!-- Small Gold Star Lower-Right -->
+  <path d="M 68 62 Q 68 67 73 67 Q 68 67 68 72 Q 68 67 63 67 Q 68 67 68 62 Z" fill="url(#goldGlow)" />
+
+  <!-- Accent Dot -->
+  <circle cx="28" cy="40" r="1.5" fill="#fda4af" opacity="0.8" />
+</svg>
+

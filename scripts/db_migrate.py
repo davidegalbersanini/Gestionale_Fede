@@ -45,3 +45,4 @@ if __name__ == '__main__':
         print('Usage: python db_migrate.py "SQL QUERY"')
         sys.exit(1)
     run_migration(sys.argv[1])
+

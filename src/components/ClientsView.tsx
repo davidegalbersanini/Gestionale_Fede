@@ -7,7 +7,6 @@ import {
   Search,
   Plus,
   Phone,
-  Mail,
   Calendar,
   Clock,
   ChevronRight,
@@ -22,8 +21,9 @@ interface ClientsViewProps {
   clients: Client[];
   appointments: Appointment[];
   weddings: WeddingService[];
-  onSaveClient: (clientData: Partial<Client> & { full_name: string }) => void;
+  onSaveClient: (clientData: Partial<Client> & { full_name: string; first_name?: string; last_name?: string }) => void;
   onOpenNewAppointmentForClient: (client: Client) => void;
+  onOpenNewWeddingForClient: (client: Client) => void;
 }
 
 export default function ClientsView({
@@ -32,13 +32,14 @@ export default function ClientsView({
   weddings,
   onSaveClient,
   onOpenNewAppointmentForClient,
+  onOpenNewWeddingForClient,
 }: ClientsViewProps) {
   const [search, setSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isAddingClient, setIsAddingClient] = useState(false);
-  const [newFullName, setNewFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
   // Filter clients
@@ -48,6 +49,8 @@ export default function ClientsView({
     return clients.filter(
       c =>
         c.full_name.toLowerCase().includes(q) ||
+        (c.first_name && c.first_name.toLowerCase().includes(q)) ||
+        (c.last_name && c.last_name.toLowerCase().includes(q)) ||
         (c.phone && c.phone.includes(q)) ||
         (c.notes && c.notes.toLowerCase().includes(q))
     );
@@ -83,7 +86,13 @@ export default function ClientsView({
     clientWeddings.forEach(w => {
       totalSpent += (w.trial_deposit || 0) + (w.wedding_balance || 0);
       const isPast = w.wedding_date < today;
-      const item = { type: 'wedding', date: w.wedding_date, title: `Matrimonio Sposa (${w.people_count} pers.)`, amount: w.total_price, raw: w };
+      const item = {
+        type: 'wedding',
+        date: w.wedding_date,
+        title: `${w.event_type || 'Matrimonio'} (${w.people_count} pers.)`,
+        amount: w.total_price || ((w.trial_deposit || 0) + (w.wedding_balance || 0)),
+        raw: w
+      };
       if (isPast) past.push(item);
       else upcoming.push(item);
     });
@@ -96,19 +105,22 @@ export default function ClientsView({
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFullName.trim()) return;
+    if (!firstName.trim() || !lastName.trim()) return;
+
+    const full_name = `${firstName.trim()} ${lastName.trim()}`;
 
     onSaveClient({
-      full_name: newFullName.trim(),
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      full_name,
       phone: newPhone.trim(),
-      email: newEmail.trim(),
       notes: newNotes.trim(),
     });
 
     setIsAddingClient(false);
-    setNewFullName('');
+    setFirstName('');
+    setLastName('');
     setNewPhone('');
-    setNewEmail('');
     setNewNotes('');
   };
 
@@ -122,7 +134,7 @@ export default function ClientsView({
             Rubrica Clienti
           </h1>
           <p className="text-stone-400 text-xs">
-            {clients.length} clienti memorizzati nello storico
+            {clients.length} contatti memorizzati nello storico
           </p>
         </div>
 
@@ -140,7 +152,7 @@ export default function ClientsView({
         <Search className="w-4 h-4 text-stone-500 absolute left-4 top-1/2 -translate-y-1/2" />
         <input
           type="text"
-          placeholder="Cerca cliente per nome o telefono..."
+          placeholder="Cerca per nome, cognome o telefono..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-full bg-stone-900 border border-stone-800 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
@@ -155,33 +167,33 @@ export default function ClientsView({
             onClick={() => setSelectedClient(c)}
             className="p-4 rounded-2xl bg-stone-900 hover:bg-stone-800/80 border border-stone-800 transition-all cursor-pointer group flex items-center justify-between"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-stone-800 to-stone-700 border border-stone-700 flex items-center justify-center font-bold text-sm text-rose-400 group-hover:scale-105 transition-transform">
-                {c.full_name.charAt(0).toUpperCase()}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-stone-800 to-stone-700 border border-stone-700 flex items-center justify-center font-bold text-sm text-rose-400 group-hover:scale-105 transition-transform flex-shrink-0">
+                {c.full_name ? c.full_name.charAt(0).toUpperCase() : '?'}
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate">
                   {c.full_name}
                 </h3>
                 {c.phone ? (
-                  <p className="text-stone-400 text-xs flex items-center gap-1">
-                    <Phone className="w-3 h-3 text-stone-500" />
+                  <p className="text-stone-400 text-xs flex items-center gap-1 truncate">
+                    <Phone className="w-3 h-3 text-stone-500 flex-shrink-0" />
                     {c.phone}
                   </p>
                 ) : (
-                  <p className="text-stone-500 text-xs">Nessun recapito</p>
+                  <p className="text-stone-500 text-xs italic">Nessun recapito</p>
                 )}
               </div>
             </div>
 
-            <ChevronRight className="w-4 h-4 text-stone-600 group-hover:text-stone-400 transition-colors" />
+            <ChevronRight className="w-4 h-4 text-stone-600 group-hover:text-stone-400 transition-colors flex-shrink-0 ml-2" />
           </div>
         ))}
       </div>
 
       {/* Client Detail Drawer / Modal */}
       {selectedClient && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
           <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
             {/* Header */}
             <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
@@ -230,17 +242,35 @@ export default function ClientsView({
                 )}
               </div>
 
-              {/* Action: Book new treatment for this client */}
-              <button
-                onClick={() => {
-                  onOpenNewAppointmentForClient(selectedClient);
-                  setSelectedClient(null);
-                }}
-                className="w-full py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Prenota Nuovo Trattamento per {selectedClient.full_name}
-              </button>
+              {/* Actions: Book PMU or Event for this client */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-stone-400 uppercase tracking-wider">
+                  Azioni Rapide
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      onOpenNewAppointmentForClient(selectedClient);
+                      setSelectedClient(null);
+                    }}
+                    className="py-3 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Plus className="w-4 h-4 text-rose-400" />
+                    <span>+ Nuovo PMU</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      onOpenNewWeddingForClient(selectedClient);
+                      setSelectedClient(null);
+                    }}
+                    className="py-3 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500/40 text-pink-300 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Heart className="w-4 h-4 text-pink-400" />
+                    <span>+ Nuovo Evento</span>
+                  </button>
+                </div>
+              </div>
 
               {/* Upcoming Scheduled Appointments */}
               <div>
@@ -298,28 +328,43 @@ export default function ClientsView({
 
       {/* Add Client Modal */}
       {isAddingClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
-              <h3 className="text-base font-bold text-white">Nuovo Cliente Rubrica</h3>
+              <h3 className="text-base font-bold text-white">Nuovo Contatto Rubrica</h3>
               <button onClick={() => setIsAddingClient(false)} className="text-stone-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateClient} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
-                  Nome Completo * (Obbligatorio)
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="es. Martina Raimondi"
-                  value={newFullName}
-                  onChange={e => setNewFullName(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                    Nome *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="es. Martina"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                    Cognome *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="es. Raimondi"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                  />
+                </div>
               </div>
 
               <div>
@@ -337,24 +382,11 @@ export default function ClientsView({
 
               <div>
                 <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
-                  Email (Opzionale)
-                </label>
-                <input
-                  type="email"
-                  placeholder="es. martina@gmail.com"
-                  value={newEmail}
-                  onChange={e => setNewEmail(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
-                  Note (Opzionale)
+                  Note Tecniche (Opzionale)
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Preferenze, allergie, come ti ha conosciuta..."
+                  placeholder="Preferenze, allergie, note pelle..."
                   value={newNotes}
                   onChange={e => setNewNotes(e.target.value)}
                   className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white text-sm"
@@ -383,4 +415,3 @@ export default function ClientsView({
     </div>
   );
 }
-

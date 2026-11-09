@@ -27,9 +27,15 @@ export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settings, setSettings] = useState<AppSettings>({
     pin_hash: '1234',
-    monthly_target: 2700,
     yearly_target: 35000,
   });
+
+  // Pre-fill state for Modals
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(
+    new Date().toISOString().slice(0, 10)
+  );
+  const [selectedClientForPmu, setSelectedClientForPmu] = useState<Client | null>(null);
+  const [selectedClientForWedding, setSelectedClientForWedding] = useState<Client | null>(null);
 
   // Modals state
   const [isPmuModalOpen, setIsPmuModalOpen] = useState(false);
@@ -91,7 +97,7 @@ export default function Home() {
 
   // Save / Update PMU Appointment
   const handleSavePmu = (appData: Omit<Appointment, 'id'>, createTouchUpFollowup?: boolean) => {
-    if (editingPmu) {
+    if (editingPmu && editingPmu.id) {
       const updated: Appointment = { ...editingPmu, ...appData };
       DataService.updateAppointment(updated);
     } else {
@@ -100,9 +106,7 @@ export default function Home() {
       // Automatic Touch-up follow up booking if requested
       if (createTouchUpFollowup && appData.touch_up_date) {
         const touchUpTime = appData.touch_up_time || '10:00';
-        const [th, tm] = touchUpTime.split(':').map(Number);
-        const touchUpEndH = String((th + 1) % 24).padStart(2, '0');
-        const touchUpEndTime = `${touchUpEndH}:${String(tm || 0).padStart(2, '0')}`;
+        const touchUpEndTime = appData.touch_up_end_time || '11:30';
         const touchUpStartIso = `${appData.touch_up_date}T${touchUpTime}:00`;
         const touchUpEndIso = `${appData.touch_up_date}T${touchUpEndTime}:00`;
 
@@ -110,6 +114,7 @@ export default function Home() {
           client_id: createdPrimary.client_id,
           client_name: createdPrimary.client_name,
           location_id: createdPrimary.location_id,
+          category: createdPrimary.category,
           treatment: `Ritocco (${createdPrimary.treatment})`,
           appointment_date: touchUpStartIso,
           end_time: touchUpEndTime,
@@ -130,11 +135,13 @@ export default function Home() {
         // Sync touch-up to Google Calendar if enabled
         if (createdPrimary.sync_google_calendar) {
           const loc = locations.find(l => l.id === createdPrimary.location_id);
+          const locationString = loc?.address ? `${loc.name} (${loc.address})` : loc?.name || '';
+
           syncCalendarAutomatically({
             title: `PMU Ritocco: ${createdPrimary.client_name} - Ritocco (${createdPrimary.treatment})`,
             startDate: touchUpStartIso,
             endDate: touchUpEndIso,
-            location: loc?.name || '',
+            location: locationString,
             details: `Ritocco programmato per ${createdPrimary.client_name}\nCollegato alla prima seduta del ${createdPrimary.appointment_date.slice(0, 10)}`,
           }).then(res => {
             if (res.eventId) {
@@ -149,6 +156,7 @@ export default function Home() {
     setAppointments(DataService.getAppointments());
     setClients(DataService.getClients());
     setEditingPmu(null);
+    setSelectedClientForPmu(null);
   };
 
   const handleDeletePmu = (id: string) => {
@@ -202,9 +210,9 @@ export default function Home() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Save / Update Wedding
+  // Save / Update Wedding / Event
   const handleSaveWedding = (weddingData: Omit<WeddingService, 'id'>) => {
-    if (editingWedding) {
+    if (editingWedding && editingWedding.id) {
       const updated: WeddingService = { ...editingWedding, ...weddingData };
       DataService.updateWedding(updated);
     } else {
@@ -213,6 +221,7 @@ export default function Home() {
     setWeddings(DataService.getWeddings());
     setClients(DataService.getClients());
     setEditingWedding(null);
+    setSelectedClientForWedding(null);
   };
 
   const handleDeleteWedding = (id: string) => {
@@ -221,7 +230,7 @@ export default function Home() {
   };
 
   // Save Client from Rubrica
-  const handleSaveClient = (clientData: Partial<Client> & { full_name: string }) => {
+  const handleSaveClient = (clientData: Partial<Client> & { full_name: string; first_name?: string; last_name?: string }) => {
     DataService.addOrUpdateClient(clientData);
     setClients(DataService.getClients());
   };
@@ -281,12 +290,16 @@ export default function Home() {
             appointments={appointments}
             weddings={weddings}
             locations={locations}
-            onOpenNewPmu={() => {
+            onOpenNewPmu={(dayIso) => {
+              if (dayIso) setSelectedCalendarDate(dayIso);
               setEditingPmu(null);
+              setSelectedClientForPmu(null);
               setIsPmuModalOpen(true);
             }}
-            onOpenNewWedding={() => {
+            onOpenNewWedding={(dayIso) => {
+              if (dayIso) setSelectedCalendarDate(dayIso);
               setEditingWedding(null);
+              setSelectedClientForWedding(null);
               setIsWeddingModalOpen(true);
             }}
             onSelectPmu={app => {
@@ -307,18 +320,16 @@ export default function Home() {
             weddings={weddings}
             onSaveClient={handleSaveClient}
             onOpenNewAppointmentForClient={client => {
-              setEditingPmu({
-                id: '',
-                client_id: client.id,
-                client_name: client.full_name,
-                location_id: locations[0]?.id || '',
-                treatment: 'Ritocco',
-                appointment_date: new Date().toISOString(),
-                payment: 0,
-                balance: 0,
-                status: 'programmato',
-              });
+              setSelectedClientForPmu(client);
+              setEditingPmu(null);
+              setSelectedCalendarDate(new Date().toISOString().slice(0, 10));
               setIsPmuModalOpen(true);
+            }}
+            onOpenNewWeddingForClient={client => {
+              setSelectedClientForWedding(client);
+              setEditingWedding(null);
+              setSelectedCalendarDate(new Date().toISOString().slice(0, 10));
+              setIsWeddingModalOpen(true);
             }}
           />
         )}
@@ -336,6 +347,7 @@ export default function Home() {
             appointments={appointments}
             weddings={weddings}
             expenses={expenses}
+            locations={locations}
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
           />
@@ -348,12 +360,15 @@ export default function Home() {
         onClose={() => {
           setIsPmuModalOpen(false);
           setEditingPmu(null);
+          setSelectedClientForPmu(null);
         }}
         onSave={handleSavePmu}
         onDelete={handleDeletePmu}
         initialAppointment={editingPmu}
         clients={clients}
         locations={locations}
+        defaultDate={selectedCalendarDate}
+        defaultClient={selectedClientForPmu}
       />
 
       <WeddingModal
@@ -361,11 +376,14 @@ export default function Home() {
         onClose={() => {
           setIsWeddingModalOpen(false);
           setEditingWedding(null);
+          setSelectedClientForWedding(null);
         }}
         onSave={handleSaveWedding}
         onDelete={handleDeleteWedding}
         initialWedding={editingWedding}
         clients={clients}
+        defaultDate={selectedCalendarDate}
+        defaultClient={selectedClientForWedding}
       />
 
       <SettingsModal
@@ -469,4 +487,3 @@ export default function Home() {
     </div>
   );
 }
-

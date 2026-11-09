@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Delete } from 'lucide-react';
+import { Delete } from 'lucide-react';
 
 interface PinLockProps {
   correctPin: string;
@@ -74,14 +74,14 @@ export default function PinLock({ correctPin, onSuccess }: PinLockProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-b from-stone-900 via-stone-950 to-black text-white p-4 select-none flex items-center justify-center">
       <div className="w-full max-w-sm flex flex-col items-center my-auto py-4">
-        {/* Header */}
-        <div className="flex flex-col items-center mb-5 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-rose-400 flex items-center justify-center shadow-lg shadow-rose-900/40 mb-3 animate-pulse">
-            <Sparkles className="w-7 h-7 text-white" />
+        {/* Header with Luxury Brand Logo */}
+        <div className="flex flex-col items-center mb-6 text-center">
+          <div className="w-16 h-16 rounded-3xl bg-stone-900/90 border border-stone-800 flex items-center justify-center p-2.5 shadow-2xl shadow-rose-950/40 mb-3.5">
+            <img src="/logo.svg" alt="Gestionale Fede" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Gestionale Fede</h1>
-          <p className="text-stone-400 text-xs sm:text-sm">
-            Digita il PIN da tastiera o tocca i tasti
+          <h1 className="text-2xl font-black tracking-tight text-white mb-0.5">Gestionale Fede</h1>
+          <p className="text-xs text-rose-300 font-medium tracking-wide uppercase">
+            PMU & Eventi • Beauty Management
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export default function PinLock({ correctPin, onSuccess }: PinLockProps) {
               PIN non corretto. Riprova.
             </span>
           ) : (
-            <span className="text-transparent text-xs select-none">.</span>
+            <span className="text-stone-500 text-xs select-none">Inserisci il PIN a 4 cifre</span>
           )}
         </div>
 
@@ -149,7 +149,7 @@ export default function PinLock({ correctPin, onSuccess }: PinLockProps) {
             onChange={e => setRememberDevice(e.target.checked)}
             className="rounded border-stone-700 bg-stone-800 text-rose-500 focus:ring-0"
           />
-          <span>Resta collegata su questo dispositivo</span>
+          <span>Resta autenticata su questo dispositivo</span>
         </label>
       </div>
     </div>

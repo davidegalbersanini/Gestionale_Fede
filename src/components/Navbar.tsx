@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Calendar, Users, Receipt, TrendingUp, Settings, Sparkles } from 'lucide-react';
 
 export type ActiveTab = 'agenda' | 'clients' | 'expenses' | 'dashboard';
@@ -22,19 +23,19 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
   return (
     <>
       {/* Desktop Top Header */}
-      <header className="hidden md:block sticky top-0 z-40 bg-stone-950/80 backdrop-blur-xl border-b border-stone-800">
+      <header className="hidden md:block sticky top-0 z-40 bg-stone-950/85 backdrop-blur-xl border-b border-stone-800">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo / Brand */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => onSelectTab('agenda')}>
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-white shadow-md shadow-rose-900/30">
-              <Sparkles className="w-5 h-5" />
+          <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => onSelectTab('agenda')}>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-stone-900 to-stone-800 border border-stone-700/60 flex items-center justify-center p-1.5 shadow-md shadow-rose-950/30">
+              <img src="/logo.svg" alt="Gestionale Fede" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-base font-black tracking-tight text-white block">
                 Gestionale Fede
               </span>
               <span className="text-[10px] text-stone-400 font-medium block">
-                PMU • Make-up • Spose
+                PMU • Make-up • Eventi
               </span>
             </div>
           </div>
@@ -75,10 +76,13 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
       {/* Mobile Top Header (Small brand + settings) */}
       <div className="md:hidden sticky top-0 z-40 bg-stone-950/90 backdrop-blur-xl border-b border-stone-800/80 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center text-white shadow-sm">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-stone-900 to-stone-800 border border-stone-700/60 flex items-center justify-center p-1 shadow-sm">
+            <img src="/logo.svg" alt="Gestionale Fede" className="w-full h-full object-contain" />
           </div>
-          <span className="text-sm font-black text-white tracking-tight">Gestionale Fede</span>
+          <div>
+            <span className="text-sm font-black text-white tracking-tight block">Gestionale Fede</span>
+            <span className="text-[9px] text-stone-400 font-medium block">PMU • Make-up • Eventi</span>
+          </div>
         </div>
         <button
           onClick={onOpenSettings}
@@ -114,4 +118,3 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
     </>
   );
 }
-

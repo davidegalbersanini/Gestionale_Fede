@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment, Client, Location } from '@/types';
 import { syncCalendarAutomatically } from '@/lib/calendar';
-import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Share2, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Sparkles, ExternalLink } from 'lucide-react';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -13,6 +13,8 @@ interface AppointmentModalProps {
   initialAppointment?: Appointment | null;
   clients: Client[];
   locations: Location[];
+  defaultDate?: string;
+  defaultClient?: Client | null;
 }
 
 export default function AppointmentModal({
@@ -23,28 +25,32 @@ export default function AppointmentModal({
   initialAppointment,
   clients,
   locations,
+  defaultDate,
+  defaultClient,
 }: AppointmentModalProps) {
+  const [category, setCategory] = useState<'pmu' | 'generico'>('pmu');
   const [clientName, setClientName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [locationId, setLocationId] = useState(locations[0]?.id || '');
   const [treatment, setTreatment] = useState('Ritocco');
-  const [appointmentDate, setAppointmentDate] = useState(new Date().toISOString().slice(0, 10));
+  const [appointmentDate, setAppointmentDate] = useState(defaultDate || new Date().toISOString().slice(0, 10));
   const [appointmentTime, setAppointmentTime] = useState('10:00');
   const [appointmentEndTime, setAppointmentEndTime] = useState('12:00');
   const [payment, setPayment] = useState('');
   const [balance, setBalance] = useState('');
   const [touchUpDate, setTouchUpDate] = useState('');
   const [touchUpTime, setTouchUpTime] = useState('10:00');
+  const [touchUpEndTime, setTouchUpEndTime] = useState('11:30');
   const [createTouchUpFollowup, setCreateTouchUpFollowup] = useState(true);
   const [notes, setNotes] = useState('');
   const [syncGoogleCalendar, setSyncGoogleCalendar] = useState(true);
 
-  // Helper to add hours to HH:mm string
+  // Helper to add minutes/hours to HH:mm string
   const addHoursToTime = (timeStr: string, hours: number = 2): string => {
     try {
       const [h, m] = timeStr.split(':').map(Number);
-      const totalM = (h || 0) * 60 + (m || 0) + hours * 60;
+      const totalM = (h || 0) * 60 + (m || 0) + Math.round(hours * 60);
       const finalH = Math.floor(totalM / 60) % 24;
       const finalM = totalM % 60;
       return `${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`;
@@ -53,51 +59,71 @@ export default function AppointmentModal({
     }
   };
 
-  // Common treatments for fast chip selection
-  const commonTreatments = [
+  // Treatment presets
+  const pmuTreatments = [
     'Ritocco',
     'Prima seduta Micro',
     'Prima seduta Sfumatura',
-    'Labbra',
+    'Labbra Full Lip',
+    'Labbra Contorno & Sfumatura',
     'Combo laminazione',
     'Tatuaggio Fine Line',
-    'Eyeliner'
+    'Infracigliare / Eyeliner'
+  ];
+
+  const genericTreatments = [
+    'Consulenza PMU',
+    'Consulenza Trucco',
+    'Laminazione Ciglia',
+    'Laminazione Sopracciglia',
+    'Trucco Giorno / Sera',
+    'Correzione PMU Esistente',
+    'Trattamento Viso / Estetica'
   ];
 
   useEffect(() => {
     if (initialAppointment) {
+      setCategory(initialAppointment.category === 'generico' ? 'generico' : 'pmu');
       setClientName(initialAppointment.client_name);
       setSelectedClientId(initialAppointment.client_id);
       setLocationId(initialAppointment.location_id);
       setTreatment(initialAppointment.treatment);
       const [d, t] = initialAppointment.appointment_date.split('T');
       const startT = t ? t.slice(0, 5) : '10:00';
-      setAppointmentDate(d || new Date().toISOString().slice(0, 10));
+      setAppointmentDate(d || defaultDate || new Date().toISOString().slice(0, 10));
       setAppointmentTime(startT);
       setAppointmentEndTime(initialAppointment.end_time || addHoursToTime(startT, 2));
       setPayment(initialAppointment.payment > 0 ? String(initialAppointment.payment) : '');
       setBalance(initialAppointment.balance > 0 ? String(initialAppointment.balance) : '');
       setTouchUpDate(initialAppointment.touch_up_date || '');
       setTouchUpTime(initialAppointment.touch_up_time || '10:00');
+      setTouchUpEndTime(initialAppointment.touch_up_end_time || '11:30');
       setNotes(initialAppointment.notes || '');
-      setSyncGoogleCalendar(initialAppointment.sync_google_calendar || false);
+      setSyncGoogleCalendar(initialAppointment.sync_google_calendar !== false);
     } else {
-      setClientName('');
-      setSelectedClientId(undefined);
+      setCategory('pmu');
+      if (defaultClient) {
+        setClientName(defaultClient.full_name);
+        setSelectedClientId(defaultClient.id);
+      } else {
+        setClientName('');
+        setSelectedClientId(undefined);
+      }
       setLocationId(locations[0]?.id || '');
       setTreatment('Ritocco');
-      setAppointmentDate(new Date().toISOString().slice(0, 10));
+      setAppointmentDate(defaultDate || new Date().toISOString().slice(0, 10));
       setAppointmentTime('10:00');
       setAppointmentEndTime('12:00');
       setPayment('');
       setBalance('');
       setTouchUpDate('');
       setTouchUpTime('10:00');
+      setTouchUpEndTime('11:30');
       setCreateTouchUpFollowup(true);
       setNotes('');
-      setSyncGoogleCalendar(true);
+      setSyncGoogleCalendar(true); // Default checked as requested
     }
-  }, [initialAppointment, locations]);
+  }, [initialAppointment, locations, defaultDate, defaultClient]);
 
   if (!isOpen) return null;
 
@@ -105,18 +131,23 @@ export default function AppointmentModal({
     ? clients.filter(c => c.full_name.toLowerCase().includes(clientName.toLowerCase())).slice(0, 5)
     : [];
 
+  const selectedLoc = locations.find(l => l.id === locationId);
+
+  // Read-only calculated total (payment received + remaining balance)
+  const totalCalculated = (parseFloat(payment) || 0) + (parseFloat(balance) || 0);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName.trim()) return;
 
     const fullDateTime = `${appointmentDate}T${appointmentTime}:00`;
     const fullEndDateTime = `${appointmentDate}T${appointmentEndTime}:00`;
-    const loc = locations.find(l => l.id === locationId);
 
     const appData: Omit<Appointment, 'id'> = {
       client_id: selectedClientId,
       client_name: clientName.trim(),
       location_id: locationId,
+      category,
       treatment: treatment.trim(),
       appointment_date: fullDateTime,
       end_time: appointmentEndTime,
@@ -124,20 +155,25 @@ export default function AppointmentModal({
       balance: parseFloat(balance) || 0,
       touch_up_date: touchUpDate || null,
       touch_up_time: touchUpDate ? touchUpTime : undefined,
+      touch_up_end_time: touchUpDate ? touchUpEndTime : undefined,
       notes: notes.trim(),
       sync_google_calendar: syncGoogleCalendar,
       status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
 
-    // Automatic Google Calendar Sync in background (no new tabs!)
+    // Google Calendar Sync with location address if present
     if (syncGoogleCalendar) {
+      const locationString = selectedLoc?.address
+        ? `${selectedLoc.name} (${selectedLoc.address})`
+        : selectedLoc?.name || '';
+
       syncCalendarAutomatically({
         eventId: initialAppointment?.google_calendar_event_id,
-        title: `PMU: ${clientName.trim()} - ${treatment.trim()}`,
+        title: `${category === 'pmu' ? 'PMU' : 'Appuntamento'}: ${clientName.trim()} - ${treatment.trim()}`,
         startDate: fullDateTime,
         endDate: fullEndDateTime,
-        location: loc?.name || '',
-        details: `Trattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nPagamento: ${payment || 0}€ | Saldo: ${balance || 0}€\nNote: ${notes}`,
+        location: locationString,
+        details: `Tipo: ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento Generico'}\nTrattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nIncasso Ricevuto: ${payment || 0}€ | Saldo Dovuto: ${balance || 0}€ (Totale Trattamento: ${totalCalculated}€)\nNote: ${notes}`,
       }).then(res => {
         if (res.eventId && appData) {
           appData.google_calendar_event_id = res.eventId;
@@ -155,9 +191,11 @@ export default function AppointmentModal({
         {/* Header */}
         <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse" />
+            <span className={`w-3 h-3 rounded-full animate-pulse ${category === 'pmu' ? 'bg-rose-500' : 'bg-amber-400'}`} />
             <h2 className="text-lg font-bold text-white">
-              {initialAppointment ? 'Modifica Trattamento PMU' : 'Nuovo Trattamento PMU'}
+              {initialAppointment
+                ? `Modifica ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento'}`
+                : `Nuovo ${category === 'pmu' ? 'Trattamento PMU' : 'Appuntamento Generico'}`}
             </h2>
           </div>
           <button
@@ -170,10 +208,47 @@ export default function AppointmentModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Category Toggle: PMU vs Generico */}
+          <div>
+            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+              Tipologia Appuntamento
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCategory('pmu');
+                  if (!pmuTreatments.includes(treatment)) setTreatment('Ritocco');
+                }}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
+                  category === 'pmu'
+                    ? 'bg-rose-600/20 border-rose-500 text-rose-300 shadow-sm'
+                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
+                }`}
+              >
+                Trattamento PMU
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategory('generico');
+                  if (!genericTreatments.includes(treatment)) setTreatment('Consulenza PMU');
+                }}
+                className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
+                  category === 'generico'
+                    ? 'bg-amber-600/20 border-amber-500 text-amber-300 shadow-sm'
+                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
+                }`}
+              >
+                Appuntamento Generico / Altro
+              </button>
+            </div>
+          </div>
+
           {/* Cliente with Autocomplete */}
           <div className="relative">
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Nome Cliente *
+              Cliente (Nome e Cognome) *
             </label>
             <input
               type="text"
@@ -208,7 +283,7 @@ export default function AppointmentModal({
             )}
           </div>
 
-          {/* Sede */}
+          {/* Sede di lavoro con indirizzo Google Maps */}
           <div>
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
               Sede di Lavoro
@@ -219,23 +294,39 @@ export default function AppointmentModal({
                   type="button"
                   key={loc.id}
                   onClick={() => setLocationId(loc.id)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium border flex items-center justify-center gap-2 transition-all ${
+                  className={`px-3 py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition-all ${
                     locationId === loc.id
                       ? 'bg-rose-600/20 border-rose-500 text-rose-300 shadow-sm'
                       : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
                   }`}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: loc.color }} />
-                  {loc.name}
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: loc.color }} />
+                  <span className="truncate">{loc.name}</span>
                 </button>
               ))}
             </div>
+            {selectedLoc?.address && (
+              <div className="mt-2 flex items-center justify-between px-3 py-2 bg-stone-800/50 rounded-xl border border-stone-700/40 text-xs text-stone-300">
+                <span className="truncate flex items-center gap-1.5 text-stone-400">
+                  <MapPin className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
+                  <span className="truncate">{selectedLoc.address}</span>
+                </span>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedLoc.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold flex-shrink-0 ml-2"
+                >
+                  Maps <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            )}
           </div>
 
-          {/* Trattamento */}
+          {/* Trattamento / Servizio */}
           <div>
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Tipo Trattamento
+              {category === 'pmu' ? 'Tipo Trattamento PMU' : 'Descrizione Appuntamento Generico'}
             </label>
             <input
               type="text"
@@ -246,12 +337,12 @@ export default function AppointmentModal({
             />
             {/* Quick chips */}
             <div className="flex flex-wrap gap-1.5">
-              {commonTreatments.map(t => (
+              {(category === 'pmu' ? pmuTreatments : genericTreatments).map(t => (
                 <button
                   type="button"
                   key={t}
                   onClick={() => setTreatment(t)}
-                  className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs border border-stone-700/60 active:scale-95"
+                  className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs border border-stone-700/60 active:scale-95 transition-all"
                 >
                   {t}
                 </button>
@@ -259,7 +350,7 @@ export default function AppointmentModal({
             </div>
           </div>
 
-          {/* Data e Ora Inizio / Fine */}
+          {/* Data e Ora Inizio / Ora Fine */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
@@ -284,7 +375,7 @@ export default function AppointmentModal({
                 onChange={e => {
                   const val = e.target.value;
                   setAppointmentTime(val);
-                  setAppointmentEndTime(addHoursToTime(val, 2));
+                  setAppointmentEndTime(addHoursToTime(val, category === 'pmu' ? 2 : 1));
                 }}
                 className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
               />
@@ -303,42 +394,68 @@ export default function AppointmentModal({
             </div>
           </div>
 
-          {/* Pagamento e Saldo */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                Incasso Ricevuto (€)
-              </label>
-              <input
-                type="number"
-                step="any"
-                placeholder="0.00"
-                value={payment}
-                onChange={e => setPayment(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-              />
+          {/* Pagamento, Saldo e Totale Complessivo Calcolato */}
+          <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5">
+                  Incasso Ricevuto (€)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="0.00"
+                  value={payment}
+                  onChange={e => setPayment(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5">
+                  Saldo Rimanente (€)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="0.00"
+                  value={balance}
+                  onChange={e => setBalance(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                Saldo Dovuto (€)
-              </label>
-              <input
-                type="number"
-                step="any"
-                placeholder="0.00"
-                value={balance}
-                onChange={e => setBalance(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-              />
+
+            {/* Read-only calculated total */}
+            <div className="pt-2 border-t border-stone-700/60 flex items-center justify-between">
+              <span className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
+                Totale Trattamento (Ricevuto + Saldo):
+              </span>
+              <span className="text-base font-black text-emerald-400 bg-emerald-950/40 px-3 py-1 rounded-xl border border-emerald-800/50">
+                {totalCalculated.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+              </span>
             </div>
           </div>
 
-          {/* Data e Orario Ritocco */}
-          <div className="p-3.5 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-2.5">
-            <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider">
-              Data e Orario Ritocco (Opzionale)
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* Data e Orari Ritocco (Inizio e Fine) */}
+          <div className="p-3.5 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider">
+                Ritocco Associato (Opzionale)
+              </label>
+              {touchUpDate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTouchUpDate('');
+                  }}
+                  className="text-[11px] text-stone-400 hover:text-red-400"
+                >
+                  Rimuovi Ritocco
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
                 <label className="block text-[11px] text-stone-400 mb-1">Data Ritocco</label>
                 <input
@@ -349,16 +466,35 @@ export default function AppointmentModal({
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-stone-400 mb-1">Orario Ritocco</label>
+                <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-rose-400" /> Ora Inizio
+                </label>
                 <input
                   type="time"
                   disabled={!touchUpDate}
                   value={touchUpTime}
-                  onChange={e => setTouchUpTime(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setTouchUpTime(val);
+                    setTouchUpEndTime(addHoursToTime(val, 1.5));
+                  }}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-amber-400" /> Ora Fine
+                </label>
+                <input
+                  type="time"
+                  disabled={!touchUpDate}
+                  value={touchUpEndTime}
+                  onChange={e => setTouchUpEndTime(e.target.value)}
                   className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
                 />
               </div>
             </div>
+
             {touchUpDate && (
               <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer pt-1">
                 <input
@@ -367,12 +503,12 @@ export default function AppointmentModal({
                   onChange={e => setCreateTouchUpFollowup(e.target.checked)}
                   className="rounded border-stone-700 bg-stone-900 text-rose-500"
                 />
-                <span>Crea subito appuntamento di ritocco in agenda per quella data e ora ({touchUpTime})</span>
+                <span>Crea subito appuntamento di ritocco in agenda ({touchUpTime} - {touchUpEndTime})</span>
               </label>
             )}
           </div>
 
-          {/* Google Calendar Checkbox */}
+          {/* Google Calendar Checkbox (Defaulted to checked) */}
           <div className="p-3.5 bg-gradient-to-r from-blue-950/30 to-indigo-950/30 border border-blue-900/50 rounded-2xl">
             <label className="flex items-center justify-between cursor-pointer">
               <div className="flex items-center gap-2.5">
@@ -381,7 +517,7 @@ export default function AppointmentModal({
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-white">Salva su Google Calendar</p>
-                  <p className="text-xs text-blue-300/80">Sincronizza automaticamente data, ora e cliente</p>
+                  <p className="text-xs text-blue-300/80">Sincronizza orario esatto, luogo e dettagli</p>
                 </div>
               </div>
               <input
@@ -433,4 +569,3 @@ export default function AppointmentModal({
     </div>
   );
 }
-

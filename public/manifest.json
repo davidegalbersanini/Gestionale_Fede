@@ -1,11 +1,12 @@
 {
-  "name": "Gestionale Fede",
-  "short_name": "Gestionale",
-  "description": "Gestionale appuntamenti PMU, Spose e Spese",
+  "name": "Gestionale Fede - PMU & Eventi",
+  "short_name": "Fede App",
+  "description": "Gestionale Professionale Dermopigmentazione (PMU) & Trucco Eventi",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0c0a09",
-  "theme_color": "#0c0a09",
+  "orientation": "portrait",
+  "background_color": "#0d0c11",
+  "theme_color": "#0d0c11",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -21,4 +22,3 @@
     }
   ]
 }
-

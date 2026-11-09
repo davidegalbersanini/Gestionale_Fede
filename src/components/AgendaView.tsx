@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { Appointment, WeddingService, Location, UnifiedEvent } from '@/types';
-import { createGoogleCalendarUrl } from '@/lib/calendar';
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -38,8 +37,8 @@ interface AgendaViewProps {
   appointments: Appointment[];
   weddings: WeddingService[];
   locations: Location[];
-  onOpenNewPmu: () => void;
-  onOpenNewWedding: () => void;
+  onOpenNewPmu: (defaultDate?: string) => void;
+  onOpenNewWedding: (defaultDate?: string) => void;
   onSelectPmu: (app: Appointment) => void;
   onSelectWedding: (w: WeddingService) => void;
 }
@@ -55,7 +54,8 @@ export default function AgendaView({
 }: AgendaViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  // Multi-select filters: array of selected filter keys ('all', loc.id, or 'weddings')
+  const [selectedFilters, setSelectedFilters] = useState<string[]>(['all']);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
 
@@ -70,7 +70,7 @@ export default function AgendaView({
   const unifiedEvents: UnifiedEvent[] = useMemo(() => {
     const events: UnifiedEvent[] = [];
 
-    // PMU appointments
+    // Appointments (PMU & Generici)
     appointments.forEach(app => {
       const loc = locMap.get(app.location_id);
       events.push({
@@ -82,6 +82,7 @@ export default function AgendaView({
         end_time: app.end_time,
         location_name: loc?.name || 'Studio',
         location_color: loc?.color || '#ec4899',
+        address: loc?.address,
         amount: app.payment,
         balance: app.balance,
         status: app.status,
@@ -89,17 +90,19 @@ export default function AgendaView({
       });
     });
 
-    // Weddings
+    // Weddings & Events
     weddings.forEach(w => {
-      // 1. Wedding day
+      // 1. Event Day
+      const eventLabel = w.event_type || 'Matrimonio';
       events.push({
         id: `${w.id}-day`,
         type: 'wedding_day',
-        title: `Matrimonio (${w.people_count} pers.)`,
+        title: `${eventLabel} (${w.people_count || 1} pers.)`,
         client_name: w.bride_name,
         date: w.wedding_date,
-        location_name: 'Location Sposa',
+        location_name: 'Location Evento',
         location_color: '#f43f5e',
+        address: w.address,
         amount: w.wedding_balance || w.total_price,
         balance: 0,
         status: w.status,
@@ -111,11 +114,12 @@ export default function AgendaView({
         events.push({
           id: `${w.id}-trial`,
           type: 'wedding_trial',
-          title: 'Prova Trucco Sposa',
+          title: `Prova Trucco: ${w.bride_name}`,
           client_name: w.bride_name,
           date: w.trial_date,
           location_name: 'Studio',
           location_color: '#f59e0b',
+          address: w.address,
           amount: w.trial_deposit,
           balance: 0,
           status: w.status,
@@ -128,15 +132,39 @@ export default function AgendaView({
     return events.sort((a, b) => b.date.localeCompare(a.date));
   }, [appointments, weddings, locMap]);
 
+  // Toggle multi-select filter
+  const toggleFilter = (key: string) => {
+    if (key === 'all') {
+      setSelectedFilters(['all']);
+      return;
+    }
+
+    let updated = selectedFilters.includes('all') ? [] : [...selectedFilters];
+
+    if (updated.includes(key)) {
+      updated = updated.filter(k => k !== key);
+      if (updated.length === 0) {
+        updated = ['all'];
+      }
+    } else {
+      updated.push(key);
+    }
+
+    setSelectedFilters(updated);
+  };
+
   // Filtered events
   const filteredEvents = useMemo(() => {
     return unifiedEvents.filter(ev => {
-      // Location filter
-      if (selectedLocation !== 'all') {
-        if (selectedLocation === 'weddings') {
-          if (ev.type !== 'wedding_day' && ev.type !== 'wedding_trial') return false;
-        } else {
-          if (ev.rawPmu?.location_id !== selectedLocation) return false;
+      // Multi-select Location / Event filter
+      if (!selectedFilters.includes('all')) {
+        const matchesWedding =
+          selectedFilters.includes('weddings') &&
+          (ev.type === 'wedding_day' || ev.type === 'wedding_trial');
+        const matchesLoc = ev.rawPmu && selectedFilters.includes(ev.rawPmu.location_id);
+
+        if (!matchesWedding && !matchesLoc) {
+          return false;
         }
       }
 
@@ -146,13 +174,14 @@ export default function AgendaView({
         return (
           ev.client_name.toLowerCase().includes(q) ||
           ev.title.toLowerCase().includes(q) ||
-          (ev.location_name && ev.location_name.toLowerCase().includes(q))
+          (ev.location_name && ev.location_name.toLowerCase().includes(q)) ||
+          (ev.address && ev.address.toLowerCase().includes(q))
         );
       }
 
       return true;
     });
-  }, [unifiedEvents, selectedLocation, searchQuery]);
+  }, [unifiedEvents, selectedFilters, searchQuery]);
 
   // Days for monthly grid
   const monthStart = startOfMonth(currentDate);
@@ -160,6 +189,9 @@ export default function AgendaView({
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+  // Selected Day formatted ISO
+  const selectedDayIso = format(selectedDay, 'yyyy-MM-dd');
 
   // Events of selected day
   const selectedDayEvents = useMemo(() => {
@@ -183,14 +215,14 @@ export default function AgendaView({
             Agenda & Appuntamenti
           </h1>
           <p className="text-stone-400 text-xs">
-            {appointments.length} trattamenti PMU e {weddings.length} spose registrati
+            {appointments.length} trattamenti PMU e {weddings.length} eventi registrati
           </p>
         </div>
 
-        {/* The TWO distinct buttons */}
+        {/* The TWO distinct buttons: pass the selected day on the calendar! */}
         <div className="flex items-center gap-2">
           <button
-            onClick={onOpenNewPmu}
+            onClick={() => onOpenNewPmu(selectedDayIso)}
             className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-2 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
@@ -198,65 +230,73 @@ export default function AgendaView({
           </button>
 
           <button
-            onClick={onOpenNewWedding}
+            onClick={() => onOpenNewWedding(selectedDayIso)}
             className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-pink-950/50 flex items-center justify-center gap-2 active:scale-95 transition-all"
           >
             <Heart className="w-4 h-4 fill-white" />
-            <span>Nuova Sposa</span>
+            <span>Nuovo Evento</span>
           </button>
         </div>
       </div>
 
-      {/* Filters & Search & View Toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-900/60 p-3 rounded-2xl border border-stone-800">
+      {/* Filters & Search & Multi-Select Chips */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-stone-900/60 p-3 rounded-2xl border border-stone-800">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cerca cliente, ritocco, trattamento..."
+            placeholder="Cerca cliente, trattamento, luogo..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full bg-stone-800/80 border border-stone-700/60 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
           />
         </div>
 
-        {/* Sedi Filter */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+        {/* Multi-Selection Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          {/* Chip Tutte */}
           <button
-            onClick={() => setSelectedLocation('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-              selectedLocation === 'all'
-                ? 'bg-rose-600 text-white shadow-sm'
+            onClick={() => toggleFilter('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              selectedFilters.includes('all')
+                ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
                 : 'bg-stone-800 text-stone-400 hover:text-white'
             }`}
           >
             Tutte
           </button>
-          {locations.map(loc => (
-            <button
-              key={loc.id}
-              onClick={() => setSelectedLocation(loc.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 ${
-                selectedLocation === loc.id
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'bg-stone-800 text-stone-400 hover:text-white'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: loc.color }} />
-              {loc.name}
-            </button>
-          ))}
+
+          {/* Sedi chips */}
+          {locations.map(loc => {
+            const isSelected = selectedFilters.includes(loc.id);
+            return (
+              <button
+                key={loc.id}
+                onClick={() => toggleFilter(loc.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
+                    : 'bg-stone-800 text-stone-400 hover:text-white'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: loc.color }} />
+                <span>{loc.name}</span>
+              </button>
+            );
+          })}
+
+          {/* Eventi chip */}
           <button
-            onClick={() => setSelectedLocation('weddings')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 ${
-              selectedLocation === 'weddings'
-                ? 'bg-pink-600 text-white shadow-sm'
+            onClick={() => toggleFilter('weddings')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              selectedFilters.includes('weddings')
+                ? 'bg-pink-600 text-white shadow-sm ring-1 ring-pink-400'
                 : 'bg-stone-800 text-stone-400 hover:text-white'
             }`}
           >
             <Heart className="w-3 h-3 fill-current" />
-            Spose
+            <span>Eventi</span>
           </button>
         </div>
 
@@ -344,7 +384,7 @@ export default function AgendaView({
                     onClick={() => setSelectedDay(day)}
                     className={`min-h-[58px] sm:min-h-[72px] p-1.5 rounded-2xl flex flex-col justify-between items-start transition-all border ${
                       isSelected
-                        ? 'border-rose-500 bg-rose-950/30 shadow-sm'
+                        ? 'border-rose-500 bg-rose-950/30 shadow-sm ring-1 ring-rose-500/50'
                         : isToday
                         ? 'border-rose-500/40 bg-stone-800/80'
                         : 'border-stone-800/40 bg-stone-800/30 hover:bg-stone-800/60'
@@ -404,17 +444,17 @@ export default function AgendaView({
                   Nessun appuntamento in questa data.
                   <div className="mt-3 flex justify-center gap-2">
                     <button
-                      onClick={onOpenNewPmu}
+                      onClick={() => onOpenNewPmu(selectedDayIso)}
                       className="text-xs text-rose-400 hover:underline font-semibold"
                     >
                       + Trattamento PMU
                     </button>
                     <span className="text-stone-600">•</span>
                     <button
-                      onClick={onOpenNewWedding}
+                      onClick={() => onOpenNewWedding(selectedDayIso)}
                       className="text-xs text-pink-400 hover:underline font-semibold"
                     >
-                      + Sposa
+                      + Evento
                     </button>
                   </div>
                 </div>
@@ -446,8 +486,18 @@ function renderEventCard(
   onSelectWedding: (w: WeddingService) => void
 ) {
   const isWedding = ev.type === 'wedding_day' || ev.type === 'wedding_trial';
-  const timeStr = ev.date.includes('T') ? ev.date.split('T')[1].slice(0, 5) : '';
+
+  // Check explicit time: if date ends in T00:00 or has no T, don't show fake time!
+  let timeStr = '';
+  if (ev.date.includes('T')) {
+    const rawTime = ev.date.split('T')[1].slice(0, 5);
+    if (rawTime && rawTime !== '00:00') {
+      timeStr = rawTime;
+    }
+  }
+
   const dateStr = ev.date.slice(0, 10);
+  const isGeneric = ev.rawPmu?.category === 'generico';
 
   return (
     <div
@@ -459,12 +509,16 @@ function renderEventCard(
       className="p-3.5 rounded-2xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700/60 transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div>
-          <div className="flex items-center gap-1.5 mb-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
             {isWedding ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 flex items-center gap-1">
                 <Heart className="w-2.5 h-2.5 fill-current" />
-                {ev.type === 'wedding_day' ? 'Matrimonio' : 'Prova Trucco'}
+                {ev.type === 'wedding_day' ? (ev.rawWedding?.event_type || 'Evento') : 'Prova Trucco'}
+              </span>
+            ) : isGeneric ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                Generico • {ev.location_name}
               </span>
             ) : (
               <span
@@ -477,12 +531,15 @@ function renderEventCard(
                 {ev.location_name}
               </span>
             )}
+
+            {/* Time badge: only if explicit real time exists! */}
             {timeStr && (
               <span className="text-stone-300 text-[11px] font-mono flex items-center gap-1 bg-stone-900/60 px-2 py-0.5 rounded-md border border-stone-700/50">
                 <Clock className="w-3 h-3 text-rose-400" />
                 {timeStr}{ev.end_time ? ` - ${ev.end_time}` : ''}
               </span>
             )}
+
             {ev.rawPmu?.linked_appointment_id && (
               <span className="text-[10px] text-amber-400 font-medium flex items-center gap-1 bg-amber-950/40 border border-amber-800/40 px-1.5 py-0.5 rounded">
                 <LinkIcon className="w-2.5 h-2.5" />
@@ -490,14 +547,15 @@ function renderEventCard(
               </span>
             )}
           </div>
-          <h4 className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors">
+
+          <h4 className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate">
             {ev.client_name}
           </h4>
-          <p className="text-stone-300 text-xs">{ev.title}</p>
+          <p className="text-stone-300 text-xs truncate">{ev.title}</p>
         </div>
 
         {/* Amount Badge */}
-        <div className="text-right">
+        <div className="text-right flex-shrink-0">
           <span className="text-sm font-bold text-emerald-400">
             {ev.amount > 0 ? `${ev.amount}€` : '0€'}
           </span>
@@ -508,6 +566,25 @@ function renderEventCard(
           ) : null}
         </div>
       </div>
+
+      {/* Address / Google Maps link if available */}
+      {ev.address && (
+        <div className="mb-2 flex items-center justify-between text-[11px] text-stone-400 bg-stone-900/50 px-2.5 py-1 rounded-lg border border-stone-700/40">
+          <span className="truncate flex items-center gap-1 text-stone-300">
+            <MapPin className="w-3 h-3 text-rose-400 flex-shrink-0" />
+            <span className="truncate">{ev.address}</span>
+          </span>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.address)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="text-rose-400 hover:text-rose-300 ml-1.5 flex items-center gap-0.5 font-semibold flex-shrink-0"
+          >
+            Maps <ExternalLink className="w-2.5 h-2.5" />
+          </a>
+        </div>
+      )}
 
       {/* Footer Info */}
       <div className="pt-2 border-t border-stone-700/40 flex items-center justify-between text-[11px] text-stone-400">
@@ -521,4 +598,3 @@ function renderEventCard(
     </div>
   );
 }
-

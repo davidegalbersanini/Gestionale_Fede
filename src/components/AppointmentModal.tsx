@@ -221,7 +221,7 @@ export default function AppointmentModal({
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full animate-pulse bg-rose-500" />
             <h2 className="text-lg font-bold text-white">
-              {initialAppointment ? 'Modifica Trattamento PMU' : 'Nuovo Trattamento PMU'}
+              {initialAppointment ? 'Modifica PMU' : 'Nuovo PMU'}
             </h2>
           </div>
           <button
@@ -237,7 +237,7 @@ export default function AppointmentModal({
           {/* Cliente with Autocomplete */}
           <div className="relative">
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Cliente (Nome e Cognome) *
+              Cliente *
             </label>
             <input
               type="text"
@@ -275,7 +275,7 @@ export default function AppointmentModal({
           {/* Sede di lavoro con indirizzo Google Maps */}
           <div>
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Sede di Lavoro
+              Sede
             </label>
             <div className="grid grid-cols-2 gap-2">
               {locations.map(loc => (
@@ -315,7 +315,7 @@ export default function AppointmentModal({
           {/* Trattamento / Servizio PMU */}
           <div>
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Tipo Trattamento PMU
+              Trattamento
             </label>
             <input
               type="text"
@@ -343,7 +343,7 @@ export default function AppointmentModal({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                Data Appuntamento
+                Data
               </label>
               <input
                 type="date"
@@ -355,7 +355,7 @@ export default function AppointmentModal({
             </div>
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-rose-400" /> Ora Inizio
+                <Clock className="w-3.5 h-3.5 text-rose-400" /> Inizio
               </label>
               <input
                 type="time"
@@ -371,7 +371,7 @@ export default function AppointmentModal({
             </div>
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-amber-400" /> Ora Fine
+                <Clock className="w-3.5 h-3.5 text-amber-400" /> Fine
               </label>
               <input
                 type="time"
@@ -387,9 +387,8 @@ export default function AppointmentModal({
           <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Totale Trattamento (€)</span>
-                  <span className="text-[10px] text-stone-400 font-normal">Costo concordato</span>
+                <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider mb-1.5">
+                  Totale (€)
                 </label>
                 <input
                   type="number"
@@ -413,7 +412,7 @@ export default function AppointmentModal({
 
               <div>
                 <label className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Denaro Ricevuto (€)</span>
+                  <span>Ricevuto (€)</span>
                   <span className="text-[10px] text-stone-400 font-normal">
                     Max: {maxAcceptablePayment.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}€
                   </span>

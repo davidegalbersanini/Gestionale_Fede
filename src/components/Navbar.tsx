@@ -34,9 +34,6 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
               <span className="text-base font-black tracking-tight text-white block">
                 Gestionale Fede
               </span>
-              <span className="text-[10px] text-stone-400 font-medium block">
-                PMU • Make-up • Eventi
-              </span>
             </div>
           </div>
 
@@ -79,10 +76,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-stone-900 to-stone-800 border border-stone-700/60 flex items-center justify-center p-1 shadow-sm">
             <img src="/logo.svg" alt="Gestionale Fede" className="w-full h-full object-contain" />
           </div>
-          <div>
-            <span className="text-sm font-black text-white tracking-tight block">Gestionale Fede</span>
-            <span className="text-[9px] text-stone-400 font-medium block">PMU • Make-up • Eventi</span>
-          </div>
+          <span className="text-sm font-black text-white tracking-tight">Gestionale Fede</span>
         </div>
         <button
           onClick={onOpenSettings}

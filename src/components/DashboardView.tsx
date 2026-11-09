@@ -252,9 +252,6 @@ export default function DashboardView({
             <TrendingUp className="w-6 h-6 text-rose-500" />
             Riepilogo
           </h1>
-          <p className="text-stone-400 text-xs">
-            Fatturato, spese e target
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -309,7 +306,7 @@ export default function DashboardView({
           <div className="flex items-center justify-between sm:justify-end gap-4 text-right border-t sm:border-t-0 border-stone-800 pt-2 sm:pt-0">
             <div>
               <p className="text-stone-400 text-[11px] uppercase font-semibold">
-                Media Mensile ({annualStats.elapsedMonths} mesi {annualStats.isCurrentYear ? 'trascorsi' : ''})
+                Media Mensile ({annualStats.elapsedMonths} mesi)
               </p>
               <p className="text-lg sm:text-xl font-black text-rose-400">
                 {annualStats.monthlyAverage.toLocaleString('it-IT', { maximumFractionDigits: 0 })} €/m
@@ -328,7 +325,7 @@ export default function DashboardView({
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs font-semibold">
             <span className="text-stone-300">
-              Avanzamento target annuale ({annualStats.totalRevenue.toLocaleString('it-IT')}€ su {targetYearly.toLocaleString('it-IT')}€)
+              Avanzamento ({annualStats.totalRevenue.toLocaleString('it-IT')}€ / {targetYearly.toLocaleString('it-IT')}€)
             </span>
             <span className="text-amber-400 font-bold">{yearlyProgress}%</span>
           </div>
@@ -353,7 +350,6 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-white">
               {annualStats.totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-400 mt-0.5">PMU + Eventi</p>
           </div>
         </div>
 
@@ -367,7 +363,6 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-rose-400">
               {annualStats.totalExpenses.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Materiali e gestione</p>
           </div>
         </div>
 
@@ -381,7 +376,6 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-rose-300">
               {annualStats.pmuRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Trattamenti + Buoni Regalo</p>
           </div>
         </div>
 
@@ -395,7 +389,6 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-pink-300">
               {annualStats.weddingRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Matrimoni & cerimonie</p>
           </div>
         </div>
       </div>
@@ -405,7 +398,7 @@ export default function DashboardView({
         <div className="flex items-center gap-2">
           <ArrowUpRight className="w-4 h-4 text-emerald-400" />
           <span className="text-xs font-semibold text-stone-300">
-            Utile Netto {selectedYear} (Fatturato - Spese):
+            Utile Netto {selectedYear}:
           </span>
         </div>
         <span className="text-lg font-black text-emerald-400">
@@ -418,7 +411,6 @@ export default function DashboardView({
         <div className="p-4 border-b border-stone-800 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-white">Dettaglio Mese per Mese ({selectedYear})</h3>
-            <p className="text-stone-500 text-xs">Ricavi PMU, Eventi, Totale, Spese e Guadagno Netto</p>
           </div>
         </div>
 
@@ -575,18 +567,9 @@ export default function DashboardView({
             </div>
 
             <div className="space-y-4">
-              <p className="text-xs text-stone-300 leading-relaxed">
-                Il file Excel generato conterrà 3 tab complete:
-              </p>
-              <ul className="text-xs text-stone-400 space-y-1 list-disc pl-5">
-                <li><strong className="text-stone-200">PMU & Trattamenti</strong>: tutti gli appuntamenti con cliente, importo, saldo e sede</li>
-                <li><strong className="text-stone-200">Eventi & Cerimonie</strong>: eventi e matrimoni con acconto, saldo, totale e indirizzo</li>
-                <li><strong className="text-stone-200">Riepilogo & Metriche</strong>: totale fatturato, spese, utile netto e percentuali</li>
-              </ul>
-
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2">
                 <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider">
-                  Intervallo Temporale da Esportare
+                  Periodo
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   <button
@@ -598,7 +581,7 @@ export default function DashboardView({
                         : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
                     }`}
                   >
-                    Tutto il periodo storico (Default - Consigliato)
+                    Tutto lo storico
                   </button>
 
                   <button
@@ -610,7 +593,7 @@ export default function DashboardView({
                         : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
                     }`}
                   >
-                    Solo l&apos;anno in corso ({currentYearStr})
+                    Anno in corso ({currentYearStr})
                   </button>
 
                   <button
@@ -622,7 +605,7 @@ export default function DashboardView({
                         : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
                     }`}
                   >
-                    Personalizzato (Da data a data)
+                    Personalizzato
                   </button>
                 </div>
               </div>
@@ -668,12 +651,12 @@ export default function DashboardView({
                   {isExporting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Esportazione & Drive...</span>
+                      <span>Esportazione...</span>
                     </>
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      <span>Scarica & Salva su Drive</span>
+                      <span>Esporta</span>
                     </>
                   )}
                 </button>

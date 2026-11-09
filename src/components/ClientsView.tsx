@@ -154,15 +154,13 @@ export default function ClientsView({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between bg-stone-900/90 border border-stone-800 p-4 rounded-3xl">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-            <Users className="w-6 h-6 text-rose-500" />
-            Rubrica
-          </h1>
-          <p className="text-stone-400 text-xs">
-            {clients.length} clienti registrati
-          </p>
-        </div>
+        <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+          <Users className="w-6 h-6 text-rose-500" />
+          <span>Rubrica</span>
+          <span className="text-xs font-bold text-stone-400 bg-stone-800 px-2.5 py-0.5 rounded-full border border-stone-700">
+            {clients.length}
+          </span>
+        </h1>
 
         <button
           onClick={() => setIsAddingClient(true)}
@@ -290,57 +288,52 @@ export default function ClientsView({
               </div>
 
               {/* Actions: Book PMU, Event or Issue Gift Voucher for this client */}
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-stone-400 uppercase tracking-wider">
-                  Azioni Rapide
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    onOpenNewAppointmentForClient(selectedClient);
+                    setSelectedClient(null);
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-rose-400" />
+                  <span>PMU</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onOpenNewWeddingForClient(selectedClient);
+                    setSelectedClient(null);
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500/40 text-pink-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Heart className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Evento</span>
+                </button>
+
+                {onOpenNewVoucherForClient && (
                   <button
                     onClick={() => {
-                      onOpenNewAppointmentForClient(selectedClient);
+                      onOpenNewVoucherForClient(selectedClient);
                       setSelectedClient(null);
                     }}
-                    className="py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                   >
-                    <Plus className="w-3.5 h-3.5 text-rose-400" />
-                    <span>+ Nuovo PMU</span>
+                    <Gift className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Buono</span>
                   </button>
-
-                  <button
-                    onClick={() => {
-                      onOpenNewWeddingForClient(selectedClient);
-                      setSelectedClient(null);
-                    }}
-                    className="py-2.5 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500/40 text-pink-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    <Heart className="w-3.5 h-3.5 text-pink-400" />
-                    <span>+ Nuovo Evento</span>
-                  </button>
-
-                  {onOpenNewVoucherForClient && (
-                    <button
-                      onClick={() => {
-                        onOpenNewVoucherForClient(selectedClient);
-                        setSelectedClient(null);
-                      }}
-                      className="py-2.5 px-3 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-                    >
-                      <Gift className="w-3.5 h-3.5 text-amber-400" />
-                      <span>+ Nuovo Buono</span>
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Buoni Regalo Acquistati da questo cliente */}
               <div>
                 <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Gift className="w-3.5 h-3.5" />
-                  Buoni Regalo Acquistati ({clientHistory.purchasedVouchers.length})
+                  Buoni Acquistati ({clientHistory.purchasedVouchers.length})
                 </h4>
                 {clientHistory.purchasedVouchers.length === 0 ? (
                   <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
-                    Nessun buono regalo acquistato da questo cliente.
+                    Nessun buono acquistato.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -363,7 +356,7 @@ export default function ClientsView({
                         >
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-white">Buono Regalo</span>
+                              <span className="font-bold text-white">Buono</span>
                               <span
                                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                                   isFullyUsed
@@ -401,7 +394,7 @@ export default function ClientsView({
                 <div>
                   <h4 className="text-xs font-bold text-pink-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <Gift className="w-3.5 h-3.5" />
-                    Buoni Regalo Ricevuti in Regalo ({clientHistory.receivedVouchers.length})
+                    Buoni Ricevuti ({clientHistory.receivedVouchers.length})
                   </h4>
                   <div className="space-y-2">
                     {clientHistory.receivedVouchers.map((v, idx) => {
@@ -423,7 +416,7 @@ export default function ClientsView({
                         >
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-white">Regalato da: {v.buyer_name}</span>
+                              <span className="font-bold text-white">Da: {v.buyer_name}</span>
                               <span
                                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                                   isFullyUsed
@@ -437,7 +430,7 @@ export default function ClientsView({
                               </span>
                             </div>
                             <p className="text-stone-400 text-[11px] mt-0.5">
-                              Acquistato il {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
+                              {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
                             </p>
                           </div>
                           <div className="text-right">
@@ -461,7 +454,7 @@ export default function ClientsView({
                 </h4>
                 {clientHistory.upcoming.length === 0 ? (
                   <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
-                    Nessun appuntamento futuro programmato.
+                    Nessun appuntamento futuro.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -482,11 +475,11 @@ export default function ClientsView({
               <div>
                 <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5" />
-                  Storico Trattamenti Passati ({clientHistory.past.length})
+                  Storico ({clientHistory.past.length})
                 </h4>
                 {clientHistory.past.length === 0 ? (
                   <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
-                    Nessun trattamento passato registrato.
+                    Nessun trattamento passato.
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -511,10 +504,10 @@ export default function ClientsView({
                     const hasAppointments = clientHistory.totalCount > 0;
                     if (hasAppointments) {
                       setDeleteErrorMessage(
-                        `Questo contatto non può essere eliminato perché ha ${clientHistory.totalCount} appuntament${clientHistory.totalCount === 1 ? 'o' : 'i'} associat${clientHistory.totalCount === 1 ? 'o' : 'i'} (${clientHistory.past.length} passat${clientHistory.past.length === 1 ? 'o' : 'i'} e ${clientHistory.upcoming.length} futur${clientHistory.upcoming.length === 1 ? 'o' : 'i'}). Elimina prima gli appuntamenti collegati se desideri rimuovere il contatto.`
+                        `Impossibile eliminare: ci sono ${clientHistory.totalCount} appuntamenti collegati a questo contatto.`
                       );
                     } else {
-                      if (confirm(`Sei sicura di voler eliminare definitivamente "${selectedClient.full_name}" dalla rubrica?`)) {
+                      if (confirm(`Eliminare definitivamente "${selectedClient.full_name}" dalla rubrica?`)) {
                         onDeleteClient(selectedClient.id);
                         setSelectedClient(null);
                         setDeleteErrorMessage(null);
@@ -529,14 +522,14 @@ export default function ClientsView({
                   title={
                     clientHistory.totalCount > 0
                       ? 'Eliminazione disattivata: ci sono appuntamenti collegati'
-                      : 'Elimina contatto dalla rubrica'
+                      : 'Elimina contatto'
                   }
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>
                     {clientHistory.totalCount > 0
-                      ? `Elimina Contatto (Disattivato: ${clientHistory.totalCount} appuntament${clientHistory.totalCount === 1 ? 'o' : 'i'})`
-                      : 'Elimina Contatto dalla Rubrica'}
+                      ? `Elimina (${clientHistory.totalCount} appuntamenti)`
+                      : 'Elimina cliente'}
                   </span>
                 </button>
               </div>
@@ -550,7 +543,7 @@ export default function ClientsView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
-              <h3 className="text-base font-bold text-white">Nuovo Contatto Rubrica</h3>
+              <h3 className="text-base font-bold text-white">Nuovo Cliente</h3>
               <button onClick={() => setIsAddingClient(false)} className="text-stone-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
@@ -588,7 +581,7 @@ export default function ClientsView({
 
               <div>
                 <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
-                  Telefono (Opzionale)
+                  Telefono
                 </label>
                 <input
                   type="tel"
@@ -601,11 +594,11 @@ export default function ClientsView({
 
               <div>
                 <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
-                  Note Tecniche (Opzionale)
+                  Note
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Preferenze, allergie, note pelle..."
+                  placeholder="Preferenze, allergie, pelle..."
                   value={newNotes}
                   onChange={e => setNewNotes(e.target.value)}
                   className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white text-sm"

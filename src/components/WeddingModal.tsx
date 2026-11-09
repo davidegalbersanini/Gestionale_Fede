@@ -195,12 +195,9 @@ export default function WeddingModal({
             <span className="w-8 h-8 rounded-full bg-pink-500/20 text-pink-400 flex items-center justify-center">
               <Sparkles className="w-4 h-4 fill-pink-500" />
             </span>
-            <div>
-              <h2 className="text-lg font-bold text-white">
-                {initialWedding ? 'Modifica Servizio Evento' : 'Nuovo Servizio Evento & Makeup'}
-              </h2>
-              <p className="text-[11px] text-stone-400">Matrimoni, cerimonie, feste e servizi trucco</p>
-            </div>
+            <h2 className="text-lg font-bold text-white">
+              {initialWedding ? 'Modifica Evento' : 'Nuovo Evento'}
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -238,12 +235,12 @@ export default function WeddingModal({
           {/* Nome Cliente / Sposa */}
           <div className="relative">
             <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5">
-              Nome Cliente / Referente Evento *
+              Cliente *
             </label>
             <input
               type="text"
               required
-              placeholder="es. Laura Brambilla"
+              placeholder="es. Laura Rossi"
               value={brideName}
               onChange={e => {
                 setBrideName(e.target.value);
@@ -277,7 +274,7 @@ export default function WeddingModal({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-rose-400" /> Indirizzo Evento / Domicilio Cliente
+                <MapPin className="w-3.5 h-3.5 text-rose-400" /> Indirizzo / Location
               </label>
               {address.trim() && (
                 <a
@@ -286,7 +283,7 @@ export default function WeddingModal({
                   rel="noopener noreferrer"
                   className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1"
                 >
-                  Apri su Maps <ExternalLink className="w-3 h-3" />
+                  Maps <ExternalLink className="w-3 h-3" />
                 </a>
               )}
             </div>
@@ -297,19 +294,16 @@ export default function WeddingModal({
               onChange={e => setAddress(e.target.value)}
               className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
             />
-            <p className="text-[11px] text-stone-500 mt-1">
-              Verrà salvato sull&apos;evento del calendario e sarà cliccabile su Google Maps
-            </p>
           </div>
 
           {/* Data e Ora Evento */}
           <div className="p-4 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-3">
             <div className="flex items-center gap-2 text-pink-400 text-xs font-bold uppercase tracking-wider">
-              <Heart className="w-3.5 h-3.5" /> Giorno dell&apos;Evento
+              <Heart className="w-3.5 h-3.5" /> Evento
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-stone-400 mb-1">Data Evento</label>
+                <label className="block text-xs text-stone-400 mb-1">Data</label>
                 <input
                   type="date"
                   required
@@ -319,7 +313,7 @@ export default function WeddingModal({
                 />
               </div>
               <div>
-                <label className="block text-xs text-stone-400 mb-1">Orario Inizio</label>
+                <label className="block text-xs text-stone-400 mb-1">Inizio</label>
                 <input
                   type="time"
                   value={weddingTime}
@@ -360,7 +354,7 @@ export default function WeddingModal({
           {/* Numero Persone */}
           <div>
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Numero di Persone da Truccare (Cliente + invitate)
+              Persone da truccare
             </label>
             <div className="flex items-center gap-3">
               {[1, 2, 3, 4, 5, 6].map(n => (
@@ -384,9 +378,8 @@ export default function WeddingModal({
           <div className="p-4 bg-stone-800/50 rounded-2xl border border-stone-700/60 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Totale Servizio (€)</span>
-                  <span className="text-[10px] text-stone-400 font-normal">Costo pattuito</span>
+                <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5">
+                  Totale (€)
                 </label>
                 <input
                   type="number"
@@ -409,7 +402,7 @@ export default function WeddingModal({
 
               <div>
                 <label className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Acconto Ricevuto (€)</span>
+                  <span>Ricevuto (€)</span>
                   <span className="text-[10px] text-stone-400 font-normal">
                     Max: {maxAcceptableDeposit.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}€
                   </span>

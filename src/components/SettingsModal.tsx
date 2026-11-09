@@ -175,9 +175,6 @@ export default function SettingsModal({
                 onChange={e => setYearlyTarget(e.target.value)}
                 className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
               />
-              <p className="text-[11px] text-stone-500 mt-1">
-                La media mensile verrà calcolata in automatico sui mesi effettivamente trascorsi.
-              </p>
             </div>
           </div>
 
@@ -186,9 +183,6 @@ export default function SettingsModal({
             <h3 className="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
               <MapPin className="w-4 h-4" /> Sedi di Lavoro & Google Maps
             </h3>
-            <p className="text-[11px] text-stone-400">
-              A ogni luogo di lavoro puoi associare un indirizzo fisico cliccabile su Google Maps e sincronizzato sul calendario.
-            </p>
 
             <div className="space-y-2">
               {locations.map(loc => (
@@ -255,7 +249,7 @@ export default function SettingsModal({
                       </a>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-stone-500 italic">Nessun indirizzo specificato (clicca la matita per aggiungerlo)</p>
+                    <p className="text-[11px] text-stone-500 italic">Nessun indirizzo</p>
                   )}
                 </div>
               ))}
@@ -311,10 +305,6 @@ export default function SettingsModal({
                 </span>
               )}
             </div>
-
-            <p className="text-[11px] text-stone-400">
-              Collega il tuo Account Google per sincronizzare automaticamente gli appuntamenti con il calendario e archiviare le copie di backup dei report Excel su Google Drive.
-            </p>
 
             {gcalStatus.connected ? (
               <div className="flex items-center justify-between bg-stone-900/60 p-3 rounded-xl border border-stone-700/60">

@@ -217,20 +217,20 @@ export default function AgendaView({
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
             <CalendarIcon className="w-6 h-6 text-rose-500" />
-            Agenda & Appuntamenti
+            Agenda
           </h1>
           <p className="text-stone-400 text-xs">
-            {appointments.length} trattamenti PMU e {weddings.length} eventi registrati
+            {appointments.length} PMU • {weddings.length} eventi
           </p>
         </div>
 
-        {/* The Action Buttons: Nuovo PMU, Nuovo Evento, and Buoni Regalo */}
+        {/* The Action Buttons: PMU, Evento, Buoni */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {onOpenGiftVouchers && (
             <button
               onClick={onOpenGiftVouchers}
-              className="relative px-3.5 py-2.5 rounded-2xl bg-stone-800 hover:bg-stone-700/80 border border-stone-700/80 text-amber-300 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-              title="Gestione Buoni Regalo"
+              className="relative px-3 py-2 rounded-2xl bg-stone-800 hover:bg-stone-700/80 border border-stone-700/80 text-amber-300 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              title="Buoni Regalo"
             >
               <Gift className="w-4 h-4 text-amber-400" />
               <span>Buoni</span>
@@ -244,18 +244,18 @@ export default function AgendaView({
 
           <button
             onClick={() => onOpenNewPmu(selectedDayIso)}
-            className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-2 active:scale-95 transition-all"
+            className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Nuovo PMU</span>
+            <span>PMU</span>
           </button>
 
           <button
             onClick={() => onOpenNewWedding(selectedDayIso)}
-            className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-pink-950/50 flex items-center justify-center gap-2 active:scale-95 transition-all"
+            className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-pink-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
           >
             <Heart className="w-4 h-4 fill-white" />
-            <span>Nuovo Evento</span>
+            <span>Evento</span>
           </button>
         </div>
       </div>

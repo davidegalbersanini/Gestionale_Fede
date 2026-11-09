@@ -157,19 +157,19 @@ export default function ClientsView({
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
             <Users className="w-6 h-6 text-rose-500" />
-            Rubrica Clienti
+            Rubrica
           </h1>
           <p className="text-stone-400 text-xs">
-            {clients.length} contatti memorizzati nello storico
+            {clients.length} clienti registrati
           </p>
         </div>
 
         <button
           onClick={() => setIsAddingClient(true)}
-          className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center gap-2 active:scale-95 transition-all"
+          className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center gap-1.5 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Nuovo Cliente</span>
+          <span>Nuovo</span>
         </button>
       </div>
 

@@ -187,12 +187,12 @@ export default function GiftVouchersModal({
             )}
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                {view === 'create' ? 'Emetti Nuovo Buono Regalo' : 'Buoni Regalo'}
+                {view === 'create' ? 'Nuovo Buono' : 'Buoni Regalo'}
               </h2>
               <p className="text-stone-400 text-xs">
                 {view === 'create'
-                  ? 'Il ricavato verrà aggiunto subito agli incassi PMU'
-                  : `${activeCount} attivi (${totalRemainingAmount.toFixed(0)}€ residui) • ${usedCount} esauriti`}
+                  ? 'Incasso aggiunto a PMU'
+                  : `${activeCount} attivi (${totalRemainingAmount.toFixed(0)}€) • ${usedCount} usati`}
               </p>
             </div>
           </div>
@@ -229,13 +229,13 @@ export default function GiftVouchersModal({
               <div className="relative">
                 <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-amber-400" />
-                  Chi acquista il Buono (Acquirente) *
+                  Acquirente *
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     required
-                    placeholder="Nome e cognome dell'acquirente..."
+                    placeholder="Nome acquirente..."
                     value={buyerName}
                     onChange={e => {
                       setBuyerName(e.target.value);
@@ -266,21 +266,18 @@ export default function GiftVouchersModal({
                     ))}
                   </div>
                 )}
-                <p className="text-[11px] text-stone-500 mt-1">
-                  Obbligatorio. Sarà collegato in rubrica a questo buono.
-                </p>
               </div>
 
               {/* Destinatario / Beneficiario - OPZIONALE */}
-              <div className="relative p-3.5 bg-stone-800/40 rounded-2xl border border-stone-700/60">
+              <div className="relative p-3 bg-stone-800/40 rounded-2xl border border-stone-700/60">
                 <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-pink-400" />
-                  Destinatario / Beneficiario (Opzionale)
+                  Destinatario (Opzionale)
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Nome e cognome di chi riceverà il buono..."
+                    placeholder="Lascia vuoto se sconosciuto..."
                     value={recipientName}
                     onChange={e => {
                       setRecipientName(e.target.value);
@@ -288,7 +285,7 @@ export default function GiftVouchersModal({
                       setShowRecipientSuggestions(true);
                     }}
                     onFocus={() => setShowRecipientSuggestions(true)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
                   />
                 </div>
 
@@ -311,8 +308,8 @@ export default function GiftVouchersModal({
                     ))}
                   </div>
                 )}
-                <p className="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
-                  Se lasciato vuoto, il buono si legherà automaticamente alla persona che verrà a fare il trattamento quando verrà usato in un appuntamento.
+                <p className="text-[11px] text-stone-400 mt-1">
+                  Se vuoto, si collegherà automaticamente alla persona all&apos;uso.
                 </p>
               </div>
 
@@ -369,16 +366,16 @@ export default function GiftVouchersModal({
                     resetForm();
                     setView('list');
                   }}
-                  className="px-4 py-3 rounded-xl bg-stone-800 text-stone-300 hover:bg-stone-700 text-sm font-semibold transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-stone-800 text-stone-300 hover:bg-stone-700 text-xs sm:text-sm font-semibold transition-colors"
                 >
                   Annulla
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-sm shadow-lg shadow-amber-950/40 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-950/40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                 >
                   <Gift className="w-4 h-4" />
-                  <span>Emetti Buono Regalo</span>
+                  <span>Crea Buono</span>
                 </button>
               </div>
             </form>

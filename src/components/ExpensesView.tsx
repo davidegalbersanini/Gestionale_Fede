@@ -102,16 +102,16 @@ export default function ExpensesView({
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
             <Receipt className="w-6 h-6 text-rose-500" />
-            Spese dell&apos;Attività
+            Spese
           </h1>
           <p className="text-stone-400 text-xs">
-            Monitoraggio costi materiali, formazione e gestione studio
+            Materiali, corsi e gestione
           </p>
         </div>
 
         <button
           onClick={() => setIsAddingExpense(true)}
-          className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-2 active:scale-95 transition-all"
+          className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Nuova Spesa</span>

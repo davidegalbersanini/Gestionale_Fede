@@ -250,10 +250,10 @@ export default function DashboardView({
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-rose-500" />
-            Riepilogo & Performance
+            Riepilogo
           </h1>
           <p className="text-stone-400 text-xs">
-            Fatturato annuale, spese, PMU, eventi e obiettivi
+            Fatturato, spese e target
           </p>
         </div>
 
@@ -281,7 +281,7 @@ export default function DashboardView({
             className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span>Esporta Excel (.xlsx)</span>
+            <span>Esporta Excel</span>
           </button>
         </div>
       </div>

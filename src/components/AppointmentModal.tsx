@@ -451,7 +451,7 @@ export default function AppointmentModal({
             </div>
 
             {/* Buono Regalo Checkbox */}
-            <div className="pt-2 border-t border-stone-700/60 space-y-2.5">
+            <div className="pt-2 border-t border-stone-700/60 space-y-2">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -472,15 +472,15 @@ export default function AppointmentModal({
                 />
                 <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                   <Gift className="w-3.5 h-3.5 text-amber-400" />
-                  È stato utilizzato un Buono Regalo
+                  Usa Buono Regalo
                 </span>
               </label>
 
               {usedGiftVoucher && (
-                <div className="pl-6 space-y-2.5 pt-1">
+                <div className="pl-6 space-y-2 pt-1">
                   <div>
                     <label className="block text-[11px] font-semibold text-stone-300 mb-1">
-                      Seleziona Buono Regalo
+                      Seleziona Buono
                     </label>
                     {availableVouchers.length > 0 ? (
                       <select
@@ -496,27 +496,27 @@ export default function AppointmentModal({
                         }}
                         className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
                       >
-                        <option value="">-- Seleziona un Buono --</option>
+                        <option value="">-- Seleziona Buono --</option>
                         {matchingVouchers.length > 0 && (
-                          <optgroup label="✨ Consigliati per questo cliente">
+                          <optgroup label="Suggeriti per cliente">
                             {matchingVouchers.map(v => (
                               <option key={v.id} value={v.id}>
-                                #{v.id.slice(-4)} - Comprato da: {v.buyer_name} {v.recipient_name ? `→ Per: ${v.recipient_name}` : '(Nessun benef.)'} [Residuo: {v.remaining_amount ?? v.amount}€]
+                                #{v.id.slice(-4)} {v.buyer_name} {v.recipient_name ? `→ ${v.recipient_name}` : ''} ({v.remaining_amount ?? v.amount}€)
                               </option>
                             ))}
                           </optgroup>
                         )}
-                        <optgroup label="Tutti i Buoni Disponibili">
+                        <optgroup label="Tutti i Buoni">
                           {availableVouchers.map(v => (
                             <option key={v.id} value={v.id}>
-                              #{v.id.slice(-4)} - {v.buyer_name} {v.recipient_name ? `→ ${v.recipient_name}` : ''} ({v.purchase_date}) - Residuo: {v.remaining_amount ?? v.amount}€
+                              #{v.id.slice(-4)} {v.buyer_name} {v.recipient_name ? `→ ${v.recipient_name}` : ''} ({v.remaining_amount ?? v.amount}€)
                             </option>
                           ))}
                         </optgroup>
                       </select>
                     ) : (
                       <p className="text-xs text-amber-300/80 italic">
-                        Nessun buono con credito residuo disponibile nel sistema.
+                        Nessun buono con credito residuo.
                       </p>
                     )}
                   </div>
@@ -524,7 +524,7 @@ export default function AppointmentModal({
                   {selectedVoucherId && (
                     <div>
                       <label className="block text-[11px] font-semibold text-stone-300 mb-1">
-                        Importo da scalare dal Buono (€)
+                        Importo da scalare (€)
                       </label>
                       <input
                         type="number"
@@ -542,10 +542,10 @@ export default function AppointmentModal({
                         const left = Math.max(0, rem - ded);
                         return (
                           <p className="text-[10px] text-stone-400 mt-1">
-                            Credito iniziale buono: {curV.initial_amount ?? curV.amount}€ • Residuo attuale: <strong className="text-amber-400">{rem}€</strong> • Dopo questo utilizzo resteranno: <strong className="text-emerald-400">{left}€</strong>
+                            Residuo attuale: <strong className="text-amber-400">{rem}€</strong> • Dopo: <strong className="text-emerald-400">{left}€</strong>
                             {!curV.recipient_name && (
                               <span className="block text-indigo-300 mt-0.5">
-                                ℹ️ Questo buono non aveva un beneficiario: verrà assegnato automaticamente a <strong>{clientName || 'questo cliente'}</strong>.
+                                Assegna automaticamente a: <strong>{clientName || 'cliente'}</strong>
                               </span>
                             )}
                           </p>
@@ -553,10 +553,6 @@ export default function AppointmentModal({
                       })()}
                     </div>
                   )}
-
-                  <p className="text-[11px] text-stone-400 italic">
-                    Se il cliente paga una differenza in contanti o POS, inseriscila in &quot;Denaro Ricevuto&quot;. I dettagli del buono puoi scriverli nel campo Note.
-                  </p>
                 </div>
               )}
             </div>
@@ -568,10 +564,10 @@ export default function AppointmentModal({
               </span>
               {calculatedBalance <= 0 ? (
                 <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-xl border border-emerald-800/60 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> Completamente Saldato (0,00 €)
+                  <Check className="w-3.5 h-3.5" /> Saldato
                 </span>
               ) : (
-                <span className="text-sm font-black text-amber-300 bg-amber-950/50 px-3.5 py-1 rounded-xl border border-amber-600/50 shadow-sm animate-pulse">
+                <span className="text-sm font-black text-amber-300 bg-amber-950/50 px-3 py-1 rounded-xl border border-amber-600/50 shadow-sm">
                   {calculatedBalance.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               )}
@@ -582,7 +578,7 @@ export default function AppointmentModal({
           <div className="p-3.5 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider">
-                Ritocco Associato (Opzionale)
+                Ritocco (Opzionale)
               </label>
               {touchUpDate && (
                 <button
@@ -592,14 +588,14 @@ export default function AppointmentModal({
                   }}
                   className="text-[11px] text-stone-400 hover:text-red-400"
                 >
-                  Rimuovi Ritocco
+                  Rimuovi
                 </button>
               )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
-                <label className="block text-[11px] text-stone-400 mb-1">Data Ritocco</label>
+                <label className="block text-[11px] text-stone-400 mb-1">Data</label>
                 <input
                   type="date"
                   value={touchUpDate}
@@ -609,7 +605,7 @@ export default function AppointmentModal({
               </div>
               <div>
                 <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-rose-400" /> Ora Inizio
+                  <Clock className="w-3 h-3 text-rose-400" /> Inizio
                 </label>
                 <input
                   type="time"
@@ -625,7 +621,7 @@ export default function AppointmentModal({
               </div>
               <div>
                 <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-amber-400" /> Ora Fine
+                  <Clock className="w-3 h-3 text-amber-400" /> Fine
                 </label>
                 <input
                   type="time"
@@ -645,43 +641,40 @@ export default function AppointmentModal({
                   onChange={e => setCreateTouchUpFollowup(e.target.checked)}
                   className="rounded border-stone-700 bg-stone-900 text-rose-500"
                 />
-                <span>Crea subito appuntamento di ritocco in agenda ({touchUpTime} - {touchUpEndTime})</span>
+                <span>Crea ritocco in agenda ({touchUpTime} - {touchUpEndTime})</span>
               </label>
             )}
           </div>
 
-          {/* Google Calendar Checkbox (Defaulted to checked) */}
-          <div className="p-3.5 bg-gradient-to-r from-blue-950/30 to-indigo-950/30 border border-blue-900/50 rounded-2xl">
+          {/* Google Calendar Checkbox */}
+          <div className="p-3 bg-blue-950/20 border border-blue-900/40 rounded-2xl">
             <label className="flex items-center justify-between cursor-pointer">
-              <div className="flex items-center gap-2.5">
-                <span className="w-8 h-8 rounded-lg bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-blue-400">
-                  <CalendarIcon className="w-4 h-4" />
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                  <CalendarIcon className="w-3.5 h-3.5" />
                 </span>
-                <div>
-                  <p className="text-sm font-semibold text-white">Salva su Google Calendar</p>
-                  <p className="text-xs text-blue-300/80">Sincronizza orario esatto, luogo e dettagli</p>
-                </div>
+                <span className="text-xs font-semibold text-white">Sincronizza Google Calendar</span>
               </div>
               <input
                 type="checkbox"
                 checked={syncGoogleCalendar}
                 onChange={e => setSyncGoogleCalendar(e.target.checked)}
-                className="w-5 h-5 rounded-md border-blue-700 bg-stone-900 text-blue-500 focus:ring-0 cursor-pointer"
+                className="w-4 h-4 rounded border-blue-700 bg-stone-900 text-blue-500 focus:ring-0 cursor-pointer"
               />
             </label>
           </div>
 
           {/* Note */}
           <div>
-            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Note Aggiuntive
+            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+              Note
             </label>
             <textarea
               rows={2}
-              placeholder="Dettagli pelle, pigmenti usati, richieste speciali..."
+              placeholder="Dettagli pelle, pigmenti usati..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
             />
           </div>
 
@@ -694,16 +687,16 @@ export default function AppointmentModal({
                   onDelete(initialAppointment.id);
                   onClose();
                 }}
-                className="px-4 py-3 rounded-xl bg-red-950/60 text-red-300 border border-red-800/60 hover:bg-red-900/60 text-sm font-medium transition-colors"
+                className="px-4 py-2.5 rounded-xl bg-red-950/60 text-red-300 border border-red-800/60 hover:bg-red-900/60 text-xs font-medium transition-colors"
               >
                 Elimina
               </button>
             )}
             <button
               type="submit"
-              className="flex-1 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-sm shadow-lg shadow-rose-900/30 transition-all active:scale-[0.98]"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-900/30 transition-all active:scale-[0.98]"
             >
-              {initialAppointment ? 'Salva Modifiche' : 'Aggiungi Appuntamento'}
+              {initialAppointment ? 'Salva' : 'Aggiungi'}
             </button>
           </div>
         </form>

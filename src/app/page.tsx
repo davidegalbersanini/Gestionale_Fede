@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment, WeddingService, Client, Location, Expense, AppSettings } from '@/types';
 import { DataService } from '@/lib/storage';
+import { syncCalendarAutomatically, deleteCalendarEventSilently } from '@/lib/calendar';
 import PinLock from '@/components/PinLock';
 import Navbar, { ActiveTab } from '@/components/Navbar';
 import AgendaView from '@/components/AgendaView';
@@ -12,6 +13,7 @@ import DashboardView from '@/components/DashboardView';
 import AppointmentModal from '@/components/AppointmentModal';
 import WeddingModal from '@/components/WeddingModal';
 import SettingsModal from '@/components/SettingsModal';
+import { AlertTriangle, Trash2, Link as LinkIcon, X } from 'lucide-react';
 
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -38,6 +40,13 @@ export default function Home() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Linked delete confirmation modal
+  const [linkedDeleteTarget, setLinkedDeleteTarget] = useState<{
+    target: Appointment;
+    linked: Appointment;
+  } | null>(null);
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<Appointment | null>(null);
 
   // Check URL params for Google Calendar connection callback
   useEffect(() => {
@@ -86,24 +95,55 @@ export default function Home() {
       const updated: Appointment = { ...editingPmu, ...appData };
       DataService.updateAppointment(updated);
     } else {
-      const created = DataService.addAppointment(appData);
+      const createdPrimary = DataService.addAppointment(appData);
 
       // Automatic Touch-up follow up booking if requested
       if (createTouchUpFollowup && appData.touch_up_date) {
-        DataService.addAppointment({
-          client_id: created.client_id,
-          client_name: created.client_name,
-          location_id: created.location_id,
-          treatment: `Ritocco (${created.treatment})`,
-          appointment_date: `${appData.touch_up_date}T10:00:00`,
+        const touchUpTime = appData.touch_up_time || '10:00';
+        const [th, tm] = touchUpTime.split(':').map(Number);
+        const touchUpEndH = String((th + 1) % 24).padStart(2, '0');
+        const touchUpEndTime = `${touchUpEndH}:${String(tm || 0).padStart(2, '0')}`;
+        const touchUpStartIso = `${appData.touch_up_date}T${touchUpTime}:00`;
+        const touchUpEndIso = `${appData.touch_up_date}T${touchUpEndTime}:00`;
+
+        const createdTouchUp = DataService.addAppointment({
+          client_id: createdPrimary.client_id,
+          client_name: createdPrimary.client_name,
+          location_id: createdPrimary.location_id,
+          treatment: `Ritocco (${createdPrimary.treatment})`,
+          appointment_date: touchUpStartIso,
+          end_time: touchUpEndTime,
           payment: 0,
           balance: 0,
           touch_up_date: null,
-          lead_source: created.lead_source,
-          notes: `Promemoria ritocco programmato da prima seduta del ${created.appointment_date.slice(0, 10)}`,
-          sync_google_calendar: created.sync_google_calendar,
+          lead_source: createdPrimary.lead_source,
+          notes: `Promemoria ritocco programmato da prima seduta del ${createdPrimary.appointment_date.slice(0, 10)}`,
+          sync_google_calendar: createdPrimary.sync_google_calendar,
           status: 'programmato',
+          linked_appointment_id: createdPrimary.id,
+          is_touch_up: true,
         });
+
+        // Link primary to the touch-up appointment
+        createdPrimary.linked_appointment_id = createdTouchUp.id;
+        DataService.updateAppointment(createdPrimary);
+
+        // Sync touch-up to Google Calendar if enabled
+        if (createdPrimary.sync_google_calendar) {
+          const loc = locations.find(l => l.id === createdPrimary.location_id);
+          syncCalendarAutomatically({
+            title: `PMU Ritocco: ${createdPrimary.client_name} - Ritocco (${createdPrimary.treatment})`,
+            startDate: touchUpStartIso,
+            endDate: touchUpEndIso,
+            location: loc?.name || '',
+            details: `Ritocco programmato per ${createdPrimary.client_name}\nCollegato alla prima seduta del ${createdPrimary.appointment_date.slice(0, 10)}`,
+          }).then(res => {
+            if (res.eventId) {
+              createdTouchUp.google_calendar_event_id = res.eventId;
+              DataService.updateAppointment(createdTouchUp);
+            }
+          });
+        }
       }
     }
 
@@ -113,8 +153,54 @@ export default function Home() {
   };
 
   const handleDeletePmu = (id: string) => {
-    DataService.deleteAppointment(id);
+    const currentApps = DataService.getAppointments();
+    const target = currentApps.find(a => a.id === id);
+    if (!target) return;
+
+    if (target.linked_appointment_id) {
+      const linked = currentApps.find(a => a.id === target.linked_appointment_id);
+      if (linked) {
+        setLinkedDeleteTarget({ target, linked });
+        return;
+      }
+    }
+
+    setDeleteConfirmTarget(target);
+  };
+
+  const executeDeletePmu = (targetId: string, deleteLinked: boolean) => {
+    const currentApps = DataService.getAppointments();
+    const target = currentApps.find(a => a.id === targetId);
+
+    if (target) {
+      if (target.google_calendar_event_id) {
+        deleteCalendarEventSilently(target.google_calendar_event_id);
+      }
+      DataService.deleteAppointment(target.id);
+
+      if (deleteLinked && target.linked_appointment_id) {
+        const linked = currentApps.find(a => a.id === target.linked_appointment_id);
+        if (linked) {
+          if (linked.google_calendar_event_id) {
+            deleteCalendarEventSilently(linked.google_calendar_event_id);
+          }
+          DataService.deleteAppointment(linked.id);
+        }
+      } else if (!deleteLinked && target.linked_appointment_id) {
+        // Unlink the other appointment
+        const linked = currentApps.find(a => a.id === target.linked_appointment_id);
+        if (linked) {
+          linked.linked_appointment_id = undefined;
+          DataService.updateAppointment(linked);
+        }
+      }
+    }
+
     setAppointments(DataService.getAppointments());
+    setLinkedDeleteTarget(null);
+    setDeleteConfirmTarget(null);
+    setToastMessage(deleteLinked ? 'Entrambi gli appuntamenti sono stati eliminati.' : 'Appuntamento eliminato.');
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   // Save / Update Wedding
@@ -292,6 +378,95 @@ export default function Home() {
         onUpdateLocations={setLocations}
         onLockApp={() => setIsAuthenticated(false)}
       />
+
+      {/* Linked Delete Confirmation Dialog */}
+      {linkedDeleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-md w-full p-6 shadow-2xl text-stone-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Appuntamento Collegato</h3>
+                <p className="text-xs text-stone-400">Rilevato un ritocco/prima seduta associato</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-300 mb-4 leading-relaxed">
+              Stai per eliminare l&apos;appuntamento di <strong className="text-white">{linkedDeleteTarget.target.client_name}</strong> ({linkedDeleteTarget.target.treatment}) del {linkedDeleteTarget.target.appointment_date.slice(0, 10)}.
+            </p>
+
+            <div className="bg-stone-800/80 p-3.5 rounded-2xl border border-stone-700/60 mb-5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1 mb-1">
+                <LinkIcon className="w-3 h-3" /> Appuntamento Collegato:
+              </span>
+              <p className="text-xs font-semibold text-white">{linkedDeleteTarget.linked.treatment}</p>
+              <p className="text-[11px] text-stone-400">
+                Data: {linkedDeleteTarget.linked.appointment_date.slice(0, 10)} {linkedDeleteTarget.linked.appointment_date.includes('T') ? `alle ${linkedDeleteTarget.linked.appointment_date.split('T')[1].slice(0, 5)}` : ''}
+              </p>
+            </div>
+
+            <p className="text-xs font-medium text-stone-300 mb-4">
+              Vuoi eliminare anche l&apos;appuntamento collegato?
+            </p>
+
+            <div className="flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => executeDeletePmu(linkedDeleteTarget.target.id, true)}
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-950/40"
+              >
+                <Trash2 className="w-4 h-4" /> Elimina ENTRAMBI gli appuntamenti
+              </button>
+
+              <button
+                type="button"
+                onClick={() => executeDeletePmu(linkedDeleteTarget.target.id, false)}
+                className="w-full py-2.5 px-4 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 font-medium text-xs transition-colors"
+              >
+                Elimina SOLO questo appuntamento
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLinkedDeleteTarget(null)}
+                className="w-full py-2 text-stone-400 hover:text-white text-xs font-medium transition-colors"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Simple Delete Confirmation Dialog */}
+      {deleteConfirmTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-stone-100">
+            <h3 className="text-base font-bold text-white mb-2">Conferma Eliminazione</h3>
+            <p className="text-xs text-stone-300 mb-5 leading-relaxed">
+              Sei sicura di voler eliminare l&apos;appuntamento di <strong className="text-white">{deleteConfirmTarget.client_name}</strong> ({deleteConfirmTarget.treatment}) del {deleteConfirmTarget.appointment_date.slice(0, 10)}?
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmTarget(null)}
+                className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => executeDeletePmu(deleteConfirmTarget.id, false)}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
+              >
+                Elimina
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

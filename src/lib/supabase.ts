@@ -82,7 +82,16 @@ export const CloudSync = {
     const supabase = getSupabase();
     if (!supabase) return;
     try {
-      await (supabase.from('appointments') as any).upsert(app);
+      const res = await (supabase.from('appointments') as any).upsert(app);
+      if (res && res.error && res.error.code === 'PGRST204') {
+        // Fallback without new columns if user hasn't run the alter table script yet
+        const safeApp: any = { ...app };
+        delete safeApp.end_time;
+        delete safeApp.touch_up_time;
+        delete safeApp.linked_appointment_id;
+        delete safeApp.is_touch_up;
+        await (supabase.from('appointments') as any).upsert(safeApp);
+      }
     } catch (e) {
       console.error('upsertAppointment error:', e);
     }

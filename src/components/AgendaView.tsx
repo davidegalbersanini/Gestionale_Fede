@@ -16,7 +16,8 @@ import {
   ChevronRight,
   ExternalLink,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Link as LinkIcon
 } from 'lucide-react';
 import {
   format,
@@ -78,6 +79,7 @@ export default function AgendaView({
         title: app.treatment,
         client_name: app.client_name,
         date: app.appointment_date,
+        end_time: app.end_time,
         location_name: loc?.name || 'Studio',
         location_color: loc?.color || '#ec4899',
         amount: app.payment,
@@ -476,9 +478,15 @@ function renderEventCard(
               </span>
             )}
             {timeStr && (
-              <span className="text-stone-400 text-[11px] flex items-center gap-1">
-                <Clock className="w-3 h-3 text-stone-500" />
-                {timeStr}
+              <span className="text-stone-300 text-[11px] font-mono flex items-center gap-1 bg-stone-900/60 px-2 py-0.5 rounded-md border border-stone-700/50">
+                <Clock className="w-3 h-3 text-rose-400" />
+                {timeStr}{ev.end_time ? ` - ${ev.end_time}` : ''}
+              </span>
+            )}
+            {ev.rawPmu?.linked_appointment_id && (
+              <span className="text-[10px] text-amber-400 font-medium flex items-center gap-1 bg-amber-950/40 border border-amber-800/40 px-1.5 py-0.5 rounded">
+                <LinkIcon className="w-2.5 h-2.5" />
+                {ev.rawPmu.is_touch_up ? 'Ritocco collegato' : 'Ha ritocco'}
               </span>
             )}
           </div>

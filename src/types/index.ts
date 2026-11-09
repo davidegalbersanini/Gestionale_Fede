@@ -25,9 +25,13 @@ export interface Appointment {
   location_id: string;
   treatment: string;
   appointment_date: string; // ISO datetime
+  end_time?: string; // e.g. "12:00"
   payment: number;
   balance: number;
   touch_up_date?: string | null; // ISO date
+  touch_up_time?: string; // e.g. "10:30"
+  linked_appointment_id?: string; // ID of linked first session / touch-up
+  is_touch_up?: boolean;
   lead_source?: string;
   notes?: string;
   sync_google_calendar?: boolean;
@@ -82,6 +86,7 @@ export interface UnifiedEvent {
   title: string;
   client_name: string;
   date: string; // ISO string
+  end_time?: string;
   location_name?: string;
   location_color?: string;
   amount: number;

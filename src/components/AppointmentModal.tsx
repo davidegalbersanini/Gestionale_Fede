@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Appointment, Client, Location } from '@/types';
+import { Appointment, Client, Location, GiftVoucher } from '@/types';
 import { syncCalendarAutomatically } from '@/lib/calendar';
-import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Sparkles, ExternalLink, Gift } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Sparkles, ExternalLink, Gift, Check } from 'lucide-react';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface AppointmentModalProps {
   initialAppointment?: Appointment | null;
   clients: Client[];
   locations: Location[];
+  vouchers?: GiftVoucher[];
   defaultDate?: string;
   defaultClient?: Client | null;
 }
@@ -25,6 +26,7 @@ export default function AppointmentModal({
   initialAppointment,
   clients,
   locations,
+  vouchers = [],
   defaultDate,
   defaultClient,
 }: AppointmentModalProps) {
@@ -45,6 +47,8 @@ export default function AppointmentModal({
   const [createTouchUpFollowup, setCreateTouchUpFollowup] = useState(true);
   const [notes, setNotes] = useState('');
   const [usedGiftVoucher, setUsedGiftVoucher] = useState(false);
+  const [selectedVoucherId, setSelectedVoucherId] = useState<string>('');
+  const [voucherDeduction, setVoucherDeduction] = useState<string>('');
   const [syncGoogleCalendar, setSyncGoogleCalendar] = useState(true);
 
   // Helper to add minutes/hours to HH:mm string
@@ -101,6 +105,8 @@ export default function AppointmentModal({
       setTouchUpEndTime(initialAppointment.touch_up_end_time || '11:30');
       setNotes(initialAppointment.notes || '');
       setUsedGiftVoucher(Boolean(initialAppointment.used_gift_voucher));
+      setSelectedVoucherId(initialAppointment.used_gift_voucher_id || '');
+      setVoucherDeduction(initialAppointment.used_gift_voucher_amount ? String(initialAppointment.used_gift_voucher_amount) : '');
       setSyncGoogleCalendar(initialAppointment.sync_google_calendar !== false);
     } else {
       setCategory('pmu');
@@ -124,6 +130,8 @@ export default function AppointmentModal({
       setCreateTouchUpFollowup(true);
       setNotes('');
       setUsedGiftVoucher(false);
+      setSelectedVoucherId('');
+      setVoucherDeduction('');
       setSyncGoogleCalendar(true); // Default checked as requested
     }
   }, [initialAppointment, locations, defaultDate, defaultClient]);
@@ -135,6 +143,21 @@ export default function AppointmentModal({
     : [];
 
   const selectedLoc = locations.find(l => l.id === locationId);
+
+  // Available vouchers with remaining amount > 0, plus the currently linked voucher if editing
+  const availableVouchers = vouchers.filter(v => {
+    if (v.id === initialAppointment?.used_gift_voucher_id) return true;
+    return (v.remaining_amount ?? v.amount ?? 0) > 0 && !v.is_used;
+  });
+
+  // Recommended vouchers matching current client name/id
+  const matchingVouchers = availableVouchers.filter(v => {
+    if (!clientName.trim()) return false;
+    const nameMatch = v.recipient_name?.toLowerCase().includes(clientName.trim().toLowerCase()) ||
+                      v.buyer_name?.toLowerCase().includes(clientName.trim().toLowerCase());
+    const idMatch = selectedClientId && (v.recipient_id === selectedClientId || v.buyer_id === selectedClientId);
+    return nameMatch || idMatch;
+  });
 
   // Read-only calculated total (payment received + remaining balance)
   const totalCalculated = (parseFloat(payment) || 0) + (parseFloat(balance) || 0);
@@ -161,6 +184,8 @@ export default function AppointmentModal({
       touch_up_end_time: touchUpDate ? touchUpEndTime : undefined,
       notes: notes.trim(),
       used_gift_voucher: usedGiftVoucher,
+      used_gift_voucher_id: usedGiftVoucher && selectedVoucherId ? selectedVoucherId : undefined,
+      used_gift_voucher_amount: usedGiftVoucher && parseFloat(voucherDeduction) > 0 ? parseFloat(voucherDeduction) : undefined,
       sync_google_calendar: syncGoogleCalendar,
       status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
@@ -440,12 +465,23 @@ export default function AppointmentModal({
             </div>
 
             {/* Buono Regalo Checkbox */}
-            <div className="pt-2 border-t border-stone-700/60">
+            <div className="pt-2 border-t border-stone-700/60 space-y-2.5">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={usedGiftVoucher}
-                  onChange={e => setUsedGiftVoucher(e.target.checked)}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setUsedGiftVoucher(checked);
+                    if (checked && !selectedVoucherId && availableVouchers.length > 0) {
+                      const bestMatch = matchingVouchers[0] || availableVouchers[0];
+                      if (bestMatch) {
+                        setSelectedVoucherId(bestMatch.id);
+                        const rem = bestMatch.remaining_amount ?? bestMatch.amount;
+                        setVoucherDeduction(String(rem));
+                      }
+                    }
+                  }}
                   className="w-4 h-4 rounded border-stone-600 bg-stone-900 text-amber-500 focus:ring-0 cursor-pointer"
                 />
                 <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
@@ -453,10 +489,89 @@ export default function AppointmentModal({
                   È stato utilizzato un Buono Regalo
                 </span>
               </label>
+
               {usedGiftVoucher && (
-                <p className="text-[11px] text-stone-400 mt-1 pl-6 italic">
-                  Se il cliente paga una differenza, inseriscila nell&apos;incasso qui sopra. I dettagli del buono puoi scriverli nel campo Note.
-                </p>
+                <div className="pl-6 space-y-2.5 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-300 mb-1">
+                      Seleziona Buono Regalo
+                    </label>
+                    {availableVouchers.length > 0 ? (
+                      <select
+                        value={selectedVoucherId}
+                        onChange={e => {
+                          const vId = e.target.value;
+                          setSelectedVoucherId(vId);
+                          const chosen = availableVouchers.find(v => v.id === vId);
+                          if (chosen) {
+                            const rem = chosen.remaining_amount ?? chosen.amount;
+                            setVoucherDeduction(String(rem));
+                          }
+                        }}
+                        className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
+                      >
+                        <option value="">-- Seleziona un Buono --</option>
+                        {matchingVouchers.length > 0 && (
+                          <optgroup label="✨ Consigliati per questo cliente">
+                            {matchingVouchers.map(v => (
+                              <option key={v.id} value={v.id}>
+                                #{v.id.slice(-4)} - Comprato da: {v.buyer_name} {v.recipient_name ? `→ Per: ${v.recipient_name}` : '(Nessun benef.)'} [Residuo: {v.remaining_amount ?? v.amount}€]
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        <optgroup label="Tutti i Buoni Disponibili">
+                          {availableVouchers.map(v => (
+                            <option key={v.id} value={v.id}>
+                              #{v.id.slice(-4)} - {v.buyer_name} {v.recipient_name ? `→ ${v.recipient_name}` : ''} ({v.purchase_date}) - Residuo: {v.remaining_amount ?? v.amount}€
+                            </option>
+                          ))}
+                        </optgroup>
+                      </select>
+                    ) : (
+                      <p className="text-xs text-amber-300/80 italic">
+                        Nessun buono con credito residuo disponibile nel sistema.
+                      </p>
+                    )}
+                  </div>
+
+                  {selectedVoucherId && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-stone-300 mb-1">
+                        Importo da scalare dal Buono (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="0.00"
+                        value={voucherDeduction}
+                        onChange={e => setVoucherDeduction(e.target.value)}
+                        className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
+                      />
+                      {(() => {
+                        const curV = availableVouchers.find(v => v.id === selectedVoucherId);
+                        if (!curV) return null;
+                        const rem = curV.remaining_amount ?? curV.amount;
+                        const ded = parseFloat(voucherDeduction) || 0;
+                        const left = Math.max(0, rem - ded);
+                        return (
+                          <p className="text-[10px] text-stone-400 mt-1">
+                            Credito iniziale buono: {curV.initial_amount ?? curV.amount}€ • Residuo attuale: <strong className="text-amber-400">{rem}€</strong> • Dopo questo utilizzo resteranno: <strong className="text-emerald-400">{left}€</strong>
+                            {!curV.recipient_name && (
+                              <span className="block text-indigo-300 mt-0.5">
+                                ℹ️ Questo buono non aveva un beneficiario: verrà assegnato automaticamente a <strong>{clientName || 'questo cliente'}</strong>.
+                              </span>
+                            )}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-stone-400 italic">
+                    Se il cliente paga una differenza in contanti o POS, inseriscila nell&apos;incasso qui sopra. I dettagli del buono puoi scriverli nel campo Note.
+                  </p>
+                </div>
               )}
             </div>
           </div>

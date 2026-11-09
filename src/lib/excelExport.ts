@@ -102,12 +102,14 @@ export async function exportAppointmentsToExcel(params: {
     return acc + (tot > 0 ? tot : (Number(w.total_price) || 0));
   }, 0);
 
-  const pmuVouchersIncome = filteredVouchers.filter(v => v.category === 'pmu').reduce((acc, v) => acc + (Number(v.amount) || 0), 0);
-  const weddingVouchersIncome = filteredVouchers.filter(v => v.category === 'evento').reduce((acc, v) => acc + (Number(v.amount) || 0), 0);
-  const totalVouchersIncome = pmuVouchersIncome + weddingVouchersIncome;
+  // Buoni Regalo: sempre assegnati a PMU
+  const vouchersTotalIncome = filteredVouchers.reduce((acc, v) => {
+    const val = v.initial_amount !== undefined ? v.initial_amount : (Number(v.amount) || 0);
+    return acc + val;
+  }, 0);
 
-  const totalPmuIncome = pmuAppsIncome + pmuVouchersIncome;
-  const totalWeddingsIncome = weddingsAppsIncome + weddingVouchersIncome;
+  const totalPmuIncome = pmuAppsIncome + vouchersTotalIncome;
+  const totalWeddingsIncome = weddingsAppsIncome;
   const totalRevenue = totalPmuIncome + totalWeddingsIncome;
   const totalExpensesAmount = filteredExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
   const netEarnings = totalRevenue - totalExpensesAmount;
@@ -133,11 +135,8 @@ export async function exportAppointmentsToExcel(params: {
   filteredVouchers.forEach(v => {
     const m = v.purchase_date.slice(0, 7);
     const curr = monthlyMap.get(m) || { pmu: 0, weddings: 0, expenses: 0 };
-    if (v.category === 'pmu') {
-      curr.pmu += Number(v.amount) || 0;
-    } else {
-      curr.weddings += Number(v.amount) || 0;
-    }
+    const val = v.initial_amount !== undefined ? v.initial_amount : (Number(v.amount) || 0);
+    curr.pmu += val;
     monthlyMap.set(m, curr);
   });
 
@@ -153,13 +152,13 @@ export async function exportAppointmentsToExcel(params: {
   const summaryKPIs = [
     { 'METRICA': 'Periodo Selezionato', 'VALORE': filter.periodLabel },
     { 'METRICA': 'Fatturato Totale Complessivo (€)', 'VALORE': totalRevenue.toFixed(2) },
-    { 'METRICA': 'Fatturato da PMU & Trattamenti (€)', 'VALORE': `${totalPmuIncome.toFixed(2)} (inclusi ${pmuVouchersIncome.toFixed(2)}€ da buoni)` },
-    { 'METRICA': 'Fatturato da Eventi & Cerimonie (€)', 'VALORE': `${totalWeddingsIncome.toFixed(2)} (inclusi ${weddingVouchersIncome.toFixed(2)}€ da buoni)` },
+    { 'METRICA': 'Fatturato da PMU & Trattamenti (€)', 'VALORE': `${totalPmuIncome.toFixed(2)} (inclusi ${vouchersTotalIncome.toFixed(2)}€ da buoni regalo)` },
+    { 'METRICA': 'Fatturato da Eventi & Cerimonie (€)', 'VALORE': totalWeddingsIncome.toFixed(2) },
     { 'METRICA': 'Spese Totali Sostenute (€)', 'VALORE': totalExpensesAmount.toFixed(2) },
     { 'METRICA': 'Guadagno Netto Effettivo (€)', 'VALORE': netEarnings.toFixed(2) },
     { 'METRICA': 'Numero Trattamenti PMU / Generici', 'VALORE': filteredApps.length },
     { 'METRICA': 'Numero Servizi Eventi / Sposa', 'VALORE': filteredWeddings.length },
-    { 'METRICA': 'Numero Buoni Regalo Emessi', 'VALORE': `${filteredVouchers.length} (per un totale di ${totalVouchersIncome.toFixed(2)}€)` },
+    { 'METRICA': 'Numero Buoni Regalo Emessi', 'VALORE': `${filteredVouchers.length} (per un totale di ${vouchersTotalIncome.toFixed(2)}€)` },
     { 'METRICA': 'Totale Appuntamenti Gestiti', 'VALORE': filteredApps.length + filteredWeddings.length },
     { 'METRICA': '', 'VALORE': '' },
     { 'METRICA': '--- DETTAGLIO MESE PER MESE ---', 'VALORE': '' }
@@ -178,14 +177,23 @@ export async function exportAppointmentsToExcel(params: {
   const sheet3Data = [...summaryKPIs, ...monthlyRows];
 
   // --- SHEET 4: Buoni Regalo ---
-  const sheet4Data = filteredVouchers.map(v => ({
-    'Data Acquisto': v.purchase_date,
-    'Categoria': v.category === 'pmu' ? 'PMU & Trattamenti' : 'Evento / Cerimonia',
-    'Acquirente': v.buyer_name,
-    'Importo (€)': Number(v.amount) || 0,
-    'Stato': v.is_used ? 'Utilizzato' : 'Da Usare',
-    'Note': v.notes || '',
-  }));
+  const sheet4Data = filteredVouchers.map(v => {
+    const initVal = v.initial_amount !== undefined ? v.initial_amount : (Number(v.amount) || 0);
+    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+    let stato = 'Non Usato';
+    if (remVal <= 0) stato = 'Completamente Usato';
+    else if (remVal < initVal) stato = `Parzialmente Usato (${remVal.toFixed(2)}€ rimasti)`;
+
+    return {
+      'Data Acquisto': v.purchase_date,
+      'Acquirente': v.buyer_name,
+      'Beneficiario': v.recipient_name || 'Non specificato (al primo utilizzo)',
+      'Valore Iniziale (€)': initVal,
+      'Valore Rimanente (€)': remVal,
+      'Stato': stato,
+      'Note': v.notes || '',
+    };
+  });
 
   // Create workbook
   const wb = XLSX.utils.book_new();
@@ -213,7 +221,7 @@ export async function exportAppointmentsToExcel(params: {
   ];
 
   ws4['!cols'] = [
-    { wch: 14 }, { wch: 22 }, { wch: 26 }, { wch: 14 }, { wch: 14 }, { wch: 35 }
+    { wch: 14 }, { wch: 24 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 35 }, { wch: 35 }
   ];
 
   // Append sheets

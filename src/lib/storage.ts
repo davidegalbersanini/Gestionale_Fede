@@ -225,15 +225,34 @@ export const DataService = {
   },
 
   getGiftVouchers(): GiftVoucher[] {
-    return getStorage<GiftVoucher[]>(STORAGE_KEYS.GIFT_VOUCHERS, (initialData as any).gift_vouchers || []);
+    const raw = getStorage<GiftVoucher[]>(STORAGE_KEYS.GIFT_VOUCHERS, (initialData as any).gift_vouchers || []);
+    return raw.map(v => {
+      const initAmount = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+      const remAmount = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initAmount);
+      return {
+        ...v,
+        initial_amount: initAmount,
+        remaining_amount: remAmount,
+        amount: initAmount,
+        category: 'pmu', // PMU sotto il cofano come richiesto
+        is_used: remAmount <= 0,
+      };
+    });
   },
   saveGiftVouchers(vouchers: GiftVoucher[]): void {
     setStorage(STORAGE_KEYS.GIFT_VOUCHERS, vouchers);
   },
   addGiftVoucher(voucher: Omit<GiftVoucher, 'id'>): GiftVoucher {
     const vouchers = this.getGiftVouchers();
+    const initAmount = voucher.initial_amount !== undefined ? voucher.initial_amount : (voucher.amount || 0);
+    const remAmount = voucher.remaining_amount !== undefined ? voucher.remaining_amount : initAmount;
     const newVoucher: GiftVoucher = {
       ...voucher,
+      category: 'pmu', // Sempre assegnato a PMU sotto il cofano
+      initial_amount: initAmount,
+      remaining_amount: remAmount,
+      amount: initAmount,
+      is_used: remAmount <= 0,
       id: `voucher-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       created_at: new Date().toISOString(),
     };
@@ -242,11 +261,19 @@ export const DataService = {
     CloudSync.upsertGiftVoucher(newVoucher, vouchers);
     CloudSync.syncAllGiftVouchers(vouchers);
 
-    // If buyer has a name, make sure client exists in Rubrica
+    // Make sure buyer exists in Rubrica
     if (newVoucher.buyer_name) {
       this.addOrUpdateClient({
         id: newVoucher.buyer_id,
         full_name: newVoucher.buyer_name,
+      });
+    }
+
+    // If recipient is specified, also ensure recipient exists in Rubrica
+    if (newVoucher.recipient_name) {
+      this.addOrUpdateClient({
+        id: newVoucher.recipient_id,
+        full_name: newVoucher.recipient_name,
       });
     }
 
@@ -256,10 +283,27 @@ export const DataService = {
     const vouchers = this.getGiftVouchers();
     const idx = vouchers.findIndex(v => v.id === voucher.id);
     if (idx >= 0) {
-      vouchers[idx] = voucher;
+      const initAmount = voucher.initial_amount !== undefined ? voucher.initial_amount : (voucher.amount || 0);
+      const remAmount = voucher.remaining_amount !== undefined ? voucher.remaining_amount : (voucher.is_used ? 0 : initAmount);
+      const updated: GiftVoucher = {
+        ...voucher,
+        initial_amount: initAmount,
+        remaining_amount: remAmount,
+        amount: initAmount,
+        category: 'pmu',
+        is_used: remAmount <= 0,
+      };
+      vouchers[idx] = updated;
       this.saveGiftVouchers(vouchers);
-      CloudSync.upsertGiftVoucher(voucher, vouchers);
+      CloudSync.upsertGiftVoucher(updated, vouchers);
       CloudSync.syncAllGiftVouchers(vouchers);
+
+      if (updated.recipient_name) {
+        this.addOrUpdateClient({
+          id: updated.recipient_id,
+          full_name: updated.recipient_name,
+        });
+      }
     }
   },
   deleteGiftVoucher(id: string): void {

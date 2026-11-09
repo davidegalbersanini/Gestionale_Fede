@@ -68,7 +68,7 @@ export default function ClientsView({
 
   // History for selected client
   const clientHistory = useMemo(() => {
-    if (!selectedClient) return { past: [], upcoming: [], clientVouchers: [] as GiftVoucher[], totalSpent: 0, totalCount: 0 };
+    if (!selectedClient) return { past: [], upcoming: [], purchasedVouchers: [] as GiftVoucher[], receivedVouchers: [] as GiftVoucher[], totalSpent: 0, totalCount: 0 };
 
     const cName = selectedClient.full_name.trim().toLowerCase();
     const today = new Date().toISOString();
@@ -81,17 +81,24 @@ export default function ClientsView({
       w => w.client_id === selectedClient.id || w.bride_name.trim().toLowerCase() === cName
     );
 
-    const clientVouchers = vouchers.filter(
+    // Buoni comprati dal cliente
+    const purchasedVouchers = vouchers.filter(
       v => v.buyer_id === selectedClient.id || v.buyer_name.trim().toLowerCase() === cName
+    );
+
+    // Buoni di cui il cliente è beneficiario/destinatario
+    const receivedVouchers = vouchers.filter(
+      v => (v.recipient_id === selectedClient.id || (v.recipient_name && v.recipient_name.trim().toLowerCase() === cName)) &&
+           (v.buyer_id !== selectedClient.id && v.buyer_name.trim().toLowerCase() !== cName)
     );
 
     const past: any[] = [];
     const upcoming: any[] = [];
     let totalSpent = 0;
 
-    // Vouchers bought also count as spent by this buyer!
-    clientVouchers.forEach(v => {
-      totalSpent += v.amount || 0;
+    // Vouchers bought count as spent by this buyer!
+    purchasedVouchers.forEach(v => {
+      totalSpent += (v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0));
     });
 
     clientPmus.forEach(p => {
@@ -119,7 +126,7 @@ export default function ClientsView({
     past.sort((a, b) => b.date.localeCompare(a.date));
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
-    return { past, upcoming, clientVouchers, totalSpent, totalCount: past.length + upcoming.length };
+    return { past, upcoming, purchasedVouchers, receivedVouchers, totalSpent, totalCount: past.length + upcoming.length };
   }, [selectedClient, appointments, weddings, vouchers]);
 
   const handleCreateClient = (e: React.FormEvent) => {
@@ -329,48 +336,122 @@ export default function ClientsView({
               <div>
                 <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Gift className="w-3.5 h-3.5" />
-                  Buoni Regalo Acquistati ({clientHistory.clientVouchers.length})
+                  Buoni Regalo Acquistati ({clientHistory.purchasedVouchers.length})
                 </h4>
-                {clientHistory.clientVouchers.length === 0 ? (
+                {clientHistory.purchasedVouchers.length === 0 ? (
                   <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
                     Nessun buono regalo acquistato da questo cliente.
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {clientHistory.clientVouchers.map((v, idx) => (
-                      <div
-                        key={idx}
-                        className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
-                          v.is_used
-                            ? 'bg-stone-800/40 border-stone-800 text-stone-400'
-                            : 'bg-amber-950/20 border-amber-800/40 text-amber-200'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-white">
-                              {v.category === 'pmu' ? 'Buono PMU' : 'Buono Evento'}
-                            </span>
-                            <span
-                              className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
-                                v.is_used
-                                  ? 'bg-stone-800 text-stone-400'
-                                  : 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
-                              }`}
-                            >
-                              {v.is_used ? 'Utilizzato' : 'Da Usare'}
-                            </span>
+                    {clientHistory.purchasedVouchers.map((v, idx) => {
+                      const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+                      const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+                      const isFullyUsed = remVal <= 0;
+                      const isPartial = remVal > 0 && remVal < initVal;
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
+                            isFullyUsed
+                              ? 'bg-stone-800/40 border-stone-800 text-stone-400'
+                              : isPartial
+                              ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
+                              : 'bg-amber-950/20 border-amber-800/40 text-amber-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-white">Buono Regalo</span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                                  isFullyUsed
+                                    ? 'bg-stone-800 text-stone-400'
+                                    : isPartial
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                                }`}
+                              >
+                                {isFullyUsed ? 'Utilizzato' : isPartial ? 'Parzialmente Usato' : 'Da Usare'}
+                              </span>
+                            </div>
+                            <p className="text-stone-400 text-[11px] mt-0.5">
+                              {v.recipient_name ? `Per: ${v.recipient_name} • ` : 'Beneficiario non specificato • '}
+                              {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
+                            </p>
                           </div>
-                          <p className="text-stone-400 text-[11px] mt-0.5">
-                            Acquistato il {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
-                          </p>
+                          <div className="text-right">
+                            <span className="font-bold text-amber-400 text-sm">{initVal}€</span>
+                            {remVal < initVal && (
+                              <p className="text-[10px] text-emerald-400 font-semibold">
+                                Rimasti: {remVal}€
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <span className="font-bold text-amber-400 text-sm">{v.amount}€</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
+
+              {/* Buoni Regalo Ricevuti (Beneficiario) */}
+              {clientHistory.receivedVouchers.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-pink-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Gift className="w-3.5 h-3.5" />
+                    Buoni Regalo Ricevuti in Regalo ({clientHistory.receivedVouchers.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {clientHistory.receivedVouchers.map((v, idx) => {
+                      const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+                      const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+                      const isFullyUsed = remVal <= 0;
+                      const isPartial = remVal > 0 && remVal < initVal;
+
+                      return (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
+                            isFullyUsed
+                              ? 'bg-stone-800/40 border-stone-800 text-stone-400'
+                              : isPartial
+                              ? 'bg-pink-950/40 border-pink-500/50 text-pink-200'
+                              : 'bg-pink-950/20 border-pink-800/40 text-pink-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-white">Regalato da: {v.buyer_name}</span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                                  isFullyUsed
+                                    ? 'bg-stone-800 text-stone-400'
+                                    : isPartial
+                                    ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
+                                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                                }`}
+                              >
+                                {isFullyUsed ? 'Utilizzato' : isPartial ? 'Parzialmente Usato' : 'Da Usare'}
+                              </span>
+                            </div>
+                            <p className="text-stone-400 text-[11px] mt-0.5">
+                              Acquistato il {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-pink-400 text-sm">{initVal}€</span>
+                            <p className="text-[10px] text-emerald-400 font-semibold">
+                              Disponibili: {remVal}€
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Upcoming Scheduled Appointments */}
               <div>

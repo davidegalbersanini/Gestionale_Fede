@@ -117,16 +117,13 @@ export default function DashboardView({
       }
     });
 
-    // Buoni Regalo: ricavato aggiunto alla data di acquisto nella rispettiva categoria
+    // Buoni Regalo: ricavato aggiunto alla data di acquisto sempre nel PMU (sotto il cofano)
     vouchers.forEach(v => {
       if (v.purchase_date && v.purchase_date.startsWith(selectedYear)) {
         const m = parseInt(v.purchase_date.slice(5, 7), 10) - 1;
         if (m >= 0 && m < 12) {
-          if (v.category === 'pmu') {
-            months[m].pmuRevenue += (v.amount || 0);
-          } else {
-            months[m].weddingRevenue += (v.amount || 0);
-          }
+          const voucherVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+          months[m].pmuRevenue += voucherVal;
         }
       }
     });
@@ -384,7 +381,7 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-rose-300">
               {annualStats.pmuRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Trattamenti + Buoni PMU</p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Trattamenti + Buoni Regalo</p>
           </div>
         </div>
 
@@ -398,7 +395,7 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-pink-300">
               {annualStats.weddingRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Matrimoni + Buoni Eventi</p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Matrimoni & cerimonie</p>
           </div>
         </div>
       </div>

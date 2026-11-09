@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { GiftVoucher, Client, GiftVoucherCategory } from '@/types';
+import { GiftVoucher, Client } from '@/types';
 import {
   Gift,
   Plus,
@@ -10,14 +10,13 @@ import {
   CheckCircle2,
   Circle,
   Clock,
-  Sparkles,
-  Heart,
   Trash2,
   Calendar as CalendarIcon,
-  Filter,
   DollarSign,
   User,
-  ArrowLeft
+  UserCheck,
+  ArrowLeft,
+  Sparkles
 } from 'lucide-react';
 
 interface GiftVouchersModalProps {
@@ -27,6 +26,7 @@ interface GiftVouchersModalProps {
   clients: Client[];
   onSaveVoucher: (voucherData: Omit<GiftVoucher, 'id'>) => void;
   onToggleUsed: (voucher: GiftVoucher) => void;
+  onUpdateRemainingAmount?: (voucher: GiftVoucher, newRemaining: number) => void;
   onDeleteVoucher: (id: string) => void;
   defaultBuyerClient?: Client | null;
 }
@@ -38,22 +38,31 @@ export default function GiftVouchersModal({
   clients,
   onSaveVoucher,
   onToggleUsed,
+  onUpdateRemainingAmount,
   onDeleteVoucher,
   defaultBuyerClient,
 }: GiftVouchersModalProps) {
   const [view, setView] = useState<'list' | 'create'>('list');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'used'>('all');
-  const [filterCategory, setFilterCategory] = useState<'all' | 'pmu' | 'evento'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Form state
   const [buyerName, setBuyerName] = useState('');
   const [selectedBuyerId, setSelectedBuyerId] = useState<string | undefined>();
   const [showBuyerSuggestions, setShowBuyerSuggestions] = useState(false);
-  const [category, setCategory] = useState<GiftVoucherCategory>('pmu');
+
+  // Recipient state (opzionale)
+  const [recipientName, setRecipientName] = useState('');
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string | undefined>();
+  const [showRecipientSuggestions, setShowRecipientSuggestions] = useState(false);
+
   const [amount, setAmount] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
+
+  // Editing remaining amount modal/inline state
+  const [editingRemainingId, setEditingRemainingId] = useState<string | null>(null);
+  const [editingRemainingValue, setEditingRemainingValue] = useState<string>('');
 
   // Delete confirm state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -71,39 +80,65 @@ export default function GiftVouchersModal({
   const resetForm = () => {
     setBuyerName('');
     setSelectedBuyerId(undefined);
-    setCategory('pmu');
+    setRecipientName('');
+    setSelectedRecipientId(undefined);
     setAmount('');
     setPurchaseDate(new Date().toISOString().slice(0, 10));
     setNotes('');
     setShowBuyerSuggestions(false);
+    setShowRecipientSuggestions(false);
   };
 
   if (!isOpen) return null;
 
   // Filtered clients for buyer autocomplete
-  const filteredClients = buyerName.trim()
+  const filteredBuyerClients = buyerName.trim()
     ? clients.filter(c => c.full_name.toLowerCase().includes(buyerName.toLowerCase())).slice(0, 5)
+    : [];
+
+  // Filtered clients for recipient autocomplete
+  const filteredRecipientClients = recipientName.trim()
+    ? clients.filter(c => c.full_name.toLowerCase().includes(recipientName.toLowerCase())).slice(0, 5)
     : [];
 
   // Filtered vouchers
   const filteredVouchers = vouchers.filter(v => {
-    if (filterStatus === 'active' && v.is_used) return false;
-    if (filterStatus === 'used' && !v.is_used) return false;
-    if (filterCategory !== 'all' && v.category !== filterCategory) return false;
+    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+    const isUsed = remVal <= 0;
+
+    if (filterStatus === 'active' && isUsed) return false;
+    if (filterStatus === 'used' && !isUsed) return false;
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchBuyer = v.buyer_name.toLowerCase().includes(q);
+      const matchRecipient = v.recipient_name ? v.recipient_name.toLowerCase().includes(q) : false;
       const matchNotes = v.notes ? v.notes.toLowerCase().includes(q) : false;
-      const matchAmount = String(v.amount).includes(q);
-      return matchBuyer || matchNotes || matchAmount;
+      const matchAmount = String(initVal).includes(q) || String(remVal).includes(q);
+      return matchBuyer || matchRecipient || matchNotes || matchAmount;
     }
     return true;
   });
 
-  const activeCount = vouchers.filter(v => !v.is_used).length;
-  const usedCount = vouchers.filter(v => v.is_used).length;
-  const totalActiveAmount = vouchers.filter(v => !v.is_used).reduce((sum, v) => sum + (v.amount || 0), 0);
+  const activeVouchers = vouchers.filter(v => {
+    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+    return remVal > 0;
+  });
+  const usedVouchers = vouchers.filter(v => {
+    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+    return remVal <= 0;
+  });
+
+  const activeCount = activeVouchers.length;
+  const usedCount = usedVouchers.length;
+  const totalRemainingAmount = activeVouchers.reduce((sum, v) => {
+    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+    return sum + remVal;
+  }, 0);
 
   const handleSubmitCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,8 +155,12 @@ export default function GiftVouchersModal({
     onSaveVoucher({
       buyer_id: selectedBuyerId,
       buyer_name: buyerName.trim(),
+      recipient_id: selectedRecipientId,
+      recipient_name: recipientName.trim() || undefined,
+      initial_amount: parsedAmount,
+      remaining_amount: parsedAmount,
       amount: parsedAmount,
-      category,
+      category: 'pmu', // Sotto il cofano assegnato a PMU
       purchase_date: purchaseDate,
       is_used: false,
       notes: notes.trim() || undefined,
@@ -129,6 +168,29 @@ export default function GiftVouchersModal({
 
     resetForm();
     setView('list');
+  };
+
+  const handleSaveRemaining = (v: GiftVoucher) => {
+    const parsed = parseFloat(editingRemainingValue);
+    if (isNaN(parsed) || parsed < 0) {
+      alert('Inserisci un valore residuo valido.');
+      return;
+    }
+    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
+    const finalRem = Math.min(parsed, initVal);
+
+    if (onUpdateRemainingAmount) {
+      onUpdateRemainingAmount(v, finalRem);
+    } else {
+      const updated: GiftVoucher = {
+        ...v,
+        remaining_amount: finalRem,
+        is_used: finalRem <= 0,
+        used_date: finalRem <= 0 ? new Date().toISOString().slice(0, 10) : null,
+      };
+      onToggleUsed(updated);
+    }
+    setEditingRemainingId(null);
   };
 
   return (
@@ -160,8 +222,8 @@ export default function GiftVouchersModal({
               </h2>
               <p className="text-stone-400 text-xs">
                 {view === 'create'
-                  ? 'Il ricavato verrà aggiunto subito agli incassi'
-                  : `${activeCount} da usare (${totalActiveAmount.toFixed(0)}€) • ${usedCount} utilizzati`}
+                  ? 'Il ricavato verrà aggiunto subito agli incassi PMU'
+                  : `${activeCount} attivi (${totalRemainingAmount.toFixed(0)}€ residui) • ${usedCount} esauriti`}
               </p>
             </div>
           </div>
@@ -193,58 +255,14 @@ export default function GiftVouchersModal({
           {/* VIEW: CREATE NEW VOUCHER */}
           {view === 'create' && (
             <form onSubmit={handleSubmitCreate} className="space-y-4">
-              
-              {/* Category selector: PMU vs Evento */}
-              <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">
-                  Destinazione Buono (Categoria Ricavi)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setCategory('pmu')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-center gap-3 ${
-                      category === 'pmu'
-                        ? 'bg-rose-950/40 border-rose-500 text-rose-200 ring-1 ring-rose-500 shadow-md'
-                        : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:bg-stone-800 hover:text-white'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${category === 'pmu' ? 'bg-rose-600 text-white' : 'bg-stone-700 text-stone-400'}`}>
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold">PMU & Trattamenti</div>
-                      <div className="text-[11px] opacity-75">Sommato al fatturato PMU</div>
-                    </div>
-                  </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setCategory('evento')}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-center gap-3 ${
-                      category === 'evento'
-                        ? 'bg-pink-950/40 border-pink-500 text-pink-200 ring-1 ring-pink-500 shadow-md'
-                        : 'bg-stone-800/60 border-stone-700 text-stone-400 hover:bg-stone-800 hover:text-white'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${category === 'evento' ? 'bg-pink-600 text-white' : 'bg-stone-700 text-stone-400'}`}>
-                      <Heart className="w-4 h-4 fill-current" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold">Evento / Cerimonia</div>
-                      <div className="text-[11px] opacity-75">Sommato al fatturato Eventi</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Acquirente (Buyer) with autocomplete */}
+              {/* Acquirente (Buyer) with autocomplete - OBBLIGATORIO */}
               <div className="relative">
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-400" />
                   Chi acquista il Buono (Acquirente) *
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
@@ -256,13 +274,13 @@ export default function GiftVouchersModal({
                       setShowBuyerSuggestions(true);
                     }}
                     onFocus={() => setShowBuyerSuggestions(true)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
                   />
                 </div>
 
-                {showBuyerSuggestions && filteredClients.length > 0 && (
+                {showBuyerSuggestions && filteredBuyerClients.length > 0 && (
                   <div className="absolute z-20 w-full mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden">
-                    {filteredClients.map(c => (
+                    {filteredBuyerClients.map(c => (
                       <button
                         type="button"
                         key={c.id}
@@ -280,7 +298,52 @@ export default function GiftVouchersModal({
                   </div>
                 )}
                 <p className="text-[11px] text-stone-500 mt-1">
-                  Se il contatto non è presente in rubrica, verrà salvato automaticamente.
+                  Obbligatorio. Sarà collegato in rubrica a questo buono.
+                </p>
+              </div>
+
+              {/* Destinatario / Beneficiario - OPZIONALE */}
+              <div className="relative p-3.5 bg-stone-800/40 rounded-2xl border border-stone-700/60">
+                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-pink-400" />
+                  Destinatario / Beneficiario (Opzionale)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Nome e cognome di chi riceverà il buono..."
+                    value={recipientName}
+                    onChange={e => {
+                      setRecipientName(e.target.value);
+                      setSelectedRecipientId(undefined);
+                      setShowRecipientSuggestions(true);
+                    }}
+                    onFocus={() => setShowRecipientSuggestions(true)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                  />
+                </div>
+
+                {showRecipientSuggestions && filteredRecipientClients.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden">
+                    {filteredRecipientClients.map(c => (
+                      <button
+                        type="button"
+                        key={c.id}
+                        onClick={() => {
+                          setRecipientName(c.full_name);
+                          setSelectedRecipientId(c.id);
+                          setShowRecipientSuggestions(false);
+                        }}
+                        className="w-full px-4 py-2 text-left hover:bg-stone-700 text-stone-200 text-sm flex items-center justify-between border-b border-stone-700/50 last:border-0"
+                      >
+                        <span className="font-medium text-white">{c.full_name}</span>
+                        {c.phone && <span className="text-stone-400 text-xs">{c.phone}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
+                  Se lasciato vuoto, il buono si legherà automaticamente alla persona che verrà a fare il trattamento quando verrà usato in un appuntamento.
                 </p>
               </div>
 
@@ -322,7 +385,7 @@ export default function GiftVouchersModal({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="es. Regalo compleanno per la sorella Chiara, pagato con bonifico..."
+                  placeholder="es. Regalo compleanno, pagato con bonifico..."
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
                   className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
@@ -362,87 +425,48 @@ export default function GiftVouchersModal({
                   <Search className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    placeholder="Cerca per acquirente, note o importo..."
+                    placeholder="Cerca per acquirente, destinatario o note..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     className="w-full bg-stone-800/80 border border-stone-700/60 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
-                {/* Filter Status: Tutti / Da Usare / Utilizzati */}
-                <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                  <div className="flex items-center gap-1 bg-stone-800/70 p-1 rounded-xl border border-stone-700/60">
-                    <button
-                      type="button"
-                      onClick={() => setFilterStatus('all')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                        filterStatus === 'all'
-                          ? 'bg-amber-500 text-stone-950 shadow-sm'
-                          : 'text-stone-400 hover:text-white'
-                      }`}
-                    >
-                      Tutti ({vouchers.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterStatus('active')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                        filterStatus === 'active'
-                          ? 'bg-amber-500 text-stone-950 shadow-sm'
-                          : 'text-stone-400 hover:text-white'
-                      }`}
-                    >
-                      Da Usare ({activeCount})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterStatus('used')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                        filterStatus === 'used'
-                          ? 'bg-amber-500 text-stone-950 shadow-sm'
-                          : 'text-stone-400 hover:text-white'
-                      }`}
-                    >
-                      Utilizzati ({usedCount})
-                    </button>
-                  </div>
-
-                  {/* Category toggle: Tutti / PMU / Evento */}
-                  <div className="flex items-center gap-1 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setFilterCategory('all')}
-                      className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                        filterCategory === 'all'
-                          ? 'bg-stone-700 text-white'
-                          : 'text-stone-400 hover:text-stone-200'
-                      }`}
-                    >
-                      Tutte
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterCategory('pmu')}
-                      className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                        filterCategory === 'pmu'
-                          ? 'bg-rose-950 border border-rose-500/50 text-rose-300'
-                          : 'text-stone-400 hover:text-rose-300'
-                      }`}
-                    >
-                      PMU
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilterCategory('evento')}
-                      className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                        filterCategory === 'evento'
-                          ? 'bg-pink-950 border border-pink-500/50 text-pink-300'
-                          : 'text-stone-400 hover:text-pink-300'
-                      }`}
-                    >
-                      Eventi
-                    </button>
-                  </div>
+                {/* Filter Status: Tutti / Attivi / Esauriti */}
+                <div className="flex items-center gap-1 bg-stone-800/70 p-1 rounded-xl border border-stone-700/60 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      filterStatus === 'all'
+                        ? 'bg-amber-500 text-stone-950 shadow-sm'
+                        : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Tutti ({vouchers.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('active')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      filterStatus === 'active'
+                        ? 'bg-amber-500 text-stone-950 shadow-sm'
+                        : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Da Usare / Parziali ({activeCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterStatus('used')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      filterStatus === 'used'
+                        ? 'bg-amber-500 text-stone-950 shadow-sm'
+                        : 'text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    Esauriti ({usedCount})
+                  </button>
                 </div>
               </div>
 
@@ -460,15 +484,21 @@ export default function GiftVouchersModal({
                   </div>
                 ) : (
                   filteredVouchers.map(voucher => {
-                    const isPmu = voucher.category === 'pmu';
+                    const initVal = voucher.initial_amount !== undefined ? voucher.initial_amount : (voucher.amount || 0);
+                    const remVal = voucher.remaining_amount !== undefined ? voucher.remaining_amount : (voucher.is_used ? 0 : initVal);
+                    const isFullyUsed = remVal <= 0;
+                    const isPartial = remVal > 0 && remVal < initVal;
                     const isConfirmingDelete = deleteConfirmId === voucher.id;
+                    const isEditingRemaining = editingRemainingId === voucher.id;
 
                     return (
                       <div
                         key={voucher.id}
                         className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
-                          voucher.is_used
+                          isFullyUsed
                             ? 'bg-stone-900/60 border-stone-800/80 opacity-75'
+                            : isPartial
+                            ? 'bg-amber-950/20 border-amber-600/40 hover:border-amber-500/70 shadow-sm'
                             : 'bg-stone-800/50 border-stone-700/80 hover:border-amber-500/50 shadow-sm'
                         }`}
                       >
@@ -477,21 +507,23 @@ export default function GiftVouchersModal({
                           {/* Left: Info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
-                              {/* Category Badge */}
-                              <span
-                                className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                                  isPmu
-                                    ? 'bg-rose-950 text-rose-300 border border-rose-800/60'
-                                    : 'bg-pink-950 text-pink-300 border border-pink-800/60'
-                                }`}
-                              >
-                                {isPmu ? 'PMU' : 'Evento / Trucco'}
-                              </span>
-
                               {/* Purchase Date */}
                               <span className="text-stone-400 text-xs flex items-center gap-1">
                                 <CalendarIcon className="w-3 h-3 text-stone-500" />
                                 {voucher.purchase_date}
+                              </span>
+
+                              {/* Status Badge */}
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                                  isFullyUsed
+                                    ? 'bg-stone-800 text-stone-400'
+                                    : isPartial
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800/60'
+                                }`}
+                              >
+                                {isFullyUsed ? 'Completamente Usato' : isPartial ? 'Parzialmente Usato' : 'Da Usare (Intero)'}
                               </span>
                             </div>
 
@@ -501,6 +533,16 @@ export default function GiftVouchersModal({
                               <span>{voucher.buyer_name}</span>
                             </h4>
 
+                            {/* Recipient Name */}
+                            <p className="text-xs text-stone-300 mt-0.5 flex items-center gap-1.5 truncate">
+                              <span className="text-stone-400 text-[11px]">Destinatario:</span>
+                              {voucher.recipient_name ? (
+                                <span className="font-semibold text-pink-300">{voucher.recipient_name}</span>
+                              ) : (
+                                <span className="text-stone-500 italic">Non indicato (si legherà al primo utilizzo)</span>
+                              )}
+                            </p>
+
                             {/* Notes */}
                             {voucher.notes && (
                               <p className="text-xs text-stone-400 mt-1 italic line-clamp-2">
@@ -509,45 +551,90 @@ export default function GiftVouchersModal({
                             )}
                           </div>
 
-                          {/* Right: Amount & Status Toggle */}
+                          {/* Right: Amounts & Quick Toggle */}
                           <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                            {/* Big Amount */}
+                            {/* Amounts display */}
                             <div className="text-right">
                               <span className="text-lg sm:text-xl font-black text-amber-300 tracking-tight">
-                                {voucher.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                                {remVal.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                               </span>
+                              {remVal < initVal && (
+                                <p className="text-[11px] text-stone-400">
+                                  su {initVal.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
+                                </p>
+                              )}
                             </div>
 
-                            {/* Toggle Utilizzato (Sì/No) */}
+                            {/* Toggle Utilizzato / Riapri */}
                             <button
                               type="button"
                               onClick={() => onToggleUsed(voucher)}
                               className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
-                                voucher.is_used
+                                isFullyUsed
                                   ? 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
-                                  : 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300 shadow-sm shadow-emerald-950/50 hover:bg-emerald-900/70'
+                                  : 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300 shadow-sm hover:bg-emerald-900/70'
                               }`}
                             >
-                              {voucher.is_used ? (
+                              {isFullyUsed ? (
                                 <>
                                   <CheckCircle2 className="w-3.5 h-3.5 text-stone-500" />
-                                  <span>Utilizzato</span>
+                                  <span>Esaurito</span>
                                 </>
                               ) : (
                                 <>
                                   <Circle className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/30" />
-                                  <span>Da Usare</span>
+                                  <span>Segna Esaurito</span>
                                 </>
                               )}
                             </button>
                           </div>
                         </div>
 
+                        {/* Inline editor for Remaining Amount */}
+                        {isEditingRemaining ? (
+                          <div className="mt-3 p-3 bg-stone-900 rounded-xl border border-stone-700 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-stone-300">Nuovo valore residuo:</span>
+                              <input
+                                type="number"
+                                step="any"
+                                value={editingRemainingValue}
+                                onChange={e => setEditingRemainingValue(e.target.value)}
+                                className="w-24 bg-stone-800 border border-stone-600 rounded-lg px-2 py-1 text-white text-xs font-bold"
+                              />
+                              <span className="text-xs text-stone-400">€ (max {initVal}€)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveRemaining(voucher)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold"
+                              >
+                                Salva
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingRemainingId(null)}
+                                className="px-2 py-1 rounded-lg bg-stone-800 text-stone-400 text-xs"
+                              >
+                                Annulla
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+
                         {/* Bottom Actions Bar */}
                         <div className="mt-3 pt-2.5 border-t border-stone-800/80 flex items-center justify-between text-xs text-stone-500">
-                          <span className="text-[11px]">
-                            {voucher.is_used ? 'Buono già riscosso nel trattamento' : 'Disponibile per essere scalato'}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingRemainingId(voucher.id);
+                              setEditingRemainingValue(String(remVal));
+                            }}
+                            className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium"
+                          >
+                            Modifica residuo manuale
+                          </button>
 
                           {isConfirmingDelete ? (
                             <div className="flex items-center gap-2">

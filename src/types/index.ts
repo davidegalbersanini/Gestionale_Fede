@@ -43,6 +43,8 @@ export interface Appointment {
   sync_google_calendar?: boolean;
   google_calendar_event_id?: string;
   used_gift_voucher?: boolean;
+  used_gift_voucher_id?: string;
+  used_gift_voucher_amount?: number;
   status: AppointmentStatus;
 }
 
@@ -64,6 +66,8 @@ export interface WeddingService {
   sync_google_calendar?: boolean;
   google_calendar_event_id?: string;
   used_gift_voucher?: boolean;
+  used_gift_voucher_id?: string;
+  used_gift_voucher_amount?: number;
   status: AppointmentStatus;
 }
 
@@ -90,10 +94,14 @@ export interface GiftVoucher {
   id: string;
   buyer_id?: string;
   buyer_name: string;
-  amount: number;
-  category: GiftVoucherCategory;
+  recipient_id?: string;
+  recipient_name?: string;
+  initial_amount: number; // Valore iniziale
+  remaining_amount: number; // Valore residuo/rimanente
+  amount: number; // Per compatibilità (uguale a initial_amount)
+  category?: GiftVoucherCategory; // Sotto il cofano sempre 'pmu'
   purchase_date: string; // YYYY-MM-DD
-  is_used: boolean;
+  is_used: boolean; // true se remaining_amount <= 0
   used_date?: string | null;
   notes?: string;
   payment_method?: string;

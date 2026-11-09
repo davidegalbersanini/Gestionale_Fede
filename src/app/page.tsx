@@ -104,6 +104,29 @@ export default function Home() {
 
   // Save / Update PMU Appointment
   const handleSavePmu = (appData: Omit<Appointment, 'id'>, createTouchUpFollowup?: boolean) => {
+    // If a gift voucher was used, update voucher's remaining amount and link beneficiary if needed
+    if (appData.used_gift_voucher && appData.used_gift_voucher_id && (appData.used_gift_voucher_amount ?? 0) > 0) {
+      const allVouchers = DataService.getGiftVouchers();
+      const targetVoucher = allVouchers.find(v => v.id === appData.used_gift_voucher_id);
+      if (targetVoucher) {
+        const deduct = appData.used_gift_voucher_amount || 0;
+        const currentRem = targetVoucher.remaining_amount ?? targetVoucher.amount;
+        const newRem = Math.max(0, currentRem - deduct);
+        targetVoucher.remaining_amount = newRem;
+        if (newRem <= 0) {
+          targetVoucher.is_used = true;
+          targetVoucher.used_date = new Date().toISOString().slice(0, 10);
+        }
+        // Auto-assign recipient if none was assigned
+        if (!targetVoucher.recipient_name && appData.client_name) {
+          targetVoucher.recipient_name = appData.client_name;
+          targetVoucher.recipient_id = appData.client_id;
+        }
+        DataService.updateGiftVoucher(targetVoucher);
+        setVouchers(DataService.getGiftVouchers());
+      }
+    }
+
     if (editingPmu && editingPmu.id) {
       const updated: Appointment = { ...editingPmu, ...appData };
       DataService.updateAppointment(updated);
@@ -219,6 +242,29 @@ export default function Home() {
 
   // Save / Update Wedding / Event
   const handleSaveWedding = (weddingData: Omit<WeddingService, 'id'>) => {
+    // If a gift voucher was used, update voucher's remaining amount and link beneficiary if needed
+    if (weddingData.used_gift_voucher && weddingData.used_gift_voucher_id && (weddingData.used_gift_voucher_amount ?? 0) > 0) {
+      const allVouchers = DataService.getGiftVouchers();
+      const targetVoucher = allVouchers.find(v => v.id === weddingData.used_gift_voucher_id);
+      if (targetVoucher) {
+        const deduct = weddingData.used_gift_voucher_amount || 0;
+        const currentRem = targetVoucher.remaining_amount ?? targetVoucher.amount;
+        const newRem = Math.max(0, currentRem - deduct);
+        targetVoucher.remaining_amount = newRem;
+        if (newRem <= 0) {
+          targetVoucher.is_used = true;
+          targetVoucher.used_date = new Date().toISOString().slice(0, 10);
+        }
+        // Auto-assign recipient if none was assigned
+        if (!targetVoucher.recipient_name && weddingData.bride_name) {
+          targetVoucher.recipient_name = weddingData.bride_name;
+          targetVoucher.recipient_id = weddingData.client_id;
+        }
+        DataService.updateGiftVoucher(targetVoucher);
+        setVouchers(DataService.getGiftVouchers());
+      }
+    }
+
     if (editingWedding && editingWedding.id) {
       const updated: WeddingService = { ...editingWedding, ...weddingData };
       DataService.updateWedding(updated);
@@ -425,6 +471,7 @@ export default function Home() {
         initialAppointment={editingPmu}
         clients={clients}
         locations={locations}
+        vouchers={vouchers}
         defaultDate={selectedCalendarDate}
         defaultClient={selectedClientForPmu}
       />
@@ -440,6 +487,7 @@ export default function Home() {
         onDelete={handleDeleteWedding}
         initialWedding={editingWedding}
         clients={clients}
+        vouchers={vouchers}
         defaultDate={selectedCalendarDate}
         defaultClient={selectedClientForWedding}
       />

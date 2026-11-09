@@ -74,7 +74,22 @@ create table if not exists expenses (
     created_at timestamp with time zone default timezone('utc'::text, now())
 );
 
--- 6. Settings
+-- 6. Gift Vouchers (Buoni Regalo)
+create table if not exists gift_vouchers (
+    id text primary key,
+    buyer_id text references clients(id) on delete set null,
+    buyer_name text not null,
+    amount numeric(10, 2) not null default 0.0,
+    category text not null check (category in ('pmu', 'evento')),
+    purchase_date date not null default current_date,
+    is_used boolean default false,
+    used_date date,
+    notes text,
+    payment_method text,
+    created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 7. Settings
 create table if not exists settings (
     key text primary key,
     value jsonb not null
@@ -86,6 +101,7 @@ alter table clients enable row level security;
 alter table appointments enable row level security;
 alter table wedding_services enable row level security;
 alter table expenses enable row level security;
+alter table gift_vouchers enable row level security;
 alter table settings enable row level security;
 
 -- Public / Anon access policies for personal app with PIN protection
@@ -94,4 +110,5 @@ create policy "Allow all on clients" on clients for all using (true) with check 
 create policy "Allow all on appointments" on appointments for all using (true) with check (true);
 create policy "Allow all on wedding_services" on wedding_services for all using (true) with check (true);
 create policy "Allow all on expenses" on expenses for all using (true) with check (true);
+create policy "Allow all on gift_vouchers" on gift_vouchers for all using (true) with check (true);
 create policy "Allow all on settings" on settings for all using (true) with check (true);

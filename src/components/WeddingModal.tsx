@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { WeddingService, Client } from '@/types';
 import { syncCalendarAutomatically } from '@/lib/calendar';
-import { X, Calendar as CalendarIcon, Heart, Sparkles, Users, MapPin, ExternalLink } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Heart, Sparkles, Users, MapPin, ExternalLink, Gift } from 'lucide-react';
 
 interface WeddingModalProps {
   isOpen: boolean;
@@ -39,6 +39,7 @@ export default function WeddingModal({
   const [trialDeposit, setTrialDeposit] = useState('');
   const [weddingBalance, setWeddingBalance] = useState('');
   const [notes, setNotes] = useState('');
+  const [usedGiftVoucher, setUsedGiftVoucher] = useState(false);
   const [syncGoogleCalendar, setSyncGoogleCalendar] = useState(true);
 
   const eventTypes = [
@@ -70,6 +71,7 @@ export default function WeddingModal({
       setTrialDeposit(initialWedding.trial_deposit > 0 ? String(initialWedding.trial_deposit) : '');
       setWeddingBalance(initialWedding.wedding_balance > 0 ? String(initialWedding.wedding_balance) : '');
       setNotes(initialWedding.notes || '');
+      setUsedGiftVoucher(Boolean(initialWedding.used_gift_voucher));
       setSyncGoogleCalendar(initialWedding.sync_google_calendar !== false);
     } else {
       setEventType('Matrimonio');
@@ -89,6 +91,7 @@ export default function WeddingModal({
       setTrialDeposit('');
       setWeddingBalance('');
       setNotes('');
+      setUsedGiftVoucher(false);
       setSyncGoogleCalendar(true); // Default checked as requested
     }
   }, [initialWedding, defaultDate, defaultClient]);
@@ -123,6 +126,7 @@ export default function WeddingModal({
       wedding_balance: balNum,
       total_price: totalCalculated,
       notes: notes.trim(),
+      used_gift_voucher: usedGiftVoucher,
       sync_google_calendar: syncGoogleCalendar,
       status: fullWeddingDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
@@ -381,6 +385,27 @@ export default function WeddingModal({
               <span className="text-base font-black text-pink-300 bg-pink-950/40 px-3 py-1 rounded-xl border border-pink-800/50">
                 {totalCalculated.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
               </span>
+            </div>
+
+            {/* Buono Regalo Checkbox */}
+            <div className="pt-2 border-t border-stone-700/60">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={usedGiftVoucher}
+                  onChange={e => setUsedGiftVoucher(e.target.checked)}
+                  className="w-4 h-4 rounded border-stone-600 bg-stone-900 text-amber-500 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <Gift className="w-3.5 h-3.5 text-amber-400" />
+                  È stato utilizzato un Buono Regalo
+                </span>
+              </label>
+              {usedGiftVoucher && (
+                <p className="text-[11px] text-stone-400 mt-1 pl-6 italic">
+                  Se il cliente paga una differenza, inseriscila nell&apos;acconto/saldo qui sopra. I dettagli del buono puoi scriverli nel campo Note.
+                </p>
+              )}
             </div>
           </div>
 

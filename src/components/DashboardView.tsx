@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Appointment, WeddingService, Expense, Location, AppSettings } from '@/types';
+import { Appointment, WeddingService, Expense, Location, AppSettings, GiftVoucher } from '@/types';
 import { exportAppointmentsToExcel } from '@/lib/excelExport';
 import {
   TrendingUp,
@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   Download,
   RefreshCw,
+  Gift,
   X
 } from 'lucide-react';
 
@@ -25,6 +26,7 @@ interface DashboardViewProps {
   weddings: WeddingService[];
   expenses: Expense[];
   locations: Location[];
+  vouchers?: GiftVoucher[];
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
   onShowToast?: (msg: string) => void;
@@ -35,6 +37,7 @@ export default function DashboardView({
   weddings,
   expenses,
   locations,
+  vouchers = [],
   settings,
   onUpdateSettings,
   onShowToast,
@@ -61,8 +64,9 @@ export default function DashboardView({
     appointments.forEach(a => { if (a.appointment_date) years.add(a.appointment_date.slice(0, 4)); });
     weddings.forEach(w => { if (w.wedding_date) years.add(w.wedding_date.slice(0, 4)); });
     expenses.forEach(e => { if (e.date) years.add(e.date.slice(0, 4)); });
+    vouchers.forEach(v => { if (v.purchase_date) years.add(v.purchase_date.slice(0, 4)); });
     return Array.from(years).sort().reverse();
-  }, [appointments, weddings, expenses, currentYearStr]);
+  }, [appointments, weddings, expenses, vouchers, currentYearStr]);
 
   // Aggregate monthly stats for selected year
   const monthlyData = useMemo(() => {
@@ -113,6 +117,20 @@ export default function DashboardView({
       }
     });
 
+    // Buoni Regalo: ricavato aggiunto alla data di acquisto nella rispettiva categoria
+    vouchers.forEach(v => {
+      if (v.purchase_date && v.purchase_date.startsWith(selectedYear)) {
+        const m = parseInt(v.purchase_date.slice(5, 7), 10) - 1;
+        if (m >= 0 && m < 12) {
+          if (v.category === 'pmu') {
+            months[m].pmuRevenue += (v.amount || 0);
+          } else {
+            months[m].weddingRevenue += (v.amount || 0);
+          }
+        }
+      }
+    });
+
     // Expenses
     expenses.forEach(e => {
       if (e.date && e.date.startsWith(selectedYear)) {
@@ -130,7 +148,7 @@ export default function DashboardView({
     });
 
     return months;
-  }, [selectedYear, appointments, weddings, expenses]);
+  }, [selectedYear, appointments, weddings, expenses, vouchers]);
 
   // Annual Totals & Elapsed Months calculation
   const annualStats = useMemo(() => {
@@ -190,6 +208,7 @@ export default function DashboardView({
         weddings,
         expenses,
         locations,
+        giftVouchers: vouchers,
         filter: {
           startDate: start,
           endDate: end,
@@ -365,7 +384,7 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-rose-300">
               {annualStats.pmuRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Trattamenti studio</p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Trattamenti + Buoni PMU</p>
           </div>
         </div>
 
@@ -379,7 +398,7 @@ export default function DashboardView({
             <p className="text-xl sm:text-2xl font-black text-pink-300">
               {annualStats.weddingRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
-            <p className="text-[11px] text-stone-500 mt-0.5">Matrimoni & cerimonie</p>
+            <p className="text-[11px] text-stone-500 mt-0.5">Matrimoni + Buoni Eventi</p>
           </div>
         </div>
       </div>

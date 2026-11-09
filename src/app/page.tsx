@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Appointment, WeddingService, Client, Location, Expense, AppSettings } from '@/types';
+import { Appointment, WeddingService, Client, Location, Expense, AppSettings, GiftVoucher } from '@/types';
 import { DataService } from '@/lib/storage';
 import { syncCalendarAutomatically, deleteCalendarEventSilently } from '@/lib/calendar';
 import PinLock from '@/components/PinLock';
@@ -13,6 +13,7 @@ import DashboardView from '@/components/DashboardView';
 import AppointmentModal from '@/components/AppointmentModal';
 import WeddingModal from '@/components/WeddingModal';
 import SettingsModal from '@/components/SettingsModal';
+import GiftVouchersModal from '@/components/GiftVouchersModal';
 import { AlertTriangle, Trash2, Link as LinkIcon, X } from 'lucide-react';
 
 export default function Home() {
@@ -25,6 +26,7 @@ export default function Home() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [weddings, setWeddings] = useState<WeddingService[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [vouchers, setVouchers] = useState<GiftVoucher[]>([]);
   const [settings, setSettings] = useState<AppSettings>({
     pin_hash: '1234',
     yearly_target: 35000,
@@ -36,6 +38,7 @@ export default function Home() {
   );
   const [selectedClientForPmu, setSelectedClientForPmu] = useState<Client | null>(null);
   const [selectedClientForWedding, setSelectedClientForWedding] = useState<Client | null>(null);
+  const [selectedClientForVoucher, setSelectedClientForVoucher] = useState<Client | null>(null);
 
   // Modals state
   const [isPmuModalOpen, setIsPmuModalOpen] = useState(false);
@@ -43,6 +46,8 @@ export default function Home() {
 
   const [isWeddingModalOpen, setIsWeddingModalOpen] = useState(false);
   const [editingWedding, setEditingWedding] = useState<WeddingService | null>(null);
+
+  const [isGiftVouchersOpen, setIsGiftVouchersOpen] = useState(false);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -79,6 +84,7 @@ export default function Home() {
     setAppointments(DataService.getAppointments());
     setWeddings(DataService.getWeddings());
     setExpenses(DataService.getExpenses());
+    setVouchers(DataService.getGiftVouchers());
     setSettings(DataService.getSettings());
 
     // 2. Background sync with Supabase Cloud
@@ -89,6 +95,7 @@ export default function Home() {
         if (synced.appointments) setAppointments(synced.appointments);
         if (synced.weddings) setWeddings(synced.weddings);
         if (synced.expenses) setExpenses(synced.expenses);
+        if (synced.vouchers) setVouchers(synced.vouchers);
       }
     }).catch(err => {
       console.warn('Sync with Supabase was deferred:', err);
@@ -253,6 +260,34 @@ export default function Home() {
     setExpenses(DataService.getExpenses());
   };
 
+  // Gift Vouchers Handlers
+  const handleSaveGiftVoucher = (voucherData: Omit<GiftVoucher, 'id'>) => {
+    const created = DataService.addGiftVoucher(voucherData);
+    setVouchers(DataService.getGiftVouchers());
+    setClients(DataService.getClients()); // Buyer might have been added to clients
+    setToastMessage(`Buono Regalo di ${created.amount}€ emesso con successo! Ricavi aggiornati.`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleToggleGiftVoucherUsed = (voucher: GiftVoucher) => {
+    const updated: GiftVoucher = {
+      ...voucher,
+      is_used: !voucher.is_used,
+      used_date: !voucher.is_used ? new Date().toISOString().slice(0, 10) : null,
+    };
+    DataService.updateGiftVoucher(updated);
+    setVouchers(DataService.getGiftVouchers());
+    setToastMessage(updated.is_used ? 'Buono contrassegnato come UTILIZZATO.' : 'Buono reimpostato come DA USARE.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeleteGiftVoucher = (id: string) => {
+    DataService.deleteGiftVoucher(id);
+    setVouchers(DataService.getGiftVouchers());
+    setToastMessage('Buono Regalo eliminato.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   // Update Settings
   const handleUpdateSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
@@ -297,6 +332,11 @@ export default function Home() {
             appointments={appointments}
             weddings={weddings}
             locations={locations}
+            activeVouchersCount={vouchers.filter(v => !v.is_used).length}
+            onOpenGiftVouchers={() => {
+              setSelectedClientForVoucher(null);
+              setIsGiftVouchersOpen(true);
+            }}
             onOpenNewPmu={(dayIso) => {
               if (dayIso) setSelectedCalendarDate(dayIso);
               setEditingPmu(null);
@@ -325,6 +365,7 @@ export default function Home() {
             clients={clients}
             appointments={appointments}
             weddings={weddings}
+            vouchers={vouchers}
             onSaveClient={handleSaveClient}
             onDeleteClient={handleDeleteClient}
             onOpenNewAppointmentForClient={client => {
@@ -338,6 +379,10 @@ export default function Home() {
               setEditingWedding(null);
               setSelectedCalendarDate(new Date().toISOString().slice(0, 10));
               setIsWeddingModalOpen(true);
+            }}
+            onOpenNewVoucherForClient={client => {
+              setSelectedClientForVoucher(client);
+              setIsGiftVouchersOpen(true);
             }}
           />
         )}
@@ -356,6 +401,7 @@ export default function Home() {
             weddings={weddings}
             expenses={expenses}
             locations={locations}
+            vouchers={vouchers}
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
             onShowToast={msg => {
@@ -406,6 +452,20 @@ export default function Home() {
         locations={locations}
         onUpdateLocations={setLocations}
         onLockApp={() => setIsAuthenticated(false)}
+      />
+
+      <GiftVouchersModal
+        isOpen={isGiftVouchersOpen}
+        onClose={() => {
+          setIsGiftVouchersOpen(false);
+          setSelectedClientForVoucher(null);
+        }}
+        vouchers={vouchers}
+        clients={clients}
+        onSaveVoucher={handleSaveGiftVoucher}
+        onToggleUsed={handleToggleGiftVoucherUsed}
+        onDeleteVoucher={handleDeleteGiftVoucher}
+        defaultBuyerClient={selectedClientForVoucher}
       />
 
       {/* Linked Delete Confirmation Dialog */}

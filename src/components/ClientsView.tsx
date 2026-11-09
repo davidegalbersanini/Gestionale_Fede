@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Client, Appointment, WeddingService } from '@/types';
+import { Client, Appointment, WeddingService, GiftVoucher } from '@/types';
 import {
   Users,
   Search,
@@ -16,27 +16,32 @@ import {
   Heart,
   DollarSign,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Gift
 } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
   appointments: Appointment[];
   weddings: WeddingService[];
+  vouchers?: GiftVoucher[];
   onSaveClient: (clientData: Partial<Client> & { full_name: string; first_name?: string; last_name?: string }) => void;
   onDeleteClient: (id: string) => void;
   onOpenNewAppointmentForClient: (client: Client) => void;
   onOpenNewWeddingForClient: (client: Client) => void;
+  onOpenNewVoucherForClient?: (client: Client) => void;
 }
 
 export default function ClientsView({
   clients,
   appointments,
   weddings,
+  vouchers = [],
   onSaveClient,
   onDeleteClient,
   onOpenNewAppointmentForClient,
   onOpenNewWeddingForClient,
+  onOpenNewVoucherForClient,
 }: ClientsViewProps) {
   const [search, setSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -63,7 +68,7 @@ export default function ClientsView({
 
   // History for selected client
   const clientHistory = useMemo(() => {
-    if (!selectedClient) return { past: [], upcoming: [], totalSpent: 0, totalCount: 0 };
+    if (!selectedClient) return { past: [], upcoming: [], clientVouchers: [] as GiftVoucher[], totalSpent: 0, totalCount: 0 };
 
     const cName = selectedClient.full_name.trim().toLowerCase();
     const today = new Date().toISOString();
@@ -76,9 +81,18 @@ export default function ClientsView({
       w => w.client_id === selectedClient.id || w.bride_name.trim().toLowerCase() === cName
     );
 
+    const clientVouchers = vouchers.filter(
+      v => v.buyer_id === selectedClient.id || v.buyer_name.trim().toLowerCase() === cName
+    );
+
     const past: any[] = [];
     const upcoming: any[] = [];
     let totalSpent = 0;
+
+    // Vouchers bought also count as spent by this buyer!
+    clientVouchers.forEach(v => {
+      totalSpent += v.amount || 0;
+    });
 
     clientPmus.forEach(p => {
       totalSpent += p.payment || 0;
@@ -105,8 +119,8 @@ export default function ClientsView({
     past.sort((a, b) => b.date.localeCompare(a.date));
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
-    return { past, upcoming, totalSpent, totalCount: past.length + upcoming.length };
-  }, [selectedClient, appointments, weddings]);
+    return { past, upcoming, clientVouchers, totalSpent, totalCount: past.length + upcoming.length };
+  }, [selectedClient, appointments, weddings, vouchers]);
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,20 +282,20 @@ export default function ClientsView({
                 )}
               </div>
 
-              {/* Actions: Book PMU or Event for this client */}
+              {/* Actions: Book PMU, Event or Issue Gift Voucher for this client */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-stone-400 uppercase tracking-wider">
                   Azioni Rapide
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     onClick={() => {
                       onOpenNewAppointmentForClient(selectedClient);
                       setSelectedClient(null);
                     }}
-                    className="py-3 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                   >
-                    <Plus className="w-4 h-4 text-rose-400" />
+                    <Plus className="w-3.5 h-3.5 text-rose-400" />
                     <span>+ Nuovo PMU</span>
                   </button>
 
@@ -290,12 +304,72 @@ export default function ClientsView({
                       onOpenNewWeddingForClient(selectedClient);
                       setSelectedClient(null);
                     }}
-                    className="py-3 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500/40 text-pink-300 text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500/40 text-pink-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                   >
-                    <Heart className="w-4 h-4 text-pink-400" />
+                    <Heart className="w-3.5 h-3.5 text-pink-400" />
                     <span>+ Nuovo Evento</span>
                   </button>
+
+                  {onOpenNewVoucherForClient && (
+                    <button
+                      onClick={() => {
+                        onOpenNewVoucherForClient(selectedClient);
+                        setSelectedClient(null);
+                      }}
+                      className="py-2.5 px-3 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <Gift className="w-3.5 h-3.5 text-amber-400" />
+                      <span>+ Nuovo Buono</span>
+                    </button>
+                  )}
                 </div>
+              </div>
+
+              {/* Buoni Regalo Acquistati da questo cliente */}
+              <div>
+                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Gift className="w-3.5 h-3.5" />
+                  Buoni Regalo Acquistati ({clientHistory.clientVouchers.length})
+                </h4>
+                {clientHistory.clientVouchers.length === 0 ? (
+                  <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
+                    Nessun buono regalo acquistato da questo cliente.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {clientHistory.clientVouchers.map((v, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
+                          v.is_used
+                            ? 'bg-stone-800/40 border-stone-800 text-stone-400'
+                            : 'bg-amber-950/20 border-amber-800/40 text-amber-200'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">
+                              {v.category === 'pmu' ? 'Buono PMU' : 'Buono Evento'}
+                            </span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                                v.is_used
+                                  ? 'bg-stone-800 text-stone-400'
+                                  : 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                              }`}
+                            >
+                              {v.is_used ? 'Utilizzato' : 'Da Usare'}
+                            </span>
+                          </div>
+                          <p className="text-stone-400 text-[11px] mt-0.5">
+                            Acquistato il {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
+                          </p>
+                        </div>
+                        <span className="font-bold text-amber-400 text-sm">{v.amount}€</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Upcoming Scheduled Appointments */}

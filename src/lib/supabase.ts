@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Location, Client, Appointment, WeddingService, Expense, AppSettings } from '@/types';
+import { Location, Client, Appointment, WeddingService, Expense, AppSettings, GiftVoucher } from '@/types';
 
 function getSupabaseConfig() {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -80,13 +80,35 @@ export const CloudSync = {
     if (!supabase) return null;
 
     try {
-      const [locations, clients, appointments, weddings, expenses] = await Promise.all([
+      const [locations, clients, appointments, weddings, expenses, vouchersRes, settingsVouchers] = await Promise.all([
         supabase.from('locations').select('*').then((r: any) => (r.data as Location[]) || []),
         fetchAllRows<Client>(supabase, 'clients', 'created_at'),
         fetchAllRows<Appointment>(supabase, 'appointments', 'appointment_date'),
         fetchAllRows<WeddingService>(supabase, 'wedding_services', 'wedding_date'),
         fetchAllRows<Expense>(supabase, 'expenses', 'date'),
+        (async () => {
+          try {
+            const res = await (supabase.from('gift_vouchers') as any).select('*').order('purchase_date', { ascending: false });
+            if (res.error) return null;
+            return (res.data as GiftVoucher[]) || [];
+          } catch {
+            return null;
+          }
+        })(),
+        (async () => {
+          try {
+            const res = await (supabase.from('settings') as any).select('value').eq('key', 'gift_vouchers').single();
+            if (res.data?.value && Array.isArray(res.data.value)) {
+              return res.data.value as GiftVoucher[];
+            }
+            return null;
+          } catch {
+            return null;
+          }
+        })(),
       ]);
+
+      const vouchers: GiftVoucher[] = vouchersRes !== null ? vouchersRes : (settingsVouchers || []);
 
       return {
         locations,
@@ -94,6 +116,7 @@ export const CloudSync = {
         appointments,
         weddings,
         expenses,
+        vouchers,
       };
     } catch (err) {
       console.warn('CloudSync fetchAll failed, offline or error:', err);
@@ -207,6 +230,74 @@ export const CloudSync = {
       await (supabase.from('locations') as any).delete().eq('id', id);
     } catch (e) {
       console.error('deleteLocation error:', e);
+    }
+  },
+
+  async upsertGiftVoucher(voucher: GiftVoucher, allVouchersFallback?: GiftVoucher[]) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      // 1. Try dedicated table first
+      const res = await (supabase.from('gift_vouchers') as any).upsert(voucher);
+      if (res && res.error) {
+        // Table does not exist in schema yet; use settings table fallback
+        if (allVouchersFallback) {
+          await (supabase.from('settings') as any).upsert({
+            key: 'gift_vouchers',
+            value: allVouchersFallback,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('upsertGiftVoucher error:', e);
+      if (allVouchersFallback) {
+        try {
+          await (supabase.from('settings') as any).upsert({
+            key: 'gift_vouchers',
+            value: allVouchersFallback,
+          });
+        } catch {}
+      }
+    }
+  },
+
+  async deleteGiftVoucher(id: string, allVouchersFallback?: GiftVoucher[]) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      const res = await (supabase.from('gift_vouchers') as any).delete().eq('id', id);
+      if (res && res.error) {
+        if (allVouchersFallback) {
+          await (supabase.from('settings') as any).upsert({
+            key: 'gift_vouchers',
+            value: allVouchersFallback,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('deleteGiftVoucher error:', e);
+      if (allVouchersFallback) {
+        try {
+          await (supabase.from('settings') as any).upsert({
+            key: 'gift_vouchers',
+            value: allVouchersFallback,
+          });
+        } catch {}
+      }
+    }
+  },
+
+  async syncAllGiftVouchers(vouchers: GiftVoucher[]) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      // Always keep settings row synced as safety backup
+      await (supabase.from('settings') as any).upsert({
+        key: 'gift_vouchers',
+        value: vouchers,
+      });
+    } catch (e) {
+      console.error('syncAllGiftVouchers error:', e);
     }
   }
 };

@@ -26338,5 +26338,6 @@
     "pin_hash": "1234",
     "monthly_target": 2700.0,
     "yearly_target": 35000.0
-  }
+  },
+  "gift_vouchers": []
 }

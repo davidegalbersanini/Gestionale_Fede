@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { Appointment, WeddingService, Expense, Location } from '@/types';
+import { Appointment, WeddingService, Expense, Location, GiftVoucher } from '@/types';
 
 export interface ExportFilterOptions {
   startDate?: string; // YYYY-MM-DD
@@ -22,9 +22,10 @@ export async function exportAppointmentsToExcel(params: {
   weddings: WeddingService[];
   expenses: Expense[];
   locations: Location[];
+  giftVouchers?: GiftVoucher[];
   filter: ExportFilterOptions;
 }): Promise<ExportExcelResult> {
-  const { appointments, weddings, expenses, locations, filter } = params;
+  const { appointments, weddings, expenses, locations, giftVouchers = [], filter } = params;
 
   const locMap = new Map<string, Location>();
   locations.forEach(l => locMap.set(l.id, l));
@@ -41,11 +42,13 @@ export async function exportAppointmentsToExcel(params: {
   const filteredApps = appointments.filter(a => isWithinRange(a.appointment_date));
   const filteredWeddings = weddings.filter(w => isWithinRange(w.wedding_date));
   const filteredExpenses = expenses.filter(e => isWithinRange(e.date));
+  const filteredVouchers = giftVouchers.filter(v => isWithinRange(v.purchase_date));
 
   // Sort chronological
   filteredApps.sort((a, b) => a.appointment_date.localeCompare(b.appointment_date));
   filteredWeddings.sort((a, b) => a.wedding_date.localeCompare(b.wedding_date));
   filteredExpenses.sort((a, b) => a.date.localeCompare(b.date));
+  filteredVouchers.sort((a, b) => a.purchase_date.localeCompare(b.purchase_date));
 
   // --- SHEET 1: PMU & Trattamenti ---
   const sheet1Data = filteredApps.map(a => {
@@ -93,11 +96,18 @@ export async function exportAppointmentsToExcel(params: {
   });
 
   // --- SHEET 3: Riepilogo & Metriche Economiche ---
-  const totalPmuIncome = filteredApps.reduce((acc, a) => acc + (Number(a.payment) || 0) + (Number(a.balance) || 0), 0);
-  const totalWeddingsIncome = filteredWeddings.reduce((acc, w) => {
+  const pmuAppsIncome = filteredApps.reduce((acc, a) => acc + (Number(a.payment) || 0) + (Number(a.balance) || 0), 0);
+  const weddingsAppsIncome = filteredWeddings.reduce((acc, w) => {
     const tot = (Number(w.trial_deposit) || 0) + (Number(w.wedding_balance) || 0);
     return acc + (tot > 0 ? tot : (Number(w.total_price) || 0));
   }, 0);
+
+  const pmuVouchersIncome = filteredVouchers.filter(v => v.category === 'pmu').reduce((acc, v) => acc + (Number(v.amount) || 0), 0);
+  const weddingVouchersIncome = filteredVouchers.filter(v => v.category === 'evento').reduce((acc, v) => acc + (Number(v.amount) || 0), 0);
+  const totalVouchersIncome = pmuVouchersIncome + weddingVouchersIncome;
+
+  const totalPmuIncome = pmuAppsIncome + pmuVouchersIncome;
+  const totalWeddingsIncome = weddingsAppsIncome + weddingVouchersIncome;
   const totalRevenue = totalPmuIncome + totalWeddingsIncome;
   const totalExpensesAmount = filteredExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
   const netEarnings = totalRevenue - totalExpensesAmount;
@@ -120,6 +130,17 @@ export async function exportAppointmentsToExcel(params: {
     monthlyMap.set(m, curr);
   });
 
+  filteredVouchers.forEach(v => {
+    const m = v.purchase_date.slice(0, 7);
+    const curr = monthlyMap.get(m) || { pmu: 0, weddings: 0, expenses: 0 };
+    if (v.category === 'pmu') {
+      curr.pmu += Number(v.amount) || 0;
+    } else {
+      curr.weddings += Number(v.amount) || 0;
+    }
+    monthlyMap.set(m, curr);
+  });
+
   filteredExpenses.forEach(e => {
     const m = e.date.slice(0, 7);
     const curr = monthlyMap.get(m) || { pmu: 0, weddings: 0, expenses: 0 };
@@ -132,12 +153,13 @@ export async function exportAppointmentsToExcel(params: {
   const summaryKPIs = [
     { 'METRICA': 'Periodo Selezionato', 'VALORE': filter.periodLabel },
     { 'METRICA': 'Fatturato Totale Complessivo (€)', 'VALORE': totalRevenue.toFixed(2) },
-    { 'METRICA': 'Fatturato da PMU & Trattamenti (€)', 'VALORE': totalPmuIncome.toFixed(2) },
-    { 'METRICA': 'Fatturato da Eventi & Cerimonie (€)', 'VALORE': totalWeddingsIncome.toFixed(2) },
+    { 'METRICA': 'Fatturato da PMU & Trattamenti (€)', 'VALORE': `${totalPmuIncome.toFixed(2)} (inclusi ${pmuVouchersIncome.toFixed(2)}€ da buoni)` },
+    { 'METRICA': 'Fatturato da Eventi & Cerimonie (€)', 'VALORE': `${totalWeddingsIncome.toFixed(2)} (inclusi ${weddingVouchersIncome.toFixed(2)}€ da buoni)` },
     { 'METRICA': 'Spese Totali Sostenute (€)', 'VALORE': totalExpensesAmount.toFixed(2) },
     { 'METRICA': 'Guadagno Netto Effettivo (€)', 'VALORE': netEarnings.toFixed(2) },
     { 'METRICA': 'Numero Trattamenti PMU / Generici', 'VALORE': filteredApps.length },
     { 'METRICA': 'Numero Servizi Eventi / Sposa', 'VALORE': filteredWeddings.length },
+    { 'METRICA': 'Numero Buoni Regalo Emessi', 'VALORE': `${filteredVouchers.length} (per un totale di ${totalVouchersIncome.toFixed(2)}€)` },
     { 'METRICA': 'Totale Appuntamenti Gestiti', 'VALORE': filteredApps.length + filteredWeddings.length },
     { 'METRICA': '', 'VALORE': '' },
     { 'METRICA': '--- DETTAGLIO MESE PER MESE ---', 'VALORE': '' }
@@ -155,6 +177,16 @@ export async function exportAppointmentsToExcel(params: {
 
   const sheet3Data = [...summaryKPIs, ...monthlyRows];
 
+  // --- SHEET 4: Buoni Regalo ---
+  const sheet4Data = filteredVouchers.map(v => ({
+    'Data Acquisto': v.purchase_date,
+    'Categoria': v.category === 'pmu' ? 'PMU & Trattamenti' : 'Evento / Cerimonia',
+    'Acquirente': v.buyer_name,
+    'Importo (€)': Number(v.amount) || 0,
+    'Stato': v.is_used ? 'Utilizzato' : 'Da Usare',
+    'Note': v.notes || '',
+  }));
+
   // Create workbook
   const wb = XLSX.utils.book_new();
 
@@ -162,6 +194,7 @@ export async function exportAppointmentsToExcel(params: {
   const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
   const ws2 = XLSX.utils.json_to_sheet(sheet2Data);
   const ws3 = XLSX.utils.json_to_sheet(sheet3Data);
+  const ws4 = XLSX.utils.json_to_sheet(sheet4Data.length > 0 ? sheet4Data : [{ 'Info': 'Nessun buono regalo nel periodo selezionato' }]);
 
   // Set nice column widths
   ws1['!cols'] = [
@@ -179,10 +212,15 @@ export async function exportAppointmentsToExcel(params: {
     { wch: 38 }, { wch: 80 }
   ];
 
+  ws4['!cols'] = [
+    { wch: 14 }, { wch: 22 }, { wch: 26 }, { wch: 14 }, { wch: 14 }, { wch: 35 }
+  ];
+
   // Append sheets
   XLSX.utils.book_append_sheet(wb, ws1, 'PMU & Trattamenti');
   XLSX.utils.book_append_sheet(wb, ws2, 'Eventi & Cerimonie');
   XLSX.utils.book_append_sheet(wb, ws3, 'Riepilogo & Metriche');
+  XLSX.utils.book_append_sheet(wb, ws4, 'Buoni Regalo');
 
   // Generate filename with timestamp (date + hour-minute)
   const now = new Date();

@@ -16,7 +16,8 @@ import {
   ExternalLink,
   CheckCircle2,
   AlertCircle,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Gift
 } from 'lucide-react';
 import {
   format,
@@ -37,6 +38,8 @@ interface AgendaViewProps {
   appointments: Appointment[];
   weddings: WeddingService[];
   locations: Location[];
+  activeVouchersCount?: number;
+  onOpenGiftVouchers?: () => void;
   onOpenNewPmu: (defaultDate?: string) => void;
   onOpenNewWedding: (defaultDate?: string) => void;
   onSelectPmu: (app: Appointment) => void;
@@ -47,6 +50,8 @@ export default function AgendaView({
   appointments,
   weddings,
   locations,
+  activeVouchersCount = 0,
+  onOpenGiftVouchers,
   onOpenNewPmu,
   onOpenNewWedding,
   onSelectPmu,
@@ -219,8 +224,24 @@ export default function AgendaView({
           </p>
         </div>
 
-        {/* The TWO distinct buttons: pass the selected day on the calendar! */}
-        <div className="flex items-center gap-2">
+        {/* The Action Buttons: Nuovo PMU, Nuovo Evento, and Buoni Regalo */}
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {onOpenGiftVouchers && (
+            <button
+              onClick={onOpenGiftVouchers}
+              className="relative px-3.5 py-2.5 rounded-2xl bg-stone-800 hover:bg-stone-700/80 border border-stone-700/80 text-amber-300 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              title="Gestione Buoni Regalo"
+            >
+              <Gift className="w-4 h-4 text-amber-400" />
+              <span>Buoni</span>
+              {activeVouchersCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 text-[10px] font-black">
+                  {activeVouchersCount}
+                </span>
+              )}
+            </button>
+          )}
+
           <button
             onClick={() => onOpenNewPmu(selectedDayIso)}
             className="flex-1 sm:flex-none px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-2 active:scale-95 transition-all"

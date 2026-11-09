@@ -42,6 +42,7 @@ export interface Appointment {
   notes?: string;
   sync_google_calendar?: boolean;
   google_calendar_event_id?: string;
+  used_gift_voucher?: boolean;
   status: AppointmentStatus;
 }
 
@@ -62,6 +63,7 @@ export interface WeddingService {
   notes?: string;
   sync_google_calendar?: boolean;
   google_calendar_event_id?: string;
+  used_gift_voucher?: boolean;
   status: AppointmentStatus;
 }
 
@@ -80,6 +82,22 @@ export interface Expense {
   item: string;
   amount: number;
   notes?: string;
+}
+
+export type GiftVoucherCategory = 'pmu' | 'evento';
+
+export interface GiftVoucher {
+  id: string;
+  buyer_id?: string;
+  buyer_name: string;
+  amount: number;
+  category: GiftVoucherCategory;
+  purchase_date: string; // YYYY-MM-DD
+  is_used: boolean;
+  used_date?: string | null;
+  notes?: string;
+  payment_method?: string;
+  created_at?: string;
 }
 
 export interface AppSettings {

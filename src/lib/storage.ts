@@ -1,4 +1,4 @@
-import { Location, Client, Appointment, WeddingService, ExtraMakeup, Expense, AppSettings } from '@/types';
+import { Location, Client, Appointment, WeddingService, ExtraMakeup, Expense, AppSettings, GiftVoucher } from '@/types';
 import initialData from '@/data/initialData.json';
 import { CloudSync } from '@/lib/supabase';
 
@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   WEDDINGS: 'fede_weddings',
   EXTRA_MAKEUPS: 'fede_extra_makeups',
   EXPENSES: 'fede_expenses',
+  GIFT_VOUCHERS: 'fede_gift_vouchers',
   SETTINGS: 'fede_settings',
   PIN_AUTH: 'fede_pin_auth',
 };
@@ -223,6 +224,51 @@ export const DataService = {
     CloudSync.deleteExpense(id);
   },
 
+  getGiftVouchers(): GiftVoucher[] {
+    return getStorage<GiftVoucher[]>(STORAGE_KEYS.GIFT_VOUCHERS, (initialData as any).gift_vouchers || []);
+  },
+  saveGiftVouchers(vouchers: GiftVoucher[]): void {
+    setStorage(STORAGE_KEYS.GIFT_VOUCHERS, vouchers);
+  },
+  addGiftVoucher(voucher: Omit<GiftVoucher, 'id'>): GiftVoucher {
+    const vouchers = this.getGiftVouchers();
+    const newVoucher: GiftVoucher = {
+      ...voucher,
+      id: `voucher-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      created_at: new Date().toISOString(),
+    };
+    vouchers.unshift(newVoucher);
+    this.saveGiftVouchers(vouchers);
+    CloudSync.upsertGiftVoucher(newVoucher, vouchers);
+    CloudSync.syncAllGiftVouchers(vouchers);
+
+    // If buyer has a name, make sure client exists in Rubrica
+    if (newVoucher.buyer_name) {
+      this.addOrUpdateClient({
+        id: newVoucher.buyer_id,
+        full_name: newVoucher.buyer_name,
+      });
+    }
+
+    return newVoucher;
+  },
+  updateGiftVoucher(voucher: GiftVoucher): void {
+    const vouchers = this.getGiftVouchers();
+    const idx = vouchers.findIndex(v => v.id === voucher.id);
+    if (idx >= 0) {
+      vouchers[idx] = voucher;
+      this.saveGiftVouchers(vouchers);
+      CloudSync.upsertGiftVoucher(voucher, vouchers);
+      CloudSync.syncAllGiftVouchers(vouchers);
+    }
+  },
+  deleteGiftVoucher(id: string): void {
+    const vouchers = this.getGiftVouchers().filter(v => v.id !== id);
+    this.saveGiftVouchers(vouchers);
+    CloudSync.deleteGiftVoucher(id, vouchers);
+    CloudSync.syncAllGiftVouchers(vouchers);
+  },
+
   getSettings(): AppSettings {
     return getStorage<AppSettings>(STORAGE_KEYS.SETTINGS, initialData.settings as AppSettings);
   },
@@ -236,6 +282,7 @@ export const DataService = {
     appointments?: Appointment[];
     weddings?: WeddingService[];
     expenses?: Expense[];
+    vouchers?: GiftVoucher[];
   } | null> {
     const cloud = await CloudSync.fetchAll();
     if (!cloud) return null;
@@ -255,6 +302,9 @@ export const DataService = {
     if (cloud.expenses && cloud.expenses.length > 0) {
       this.saveExpenses(cloud.expenses);
     }
+    if (cloud.vouchers && cloud.vouchers.length > 0) {
+      this.saveGiftVouchers(cloud.vouchers);
+    }
 
     return {
       locations: this.getLocations(),
@@ -262,6 +312,7 @@ export const DataService = {
       appointments: this.getAppointments(),
       weddings: this.getWeddings(),
       expenses: this.getExpenses(),
+      vouchers: this.getGiftVouchers(),
     };
   },
 
@@ -273,6 +324,7 @@ export const DataService = {
       appointments: this.getAppointments(),
       weddings: this.getWeddings(),
       expenses: this.getExpenses(),
+      gift_vouchers: this.getGiftVouchers(),
       settings: this.getSettings(),
       exportDate: new Date().toISOString(),
     };

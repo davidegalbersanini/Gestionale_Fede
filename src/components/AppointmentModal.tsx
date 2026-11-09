@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Appointment, Client, Location } from '@/types';
 import { syncCalendarAutomatically } from '@/lib/calendar';
-import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Sparkles, ExternalLink } from 'lucide-react';
+import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Sparkles, ExternalLink, Gift } from 'lucide-react';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -44,6 +44,7 @@ export default function AppointmentModal({
   const [touchUpEndTime, setTouchUpEndTime] = useState('11:30');
   const [createTouchUpFollowup, setCreateTouchUpFollowup] = useState(true);
   const [notes, setNotes] = useState('');
+  const [usedGiftVoucher, setUsedGiftVoucher] = useState(false);
   const [syncGoogleCalendar, setSyncGoogleCalendar] = useState(true);
 
   // Helper to add minutes/hours to HH:mm string
@@ -99,6 +100,7 @@ export default function AppointmentModal({
       setTouchUpTime(initialAppointment.touch_up_time || '10:00');
       setTouchUpEndTime(initialAppointment.touch_up_end_time || '11:30');
       setNotes(initialAppointment.notes || '');
+      setUsedGiftVoucher(Boolean(initialAppointment.used_gift_voucher));
       setSyncGoogleCalendar(initialAppointment.sync_google_calendar !== false);
     } else {
       setCategory('pmu');
@@ -121,6 +123,7 @@ export default function AppointmentModal({
       setTouchUpEndTime('11:30');
       setCreateTouchUpFollowup(true);
       setNotes('');
+      setUsedGiftVoucher(false);
       setSyncGoogleCalendar(true); // Default checked as requested
     }
   }, [initialAppointment, locations, defaultDate, defaultClient]);
@@ -157,6 +160,7 @@ export default function AppointmentModal({
       touch_up_time: touchUpDate ? touchUpTime : undefined,
       touch_up_end_time: touchUpDate ? touchUpEndTime : undefined,
       notes: notes.trim(),
+      used_gift_voucher: usedGiftVoucher,
       sync_google_calendar: syncGoogleCalendar,
       status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
     };
@@ -433,6 +437,27 @@ export default function AppointmentModal({
               <span className="text-base font-black text-emerald-400 bg-emerald-950/40 px-3 py-1 rounded-xl border border-emerald-800/50">
                 {totalCalculated.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
               </span>
+            </div>
+
+            {/* Buono Regalo Checkbox */}
+            <div className="pt-2 border-t border-stone-700/60">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={usedGiftVoucher}
+                  onChange={e => setUsedGiftVoucher(e.target.checked)}
+                  className="w-4 h-4 rounded border-stone-600 bg-stone-900 text-amber-500 focus:ring-0 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <Gift className="w-3.5 h-3.5 text-amber-400" />
+                  È stato utilizzato un Buono Regalo
+                </span>
+              </label>
+              {usedGiftVoucher && (
+                <p className="text-[11px] text-stone-400 mt-1 pl-6 italic">
+                  Se il cliente paga una differenza, inseriscila nell&apos;incasso qui sopra. I dettagli del buono puoi scriverli nel campo Note.
+                </p>
+              )}
             </div>
           </div>
 

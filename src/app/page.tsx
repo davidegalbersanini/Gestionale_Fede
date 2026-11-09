@@ -511,7 +511,6 @@ export default function Home() {
         vouchers={vouchers}
         clients={clients}
         onSaveVoucher={handleSaveGiftVoucher}
-        onToggleUsed={handleToggleGiftVoucherUsed}
         onDeleteVoucher={handleDeleteGiftVoucher}
         defaultBuyerClient={selectedClientForVoucher}
       />

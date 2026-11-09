@@ -25,8 +25,6 @@ interface GiftVouchersModalProps {
   vouchers: GiftVoucher[];
   clients: Client[];
   onSaveVoucher: (voucherData: Omit<GiftVoucher, 'id'>) => void;
-  onToggleUsed: (voucher: GiftVoucher) => void;
-  onUpdateRemainingAmount?: (voucher: GiftVoucher, newRemaining: number) => void;
   onDeleteVoucher: (id: string) => void;
   defaultBuyerClient?: Client | null;
 }
@@ -37,8 +35,6 @@ export default function GiftVouchersModal({
   vouchers,
   clients,
   onSaveVoucher,
-  onToggleUsed,
-  onUpdateRemainingAmount,
   onDeleteVoucher,
   defaultBuyerClient,
 }: GiftVouchersModalProps) {
@@ -59,10 +55,6 @@ export default function GiftVouchersModal({
   const [amount, setAmount] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
-
-  // Editing remaining amount modal/inline state
-  const [editingRemainingId, setEditingRemainingId] = useState<string | null>(null);
-  const [editingRemainingValue, setEditingRemainingValue] = useState<string>('');
 
   // Delete confirm state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -168,29 +160,6 @@ export default function GiftVouchersModal({
 
     resetForm();
     setView('list');
-  };
-
-  const handleSaveRemaining = (v: GiftVoucher) => {
-    const parsed = parseFloat(editingRemainingValue);
-    if (isNaN(parsed) || parsed < 0) {
-      alert('Inserisci un valore residuo valido.');
-      return;
-    }
-    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
-    const finalRem = Math.min(parsed, initVal);
-
-    if (onUpdateRemainingAmount) {
-      onUpdateRemainingAmount(v, finalRem);
-    } else {
-      const updated: GiftVoucher = {
-        ...v,
-        remaining_amount: finalRem,
-        is_used: finalRem <= 0,
-        used_date: finalRem <= 0 ? new Date().toISOString().slice(0, 10) : null,
-      };
-      onToggleUsed(updated);
-    }
-    setEditingRemainingId(null);
   };
 
   return (
@@ -489,7 +458,6 @@ export default function GiftVouchersModal({
                     const isFullyUsed = remVal <= 0;
                     const isPartial = remVal > 0 && remVal < initVal;
                     const isConfirmingDelete = deleteConfirmId === voucher.id;
-                    const isEditingRemaining = editingRemainingId === voucher.id;
 
                     return (
                       <div
@@ -551,90 +519,53 @@ export default function GiftVouchersModal({
                             )}
                           </div>
 
-                          {/* Right: Amounts & Quick Toggle */}
-                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          {/* Right: Amounts & Status */}
+                          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                             {/* Amounts display */}
                             <div className="text-right">
                               <span className="text-lg sm:text-xl font-black text-amber-300 tracking-tight">
                                 {remVal.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                               </span>
-                              {remVal < initVal && (
+                              {remVal < initVal ? (
                                 <p className="text-[11px] text-stone-400">
                                   su {initVal.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-emerald-400 font-medium">
+                                  Intero
                                 </p>
                               )}
                             </div>
 
-                            {/* Toggle Utilizzato / Riapri */}
-                            <button
-                              type="button"
-                              onClick={() => onToggleUsed(voucher)}
-                              className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
                                 isFullyUsed
-                                  ? 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
-                                  : 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300 shadow-sm hover:bg-emerald-900/70'
+                                  ? 'bg-stone-800 text-stone-400'
+                                  : isPartial
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/50'
                               }`}
                             >
                               {isFullyUsed ? (
                                 <>
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-stone-500" />
+                                  <CheckCircle2 className="w-3 h-3 text-stone-500" />
                                   <span>Esaurito</span>
                                 </>
                               ) : (
                                 <>
-                                  <Circle className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/30" />
-                                  <span>Segna Esaurito</span>
+                                  <Circle className="w-2.5 h-2.5 text-emerald-400 fill-emerald-400" />
+                                  <span>{isPartial ? 'In uso' : 'Attivo'}</span>
                                 </>
                               )}
-                            </button>
+                            </span>
                           </div>
                         </div>
 
-                        {/* Inline editor for Remaining Amount */}
-                        {isEditingRemaining ? (
-                          <div className="mt-3 p-3 bg-stone-900 rounded-xl border border-stone-700 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-stone-300">Nuovo valore residuo:</span>
-                              <input
-                                type="number"
-                                step="any"
-                                value={editingRemainingValue}
-                                onChange={e => setEditingRemainingValue(e.target.value)}
-                                className="w-24 bg-stone-800 border border-stone-600 rounded-lg px-2 py-1 text-white text-xs font-bold"
-                              />
-                              <span className="text-xs text-stone-400">€ (max {initVal}€)</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleSaveRemaining(voucher)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold"
-                              >
-                                Salva
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingRemainingId(null)}
-                                className="px-2 py-1 rounded-lg bg-stone-800 text-stone-400 text-xs"
-                              >
-                                Annulla
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
-
                         {/* Bottom Actions Bar */}
                         <div className="mt-3 pt-2.5 border-t border-stone-800/80 flex items-center justify-between text-xs text-stone-500">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingRemainingId(voucher.id);
-                              setEditingRemainingValue(String(remVal));
-                            }}
-                            className="text-[11px] text-amber-400 hover:text-amber-300 underline font-medium"
-                          >
-                            Modifica residuo manuale
-                          </button>
+                          <span className="text-[11px] text-stone-500 italic">
+                            Residuo scalato automaticamente durante gli appuntamenti
+                          </span>
 
                           {isConfirmingDelete ? (
                             <div className="flex items-center gap-2">

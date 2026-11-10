@@ -15,7 +15,8 @@ export default function ExpensesView({
   onAddExpense,
   onDeleteExpense,
 }: ExpensesViewProps) {
-  const [selectedYear, setSelectedYear] = useState<string>('2024');
+  const currentYearStr = String(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [isAddingExpense, setIsAddingExpense] = useState(false);

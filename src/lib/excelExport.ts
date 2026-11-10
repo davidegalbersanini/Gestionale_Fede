@@ -237,10 +237,7 @@ export async function exportAppointmentsToExcel(params: {
   const cleanFilter = filter.periodLabel.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
   const fileName = `Gestionale_Fede_Report_${cleanFilter}_${dateStr}_${timeStr}.xlsx`;
 
-  // Write and trigger download in browser
-  XLSX.writeFile(wb, fileName);
-
-  // Upload to Google Drive
+  // Upload to Google Drive (solo Drive, nessun salvataggio locale nel browser)
   try {
     const fileBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
     const res = await fetch('/api/drive/upload', {
@@ -252,7 +249,7 @@ export async function exportAppointmentsToExcel(params: {
     const data = await res.json();
     return {
       fileName,
-      localSuccess: true,
+      localSuccess: false,
       driveSuccess: data.success === true,
       driveFileId: data.fileId,
       driveWebViewLink: data.webViewLink,
@@ -262,7 +259,7 @@ export async function exportAppointmentsToExcel(params: {
   } catch (err: any) {
     return {
       fileName,
-      localSuccess: true,
+      localSuccess: false,
       driveSuccess: false,
       driveError: err.message,
     };

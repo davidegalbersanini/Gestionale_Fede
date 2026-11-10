@@ -16,6 +16,7 @@ import {
   Target,
   FileSpreadsheet,
   Download,
+  UploadCloud,
   RefreshCw,
   Gift,
   X
@@ -217,19 +218,19 @@ export default function DashboardView({
 
       if (result.driveSuccess) {
         if (onShowToast) {
-          onShowToast('File Excel salvato sul dispositivo e caricato con successo su Google Drive!');
+          onShowToast('Report Excel caricato con successo direttamente su Google Drive!');
         }
       } else if (result.scopeMissing) {
         if (onShowToast) {
-          onShowToast('File salvato in locale! Riconnetti l\'Account Google nelle Impostazioni per concedere i permessi Drive.');
+          onShowToast('Caricamento non riuscito: ricollega l\'Account Google nelle Impostazioni per concedere i permessi Drive.');
         }
       } else if (result.driveError?.includes('Account Google non collegato')) {
         if (onShowToast) {
-          onShowToast('File salvato sul dispositivo. (Account Google non collegato per Drive).');
+          onShowToast('Errore: collega prima il tuo Account Google nelle Impostazioni per caricare il file su Drive.');
         }
       } else {
         if (onShowToast) {
-          onShowToast('File salvato sul dispositivo. Nota: caricamento su Google Drive non riuscito.');
+          onShowToast(`Caricamento su Drive non riuscito: ${result.driveError || 'Verifica la connessione Google'}`);
         }
       }
     } catch (err: any) {
@@ -556,7 +557,7 @@ export default function DashboardView({
             <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
               <div className="flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">Esporta Report Excel (.xlsx)</h3>
+                <h3 className="text-base font-bold text-white">Esporta Report su Google Drive</h3>
               </div>
               <button
                 onClick={() => setIsExcelModalOpen(false)}
@@ -651,12 +652,12 @@ export default function DashboardView({
                   {isExporting ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Esportazione...</span>
+                      <span>Caricamento su Drive...</span>
                     </>
                   ) : (
                     <>
-                      <Download className="w-4 h-4" />
-                      <span>Esporta</span>
+                      <UploadCloud className="w-4 h-4" />
+                      <span>Carica su Drive</span>
                     </>
                   )}
                 </button>

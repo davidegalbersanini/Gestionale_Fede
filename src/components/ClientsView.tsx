@@ -18,7 +18,9 @@ import {
   DollarSign,
   Trash2,
   AlertCircle,
-  Gift
+  Gift,
+  Pencil,
+  Check
 } from 'lucide-react';
 
 interface ClientsViewProps {
@@ -53,6 +55,60 @@ export default function ClientsView({
   const [newPhone, setNewPhone] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+
+  // Edit Client state
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  const openEditModal = (client: Client) => {
+    let fName = client.first_name || '';
+    let lName = client.last_name || '';
+    if (!fName && client.full_name) {
+      const parts = client.full_name.trim().split(' ');
+      fName = parts[0] || '';
+      lName = parts.slice(1).join(' ') || '';
+    }
+    setEditFirstName(fName);
+    setEditLastName(lName === '-' ? '' : lName);
+    setEditPhone(client.phone || '');
+    setEditNotes(client.notes || '');
+    setIsEditingClient(true);
+  };
+
+  const handleUpdateClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+
+    const cleanFirst = editFirstName.trim();
+    const cleanLast = editLastName.trim();
+    if (!cleanFirst && !cleanLast) return;
+
+    const full_name = cleanLast ? `${cleanFirst} ${cleanLast}`.trim() : cleanFirst;
+
+    onSaveClient({
+      id: selectedClient.id,
+      first_name: cleanFirst || cleanLast,
+      last_name: cleanLast || '-',
+      full_name,
+      phone: editPhone.trim(),
+      notes: editNotes.trim(),
+    });
+
+    // Update locally selected client to reflect changes immediately
+    setSelectedClient(prev => prev ? {
+      ...prev,
+      first_name: cleanFirst || cleanLast,
+      last_name: cleanLast || '-',
+      full_name,
+      phone: editPhone.trim(),
+      notes: editNotes.trim(),
+    } : null);
+
+    setIsEditingClient(false);
+  };
 
   // Filter and sort clients alphabetically by full_name (A -> Z)
   const filteredClients = useMemo(() => {
@@ -273,12 +329,22 @@ export default function ClientsView({
           <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
             {/* Header */}
             <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 font-black text-lg">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 font-black text-lg flex-shrink-0">
                   {selectedClient.full_name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">{selectedClient.full_name}</h2>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-white truncate">{selectedClient.full_name}</h2>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(selectedClient)}
+                      className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white transition-colors flex-shrink-0"
+                      title="Modifica anagrafica cliente"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                   <p className="text-stone-400 text-xs">
                     Totale speso: <span className="font-bold text-emerald-400">{clientHistory.totalSpent}€</span>
                   </p>
@@ -289,7 +355,7 @@ export default function ClientsView({
                   setSelectedClient(null);
                   setDeleteErrorMessage(null);
                 }}
-                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400"
+                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 flex-shrink-0 ml-2"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -335,9 +401,34 @@ export default function ClientsView({
                     </a>
                   </>
                 ) : (
-                  <div className="text-xs text-stone-500 italic">Nessun numero di telefono inserito</div>
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(selectedClient)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700/60 text-stone-400 hover:text-white text-xs flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Aggiungi numero di telefono</span>
+                  </button>
                 )}
               </div>
+
+              {/* Client Notes / Note anagrafica */}
+              {selectedClient.notes ? (
+                <div className="p-3.5 rounded-2xl bg-stone-800/50 border border-stone-700/60 text-xs">
+                  <div className="flex items-center justify-between text-stone-400 mb-1">
+                    <span className="font-semibold uppercase tracking-wider text-[10px]">Note Cliente</span>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(selectedClient)}
+                      className="text-stone-400 hover:text-white"
+                      title="Modifica note"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <p className="text-stone-200 whitespace-pre-wrap leading-relaxed">{selectedClient.notes}</p>
+                </div>
+              ) : null}
 
               {/* Actions: Book PMU, Event or Issue Gift Voucher for this client */}
               <div className="grid grid-cols-3 gap-2">
@@ -669,6 +760,96 @@ export default function ClientsView({
                   className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-950/40"
                 >
                   Salva Cliente
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Client Modal */}
+      {isEditingClient && selectedClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-rose-500" />
+                <h3 className="text-base font-bold text-white">Modifica Cliente</h3>
+              </div>
+              <button onClick={() => setIsEditingClient(false)} className="text-stone-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateClient} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                    Nome *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="es. Martina"
+                    value={editFirstName}
+                    onChange={e => setEditFirstName(e.target.value)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                    Cognome
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Opzionale"
+                    value={editLastName}
+                    onChange={e => setEditLastName(e.target.value)}
+                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                  Telefono
+                </label>
+                <input
+                  type="tel"
+                  placeholder="es. 340 1234567"
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                  Note
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Preferenze, allergie, pelle..."
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white text-sm"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingClient(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm font-semibold"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-950/40 flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Salva Modifiche</span>
                 </button>
               </div>
             </form>

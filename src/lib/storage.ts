@@ -113,16 +113,60 @@ export const DataService = {
       : clients.findIndex(c => c.full_name.trim().toLowerCase() === computedFullName.toLowerCase());
 
     if (existingIndex >= 0) {
+      const oldClient = clients[existingIndex];
       const updated: Client = {
-        ...clients[existingIndex],
+        ...oldClient,
         ...client,
-        first_name: first || clients[existingIndex].first_name,
-        last_name: last || clients[existingIndex].last_name,
-        full_name: computedFullName || clients[existingIndex].full_name,
+        first_name: first || oldClient.first_name,
+        last_name: last || oldClient.last_name,
+        full_name: computedFullName || oldClient.full_name,
       };
       clients[existingIndex] = updated;
       this.saveClients(clients);
       CloudSync.upsertClient(updated);
+
+      // If full_name changed, cascade to existing appointments and weddings
+      if (oldClient.full_name && updated.full_name && oldClient.full_name !== updated.full_name) {
+        const apps = this.getAppointments();
+        let appsChanged = false;
+        apps.forEach(a => {
+          if (a.client_id === updated.id || a.client_name === oldClient.full_name) {
+            a.client_name = updated.full_name;
+            if (!a.client_id) a.client_id = updated.id;
+            appsChanged = true;
+            CloudSync.upsertAppointment(a);
+          }
+        });
+        if (appsChanged) this.saveAppointments(apps);
+
+        const weddings = this.getWeddings();
+        let weddingsChanged = false;
+        weddings.forEach(w => {
+          if (w.client_id === updated.id || w.bride_name === oldClient.full_name) {
+            w.bride_name = updated.full_name;
+            if (!w.client_id) w.client_id = updated.id;
+            weddingsChanged = true;
+            CloudSync.upsertWedding(w);
+          }
+        });
+        if (weddingsChanged) this.saveWeddings(weddings);
+
+        const vouchers = this.getGiftVouchers();
+        let vouchersChanged = false;
+        vouchers.forEach(v => {
+          if (v.buyer_id === updated.id || v.buyer_name === oldClient.full_name) {
+            v.buyer_name = updated.full_name;
+            vouchersChanged = true;
+          }
+          if (v.recipient_id === updated.id || v.recipient_name === oldClient.full_name) {
+            v.recipient_name = updated.full_name;
+            vouchersChanged = true;
+          }
+          if (vouchersChanged) CloudSync.upsertGiftVoucher(v);
+        });
+        if (vouchersChanged) this.saveGiftVouchers(vouchers);
+      }
+
       return updated;
     } else {
       const newClient: Client = {

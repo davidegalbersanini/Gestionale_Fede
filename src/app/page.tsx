@@ -290,6 +290,9 @@ export default function Home() {
   const handleSaveClient = (clientData: Partial<Client> & { full_name: string; first_name?: string; last_name?: string }) => {
     DataService.addOrUpdateClient(clientData);
     setClients(DataService.getClients());
+    setAppointments(DataService.getAppointments());
+    setWeddings(DataService.getWeddings());
+    setVouchers(DataService.getGiftVouchers());
   };
 
   const handleDeleteClient = (id: string) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Appointment, Client, Location, GiftVoucher } from '@/types';
+import { Appointment, Client, Location, GiftVoucher, ServicePrice } from '@/types';
 import { syncCalendarAutomatically } from '@/lib/calendar';
 import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Sparkles, ExternalLink, Gift, Check } from 'lucide-react';
 
@@ -13,6 +13,7 @@ interface AppointmentModalProps {
   initialAppointment?: Appointment | null;
   clients: Client[];
   locations: Location[];
+  servicePrices?: ServicePrice[];
   vouchers?: GiftVoucher[];
   defaultDate?: string;
   defaultClient?: Client | null;
@@ -26,6 +27,7 @@ export default function AppointmentModal({
   initialAppointment,
   clients,
   locations,
+  servicePrices = [],
   vouchers = [],
   defaultDate,
   defaultClient,
@@ -296,9 +298,16 @@ export default function AppointmentModal({
 
           {/* Trattamento / Servizio PMU */}
           <div>
-            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Trattamento
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider">
+                Trattamento *
+              </label>
+              {servicePrices.filter(sp => sp.location_id === locationId).length > 0 && (
+                <span className="text-[10px] text-stone-400">
+                  {servicePrices.filter(sp => sp.location_id === locationId).length} dal listino
+                </span>
+              )}
+            </div>
             <input
               type="text"
               required
@@ -306,18 +315,44 @@ export default function AppointmentModal({
               onChange={e => setTreatment(e.target.value)}
               className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm mb-2"
             />
-            {/* Quick chips PMU */}
+
+            {/* Quick chips: First from this location's price list, or fallback presets */}
             <div className="flex flex-wrap gap-1.5">
-              {pmuTreatments.map(t => (
-                <button
-                  type="button"
-                  key={t}
-                  onClick={() => setTreatment(t)}
-                  className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs border border-stone-700/60 active:scale-95 transition-all"
-                >
-                  {t}
-                </button>
-              ))}
+              {(() => {
+                const locServices = servicePrices.filter(sp => sp.location_id === locationId);
+                if (locServices.length > 0) {
+                  return locServices.map(srv => (
+                    <button
+                      type="button"
+                      key={srv.id}
+                      onClick={() => {
+                        setTreatment(srv.name);
+                        // Auto-fill total only if empty or 0 as requested
+                        const curTotal = parseFloat(totalPrice) || 0;
+                        if (curTotal === 0 && srv.price > 0) {
+                          setTotalPrice(String(srv.price));
+                        }
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700/90 text-stone-300 hover:text-white text-xs border border-stone-700/60 active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <span>{srv.name}</span>
+                      <span className="text-[11px] font-bold text-emerald-400">{srv.price}€</span>
+                    </button>
+                  ));
+                }
+
+                // Fallback default treatments if no services configured for this location yet
+                return pmuTreatments.map(t => (
+                  <button
+                    type="button"
+                    key={t}
+                    onClick={() => setTreatment(t)}
+                    className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs border border-stone-700/60 active:scale-95 transition-all"
+                  >
+                    {t}
+                  </button>
+                ));
+              })()}
             </div>
           </div>
 

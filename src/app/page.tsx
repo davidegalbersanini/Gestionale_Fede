@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Appointment, WeddingService, Client, Location, Expense, AppSettings, GiftVoucher } from '@/types';
+import { Appointment, WeddingService, Client, Location, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
 import { DataService } from '@/lib/storage';
 import { syncCalendarAutomatically, deleteCalendarEventSilently } from '@/lib/calendar';
 import PinLock from '@/components/PinLock';
 import Navbar, { ActiveTab } from '@/components/Navbar';
 import AgendaView from '@/components/AgendaView';
 import ClientsView from '@/components/ClientsView';
+import LocationsView from '@/components/LocationsView';
 import ExpensesView from '@/components/ExpensesView';
 import DashboardView from '@/components/DashboardView';
 import AppointmentModal from '@/components/AppointmentModal';
@@ -27,6 +28,7 @@ export default function Home() {
   const [weddings, setWeddings] = useState<WeddingService[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [vouchers, setVouchers] = useState<GiftVoucher[]>([]);
+  const [servicePrices, setServicePrices] = useState<ServicePrice[]>([]);
   const [settings, setSettings] = useState<AppSettings>({
     pin_hash: '1234',
     yearly_target: 35000,
@@ -85,6 +87,7 @@ export default function Home() {
     setWeddings(DataService.getWeddings());
     setExpenses(DataService.getExpenses());
     setVouchers(DataService.getGiftVouchers());
+    setServicePrices(DataService.getServicePrices());
     setSettings(DataService.getSettings());
 
     // 2. Background sync with Supabase Cloud
@@ -96,6 +99,7 @@ export default function Home() {
         if (synced.weddings) setWeddings(synced.weddings);
         if (synced.expenses) setExpenses(synced.expenses);
         if (synced.vouchers) setVouchers(synced.vouchers);
+        if (synced.servicePrices) setServicePrices(synced.servicePrices);
       }
     }).catch(err => {
       console.warn('Sync with Supabase was deferred:', err);
@@ -433,6 +437,25 @@ export default function Home() {
           />
         )}
 
+        {activeTab === 'locations' && (
+          <LocationsView
+            locations={locations}
+            servicePrices={servicePrices}
+            onUpdateLocations={newLocs => {
+              setLocations(newLocs);
+              DataService.saveLocations(newLocs);
+            }}
+            onSaveServicePrice={item => {
+              const saved = DataService.addOrUpdateServicePrice(item);
+              setServicePrices(DataService.getServicePrices());
+            }}
+            onDeleteServicePrice={id => {
+              DataService.deleteServicePrice(id);
+              setServicePrices(DataService.getServicePrices());
+            }}
+          />
+        )}
+
         {activeTab === 'expenses' && (
           <ExpensesView
             expenses={expenses}
@@ -471,6 +494,7 @@ export default function Home() {
         initialAppointment={editingPmu}
         clients={clients}
         locations={locations}
+        servicePrices={servicePrices}
         vouchers={vouchers}
         defaultDate={selectedCalendarDate}
         defaultClient={selectedClientForPmu}
@@ -497,8 +521,6 @@ export default function Home() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
-        locations={locations}
-        onUpdateLocations={setLocations}
         onLockApp={() => setIsAuthenticated(false)}
       />
 

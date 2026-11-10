@@ -26,8 +26,6 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
-  locations: Location[];
-  onUpdateLocations: (newLocations: Location[]) => void;
   onLockApp: () => void;
 }
 
@@ -36,21 +34,10 @@ export default function SettingsModal({
   onClose,
   settings,
   onUpdateSettings,
-  locations,
-  onUpdateLocations,
   onLockApp,
 }: SettingsModalProps) {
   const [pin, setPin] = useState(settings.pin_hash || '1234');
   const [yearlyTarget, setYearlyTarget] = useState(String(settings.yearly_target || 35000));
-
-  // New location form
-  const [newLocName, setNewLocName] = useState('');
-  const [newLocAddress, setNewLocAddress] = useState('');
-  const [newLocColor, setNewLocColor] = useState('#ec4899');
-  const [editingLocId, setEditingLocId] = useState<string | null>(null);
-  const [editingLocAddress, setEditingLocAddress] = useState('');
-  const [editingLocColor, setEditingLocColor] = useState('#ec4899');
-
   const [isSaved, setIsSaved] = useState(false);
 
   // Google Calendar state
@@ -90,41 +77,6 @@ export default function SettingsModal({
       setIsSaved(false);
       onClose();
     }, 600);
-  };
-
-  const handleAddLocation = () => {
-    if (!newLocName.trim()) return;
-    const newLoc: Location = {
-      id: `loc-${Date.now()}`,
-      name: newLocName.trim(),
-      address: newLocAddress.trim() || undefined,
-      color: newLocColor,
-      active: true,
-    };
-    const updated = [...locations, newLoc];
-    onUpdateLocations(updated);
-    DataService.saveLocations(updated);
-    setNewLocName('');
-    setNewLocAddress('');
-  };
-
-  const handleUpdateLocation = (id: string, address: string, color?: string) => {
-    const updated = locations.map(l =>
-      l.id === id ? { ...l, address: address.trim() || undefined, color: color || l.color } : l
-    );
-    onUpdateLocations(updated);
-    DataService.saveLocations(updated);
-    setEditingLocId(null);
-  };
-
-  const handleDeleteLocation = (id: string) => {
-    if (locations.length <= 1) {
-      alert('Devi mantenere almeno una sede attiva.');
-      return;
-    }
-    const updated = locations.filter(l => l.id !== id);
-    onUpdateLocations(updated);
-    DataService.saveLocations(updated);
   };
 
   return (
@@ -178,136 +130,6 @@ export default function SettingsModal({
                 onChange={e => setYearlyTarget(e.target.value)}
                 className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
               />
-            </div>
-          </div>
-
-          {/* Sedi Management */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
-              <MapPin className="w-4 h-4" /> Sedi di Lavoro
-            </h3>
-
-            <div className="space-y-2">
-              {locations.map(loc => (
-                <div key={loc.id} className="p-3 bg-stone-800/60 rounded-xl border border-stone-700/60 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: loc.color }} />
-                      <span className="text-sm font-semibold text-white">{loc.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (editingLocId === loc.id) {
-                            setEditingLocId(null);
-                          } else {
-                            setEditingLocId(loc.id);
-                            setEditingLocAddress(loc.address || '');
-                            setEditingLocColor(loc.color || '#ec4899');
-                          }
-                        }}
-                        className="text-stone-400 hover:text-white p-1"
-                        title="Modifica sede"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteLocation(loc.id)}
-                        className="text-stone-500 hover:text-red-400 p-1"
-                        title="Elimina sede"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Address & Color edit */}
-                  {editingLocId === loc.id ? (
-                    <div className="flex flex-col sm:flex-row gap-2 pt-1 items-stretch sm:items-center">
-                      <div className="flex items-center gap-2">
-                        <label className="text-[10px] text-stone-400 font-semibold uppercase">Colore:</label>
-                        <input
-                          type="color"
-                          value={editingLocColor}
-                          onChange={e => setEditingLocColor(e.target.value)}
-                          className="w-7 h-7 rounded-lg bg-transparent border-0 cursor-pointer p-0"
-                          title="Scegli colore sede"
-                        />
-                      </div>
-                      <input
-                        type="text"
-                        placeholder="Indirizzo (es. Via Garibaldi 10, Milano)..."
-                        value={editingLocAddress}
-                        onChange={e => setEditingLocAddress(e.target.value)}
-                        className="flex-1 bg-stone-900 border border-stone-700 rounded-lg px-2.5 py-1 text-xs text-white"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateLocation(loc.id, editingLocAddress, editingLocColor)}
-                        className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold"
-                      >
-                        Salva
-                      </button>
-                    </div>
-                  ) : loc.address ? (
-                    <div className="flex items-center justify-between text-xs text-stone-300 bg-stone-900/60 px-2.5 py-1.5 rounded-lg border border-stone-800">
-                      <span className="truncate flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-rose-400 flex-shrink-0" />
-                        <span className="truncate">{loc.address}</span>
-                      </span>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-rose-400 hover:text-rose-300 ml-2 font-semibold flex items-center gap-1 flex-shrink-0"
-                      >
-                        Maps <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-stone-500 italic">Nessun indirizzo</p>
-                  )}
-                </div>
-              ))}
-
-              {/* Add Location Form */}
-              <div className="p-3 bg-stone-800/40 rounded-xl border border-dashed border-stone-700 space-y-2">
-                <span className="text-xs font-bold text-stone-300 block">Aggiungi Nuova Sede</span>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nome sede (es. Studio Monza)..."
-                    value={newLocName}
-                    onChange={e => setNewLocName(e.target.value)}
-                    className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-xs text-white"
-                  />
-                  <input
-                    type="color"
-                    value={newLocColor}
-                    onChange={e => setNewLocColor(e.target.value)}
-                    className="w-10 h-8 rounded-xl bg-transparent cursor-pointer border border-stone-700"
-                    title="Colore identificativo"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Indirizzo completo (Via, Civico, Città)..."
-                    value={newLocAddress}
-                    onChange={e => setNewLocAddress(e.target.value)}
-                    className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-xs text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddLocation}
-                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Aggiungi
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
 

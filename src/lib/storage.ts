@@ -1,4 +1,4 @@
-import { Location, Client, Appointment, WeddingService, ExtraMakeup, Expense, AppSettings, GiftVoucher } from '@/types';
+import { Location, Client, Appointment, WeddingService, ExtraMakeup, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
 import initialData from '@/data/initialData.json';
 import { CloudSync } from '@/lib/supabase';
 
@@ -10,6 +10,7 @@ const STORAGE_KEYS = {
   EXTRA_MAKEUPS: 'fede_extra_makeups_v2',
   EXPENSES: 'fede_expenses_v2',
   GIFT_VOUCHERS: 'fede_gift_vouchers_v2',
+  SERVICE_PRICES: 'fede_service_prices_v2',
   SETTINGS: 'fede_settings_v2',
   PIN_AUTH: 'fede_pin_auth',
 };
@@ -320,6 +321,47 @@ export const DataService = {
     setStorage(STORAGE_KEYS.SETTINGS, settings);
   },
 
+  getServicePrices(): ServicePrice[] {
+    return getStorage<ServicePrice[]>(STORAGE_KEYS.SERVICE_PRICES, []);
+  },
+  saveServicePrices(prices: ServicePrice[]): void {
+    setStorage(STORAGE_KEYS.SERVICE_PRICES, prices);
+    CloudSync.syncAllServicePrices(prices);
+  },
+  addOrUpdateServicePrice(priceItem: Partial<ServicePrice> & { location_id: string; name: string; price: number }): ServicePrice {
+    const list = this.getServicePrices();
+    let updated: ServicePrice;
+    if (priceItem.id) {
+      updated = {
+        id: priceItem.id,
+        location_id: priceItem.location_id,
+        name: priceItem.name.trim(),
+        price: Number(priceItem.price) || 0,
+        created_at: priceItem.created_at || new Date().toISOString(),
+      };
+      const nextList = list.map(item => (item.id === updated.id ? updated : item));
+      this.saveServicePrices(nextList);
+      CloudSync.upsertServicePrice(updated, nextList);
+    } else {
+      updated = {
+        id: `sp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        location_id: priceItem.location_id,
+        name: priceItem.name.trim(),
+        price: Number(priceItem.price) || 0,
+        created_at: new Date().toISOString(),
+      };
+      const nextList = [...list, updated];
+      this.saveServicePrices(nextList);
+      CloudSync.upsertServicePrice(updated, nextList);
+    }
+    return updated;
+  },
+  deleteServicePrice(id: string): void {
+    const list = this.getServicePrices().filter(item => item.id !== id);
+    this.saveServicePrices(list);
+    CloudSync.deleteServicePrice(id, list);
+  },
+
   async syncFromCloud(): Promise<{
     locations?: Location[];
     clients?: Client[];
@@ -327,6 +369,7 @@ export const DataService = {
     weddings?: WeddingService[];
     expenses?: Expense[];
     vouchers?: GiftVoucher[];
+    servicePrices?: ServicePrice[];
   } | null> {
     const cloud = await CloudSync.fetchAll();
     if (!cloud) return null;
@@ -349,6 +392,9 @@ export const DataService = {
     if (cloud.vouchers && cloud.vouchers.length > 0) {
       this.saveGiftVouchers(cloud.vouchers);
     }
+    if (cloud.servicePrices && cloud.servicePrices.length > 0) {
+      this.saveServicePrices(cloud.servicePrices);
+    }
 
     return {
       locations: this.getLocations(),
@@ -357,6 +403,7 @@ export const DataService = {
       weddings: this.getWeddings(),
       expenses: this.getExpenses(),
       vouchers: this.getGiftVouchers(),
+      servicePrices: this.getServicePrices(),
     };
   },
 

@@ -8,6 +8,14 @@ export interface Location {
   active: boolean;
 }
 
+export interface ServicePrice {
+  id: string;
+  location_id: string;
+  name: string;
+  price: number;
+  created_at?: string;
+}
+
 export interface Client {
   id: string;
   first_name: string;

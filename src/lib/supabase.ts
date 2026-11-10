@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Location, Client, Appointment, WeddingService, Expense, AppSettings, GiftVoucher } from '@/types';
+import { Location, Client, Appointment, WeddingService, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
 
 function getSupabaseConfig() {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -80,7 +80,7 @@ export const CloudSync = {
     if (!supabase) return null;
 
     try {
-      const [locations, clients, appointments, weddings, expenses, vouchersRes, settingsVouchers] = await Promise.all([
+      const [locations, clients, appointments, weddings, expenses, vouchersRes, settingsVouchers, servicePricesRes, settingsServicePrices] = await Promise.all([
         supabase.from('locations').select('*').then((r: any) => (r.data as Location[]) || []),
         fetchAllRows<Client>(supabase, 'clients', 'created_at'),
         fetchAllRows<Appointment>(supabase, 'appointments', 'appointment_date'),
@@ -106,9 +106,30 @@ export const CloudSync = {
             return null;
           }
         })(),
+        (async () => {
+          try {
+            const res = await (supabase.from('service_prices') as any).select('*').order('name', { ascending: true });
+            if (res.error) return null;
+            return (res.data as ServicePrice[]) || [];
+          } catch {
+            return null;
+          }
+        })(),
+        (async () => {
+          try {
+            const res = await (supabase.from('settings') as any).select('value').eq('key', 'service_prices').single();
+            if (res.data?.value && Array.isArray(res.data.value)) {
+              return res.data.value as ServicePrice[];
+            }
+            return null;
+          } catch {
+            return null;
+          }
+        })(),
       ]);
 
       const vouchers: GiftVoucher[] = vouchersRes !== null ? vouchersRes : (settingsVouchers || []);
+      const servicePrices: ServicePrice[] = servicePricesRes !== null ? servicePricesRes : (settingsServicePrices || []);
 
       return {
         locations,
@@ -117,6 +138,7 @@ export const CloudSync = {
         weddings,
         expenses,
         vouchers,
+        servicePrices,
       };
     } catch (err) {
       console.warn('CloudSync fetchAll failed, offline or error:', err);
@@ -298,6 +320,71 @@ export const CloudSync = {
       });
     } catch (e) {
       console.error('syncAllGiftVouchers error:', e);
+    }
+  },
+
+  async upsertServicePrice(item: ServicePrice, allFallback?: ServicePrice[]) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      const res = await (supabase.from('service_prices') as any).upsert(item);
+      if (res && res.error) {
+        if (allFallback) {
+          await (supabase.from('settings') as any).upsert({
+            key: 'service_prices',
+            value: allFallback,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('upsertServicePrice error:', e);
+      if (allFallback) {
+        try {
+          await (supabase.from('settings') as any).upsert({
+            key: 'service_prices',
+            value: allFallback,
+          });
+        } catch {}
+      }
+    }
+  },
+
+  async deleteServicePrice(id: string, allFallback?: ServicePrice[]) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      const res = await (supabase.from('service_prices') as any).delete().eq('id', id);
+      if (res && res.error) {
+        if (allFallback) {
+          await (supabase.from('settings') as any).upsert({
+            key: 'service_prices',
+            value: allFallback,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('deleteServicePrice error:', e);
+      if (allFallback) {
+        try {
+          await (supabase.from('settings') as any).upsert({
+            key: 'service_prices',
+            value: allFallback,
+          });
+        } catch {}
+      }
+    }
+  },
+
+  async syncAllServicePrices(prices: ServicePrice[]) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      await (supabase.from('settings') as any).upsert({
+        key: 'service_prices',
+        value: prices,
+      });
+    } catch (e) {
+      console.error('syncAllServicePrices error:', e);
     }
   }
 };

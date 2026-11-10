@@ -2,9 +2,9 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Calendar, Users, Receipt, TrendingUp, Settings, Sparkles } from 'lucide-react';
+import { Calendar, Users, Store, Receipt, TrendingUp, Settings, Sparkles } from 'lucide-react';
 
-export type ActiveTab = 'agenda' | 'clients' | 'expenses' | 'dashboard';
+export type ActiveTab = 'agenda' | 'clients' | 'locations' | 'expenses' | 'dashboard';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -16,6 +16,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
   const tabs = [
     { id: 'agenda' as ActiveTab, label: 'Agenda', icon: Calendar },
     { id: 'clients' as ActiveTab, label: 'Rubrica', icon: Users },
+    { id: 'locations' as ActiveTab, label: 'Sedi & Listino', icon: Store },
     { id: 'expenses' as ActiveTab, label: 'Spese', icon: Receipt },
     { id: 'dashboard' as ActiveTab, label: 'Riepilogo', icon: TrendingUp },
   ];
@@ -88,7 +89,7 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
 
       {/* Mobile Bottom Tab Bar (iOS Native Style) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-950/90 backdrop-blur-2xl border-t border-stone-800/80 pb-safe">
-        <div className="grid grid-cols-4 h-16">
+        <div className="grid grid-cols-5 h-16">
           {tabs.map(t => {
             const Icon = t.icon;
             const isActive = activeTab === t.id;

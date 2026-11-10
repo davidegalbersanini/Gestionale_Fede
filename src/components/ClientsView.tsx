@@ -30,6 +30,7 @@ interface ClientsViewProps {
   onOpenNewAppointmentForClient: (client: Client) => void;
   onOpenNewWeddingForClient: (client: Client) => void;
   onOpenNewVoucherForClient?: (client: Client) => void;
+  onOpenGiftVouchers?: () => void;
 }
 
 export default function ClientsView({
@@ -42,6 +43,7 @@ export default function ClientsView({
   onOpenNewAppointmentForClient,
   onOpenNewWeddingForClient,
   onOpenNewVoucherForClient,
+  onOpenGiftVouchers,
 }: ClientsViewProps) {
   const [search, setSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -52,7 +54,7 @@ export default function ClientsView({
   const [newNotes, setNewNotes] = useState('');
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
-  // Filter and sort clients alphabetically
+  // Filter and sort clients alphabetically by full_name (A -> Z)
   const filteredClients = useMemo(() => {
     let list = clients;
     if (search.trim()) {
@@ -67,9 +69,7 @@ export default function ClientsView({
       );
     }
     return [...list].sort((a, b) => {
-      const nameA = (a.last_name ? `${a.last_name} ${a.first_name}` : a.full_name).trim();
-      const nameB = (b.last_name ? `${b.last_name} ${b.first_name}` : b.full_name).trim();
-      return nameA.localeCompare(nameB, 'it', { sensitivity: 'base' });
+      return a.full_name.trim().localeCompare(b.full_name.trim(), 'it', { sensitivity: 'base' });
     });
   }, [clients, search]);
 
@@ -171,13 +171,26 @@ export default function ClientsView({
           </span>
         </h1>
 
-        <button
-          onClick={() => setIsAddingClient(true)}
-          className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center gap-1.5 active:scale-95 transition-all"
-        >
-          <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Nuovo</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenGiftVouchers && (
+            <button
+              onClick={onOpenGiftVouchers}
+              className="px-3 py-2 rounded-2xl bg-stone-800 hover:bg-stone-700/80 border border-stone-700/80 text-amber-300 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              title="Buoni Regalo"
+            >
+              <Gift className="w-4 h-4 text-amber-400" />
+              <span>Buoni</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsAddingClient(true)}
+            className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center gap-1.5 active:scale-95 transition-all"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Nuovo</span>
+          </button>
+        </div>
       </div>
 
       {/* Search Input */}
@@ -194,7 +207,7 @@ export default function ClientsView({
 
       {/* Client List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filteredClients.slice(0, 90).map(c => (
+        {filteredClients.map(c => (
           <div
             key={c.id}
             onClick={() => setSelectedClient(c)}

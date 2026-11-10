@@ -27,8 +27,8 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo / Brand */}
           <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => onSelectTab('agenda')}>
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-stone-900 to-stone-800 border border-stone-700/60 flex items-center justify-center p-1.5 shadow-md shadow-rose-950/30">
-              <img src="/logo.svg" alt="Gestionale Fede" className="w-full h-full object-contain" />
+            <div className="h-10 px-2 rounded-2xl bg-white/95 border border-stone-200/80 flex items-center justify-center shadow-md shadow-rose-950/20">
+              <img src="/logo.png" alt="Gestionale Fede" className="h-7 w-auto object-contain" />
             </div>
             <div>
               <span className="text-base font-black tracking-tight text-white block">
@@ -73,8 +73,8 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
       {/* Mobile Top Header (Small brand + settings) */}
       <div className="md:hidden sticky top-0 z-40 bg-stone-950/90 backdrop-blur-xl border-b border-stone-800/80 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-stone-900 to-stone-800 border border-stone-700/60 flex items-center justify-center p-1 shadow-sm">
-            <img src="/logo.svg" alt="Gestionale Fede" className="w-full h-full object-contain" />
+          <div className="h-8 px-1.5 rounded-xl bg-white/95 border border-stone-200/80 flex items-center justify-center shadow-sm">
+            <img src="/logo.png" alt="Gestionale Fede" className="h-5 w-auto object-contain" />
           </div>
           <span className="text-sm font-black text-white tracking-tight">Gestionale Fede</span>
         </div>

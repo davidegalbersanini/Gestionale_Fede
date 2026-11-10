@@ -76,8 +76,8 @@ export default function PinLock({ correctPin, onSuccess }: PinLockProps) {
       <div className="w-full max-w-sm flex flex-col items-center my-auto py-4">
         {/* Header with Luxury Brand Logo */}
         <div className="flex flex-col items-center mb-6 text-center">
-          <div className="w-16 h-16 rounded-3xl bg-stone-900/90 border border-stone-800 flex items-center justify-center p-2.5 shadow-2xl shadow-rose-950/40 mb-3.5">
-            <img src="/logo.svg" alt="Gestionale Fede" className="w-full h-full object-contain" />
+          <div className="h-16 px-4 rounded-3xl bg-white/95 border border-stone-200/80 flex items-center justify-center shadow-2xl shadow-rose-950/40 mb-3.5">
+            <img src="/logo.png" alt="Gestionale Fede" className="h-10 w-auto object-contain" />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white mb-0.5">Gestionale Fede</h1>
           <p className="text-xs text-rose-300 font-medium tracking-wide uppercase">

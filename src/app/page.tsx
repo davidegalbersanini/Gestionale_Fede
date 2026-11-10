@@ -414,6 +414,10 @@ export default function Home() {
             vouchers={vouchers}
             onSaveClient={handleSaveClient}
             onDeleteClient={handleDeleteClient}
+            onOpenGiftVouchers={() => {
+              setSelectedClientForVoucher(null);
+              setIsGiftVouchersOpen(true);
+            }}
             onOpenNewAppointmentForClient={client => {
               setSelectedClientForPmu(client);
               setEditingPmu(null);

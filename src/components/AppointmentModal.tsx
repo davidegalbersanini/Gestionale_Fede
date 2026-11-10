@@ -32,7 +32,8 @@ export default function AppointmentModal({
   defaultDate,
   defaultClient,
 }: AppointmentModalProps) {
-  const [clientName, setClientName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [locationId, setLocationId] = useState(locations[0]?.id || '');
@@ -80,7 +81,15 @@ export default function AppointmentModal({
 
   useEffect(() => {
     if (initialAppointment) {
-      setClientName(initialAppointment.client_name);
+      const parts = (initialAppointment.client_name || '').trim().split(' ');
+      const existingClient = clients.find(c => c.id === initialAppointment.client_id || c.full_name === initialAppointment.client_name);
+      if (existingClient) {
+        setFirstName(existingClient.first_name || parts[0] || '');
+        setLastName(existingClient.last_name && existingClient.last_name !== '-' ? existingClient.last_name : parts.slice(1).join(' '));
+      } else {
+        setFirstName(parts[0] || '');
+        setLastName(parts.slice(1).join(' '));
+      }
       setSelectedClientId(initialAppointment.client_id);
       setLocationId(initialAppointment.location_id);
       setTreatment(initialAppointment.treatment);
@@ -105,10 +114,12 @@ export default function AppointmentModal({
       setSyncGoogleCalendar(initialAppointment.sync_google_calendar !== false);
     } else {
       if (defaultClient) {
-        setClientName(defaultClient.full_name);
+        setFirstName(defaultClient.first_name || defaultClient.full_name.split(' ')[0] || '');
+        setLastName(defaultClient.last_name && defaultClient.last_name !== '-' ? defaultClient.last_name : defaultClient.full_name.split(' ').slice(1).join(' '));
         setSelectedClientId(defaultClient.id);
       } else {
-        setClientName('');
+        setFirstName('');
+        setLastName('');
         setSelectedClientId(undefined);
       }
       setLocationId(locations[0]?.id || '');
@@ -128,12 +139,19 @@ export default function AppointmentModal({
       setVoucherDeduction('');
       setSyncGoogleCalendar(true); // Default checked as requested
     }
-  }, [initialAppointment, locations, defaultDate, defaultClient]);
+  }, [initialAppointment, locations, defaultDate, defaultClient, clients]);
 
   if (!isOpen) return null;
 
-  const filteredClients = clientName.trim()
-    ? clients.filter(c => c.full_name.toLowerCase().includes(clientName.toLowerCase())).slice(0, 5)
+  const clientSearchQuery = `${firstName} ${lastName}`.trim().toLowerCase();
+  const filteredClients = clientSearchQuery
+    ? clients
+        .filter(c =>
+          c.full_name.toLowerCase().includes(clientSearchQuery) ||
+          c.first_name.toLowerCase().includes(firstName.trim().toLowerCase()) ||
+          (lastName.trim() && c.last_name.toLowerCase().includes(lastName.trim().toLowerCase()))
+        )
+        .slice(0, 5)
     : [];
 
   const selectedLoc = locations.find(l => l.id === locationId);
@@ -146,9 +164,9 @@ export default function AppointmentModal({
 
   // Recommended vouchers matching current client name/id
   const matchingVouchers = availableVouchers.filter(v => {
-    if (!clientName.trim()) return false;
-    const nameMatch = v.recipient_name?.toLowerCase().includes(clientName.trim().toLowerCase()) ||
-                      v.buyer_name?.toLowerCase().includes(clientName.trim().toLowerCase());
+    if (!clientSearchQuery) return false;
+    const nameMatch = v.recipient_name?.toLowerCase().includes(clientSearchQuery) ||
+                      v.buyer_name?.toLowerCase().includes(clientSearchQuery);
     const idMatch = selectedClientId && (v.recipient_id === selectedClientId || v.buyer_id === selectedClientId);
     return nameMatch || idMatch;
   });
@@ -164,14 +182,15 @@ export default function AppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName.trim()) return;
+    if (!firstName.trim()) return;
 
+    const computedFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     const fullDateTime = appointmentDate; // Senza orario fittizio
     const fullEndDateTime = appointmentDate;
 
     const appData: Omit<Appointment, 'id'> = {
       client_id: selectedClientId,
-      client_name: clientName.trim(),
+      client_name: computedFullName,
       location_id: locationId,
       category: 'pmu',
       treatment: treatment.trim(),
@@ -196,7 +215,7 @@ export default function AppointmentModal({
 
       syncCalendarAutomatically({
         eventId: initialAppointment?.google_calendar_event_id,
-        title: `PMU: ${clientName.trim()} - ${treatment.trim()}`,
+        title: `PMU: ${computedFullName} - ${treatment.trim()}`,
         startDate: fullDateTime,
         endDate: fullEndDateTime,
         location: locationString,
@@ -234,23 +253,47 @@ export default function AppointmentModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Cliente with Autocomplete */}
+          {/* Cliente: Nome & Cognome separati con Autocomplete */}
           <div className="relative">
-            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-              Cliente *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="es. Laura Rossi"
-              value={clientName}
-              onChange={e => {
-                setClientName(e.target.value);
-                setShowClientSuggestions(true);
-              }}
-              onFocus={() => setShowClientSuggestions(true)}
-              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-base"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                  Nome *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="es. Laura"
+                  value={firstName}
+                  onChange={e => {
+                    setFirstName(e.target.value);
+                    setSelectedClientId(undefined);
+                    setShowClientSuggestions(true);
+                  }}
+                  onFocus={() => setShowClientSuggestions(true)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                  Cognome <span className="text-stone-500 font-normal lowercase">(opzionale)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="es. Rossi"
+                  value={lastName}
+                  onChange={e => {
+                    setLastName(e.target.value);
+                    setSelectedClientId(undefined);
+                    setShowClientSuggestions(true);
+                  }}
+                  onFocus={() => setShowClientSuggestions(true)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                />
+              </div>
+            </div>
+
             {showClientSuggestions && filteredClients.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden z-20">
                 {filteredClients.map(c => (
@@ -258,13 +301,19 @@ export default function AppointmentModal({
                     type="button"
                     key={c.id}
                     onClick={() => {
-                      setClientName(c.full_name);
+                      setFirstName(c.first_name || c.full_name.split(' ')[0] || '');
+                      setLastName(c.last_name && c.last_name !== '-' ? c.last_name : c.full_name.split(' ').slice(1).join(' '));
                       setSelectedClientId(c.id);
                       setShowClientSuggestions(false);
                     }}
                     className="w-full px-4 py-2.5 text-left hover:bg-rose-950/40 text-stone-200 text-sm flex items-center justify-between border-b border-stone-700/50 last:border-0"
                   >
-                    <span className="font-medium text-white">{c.full_name}</span>
+                    <div>
+                      <span className="font-bold text-white">{c.first_name || c.full_name}</span>
+                      {c.last_name && c.last_name !== '-' && (
+                        <span className="text-stone-300 ml-1.5">{c.last_name}</span>
+                      )}
+                    </div>
                     {c.phone && <span className="text-stone-400 text-xs">{c.phone}</span>}
                   </button>
                 ))}
@@ -607,7 +656,7 @@ export default function AppointmentModal({
                             Residuo attuale: <strong className="text-amber-400">{rem}€</strong> • Dopo: <strong className="text-emerald-400">{left}€</strong>
                             {!curV.recipient_name && (
                               <span className="block text-indigo-300 mt-0.5">
-                                Assegna automaticamente a: <strong>{clientName || 'cliente'}</strong>
+                                Assegna automaticamente a: <strong>{`${firstName} ${lastName}`.trim() || 'cliente'}</strong>
                               </span>
                             )}
                           </p>

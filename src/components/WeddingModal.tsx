@@ -29,7 +29,8 @@ export default function WeddingModal({
   defaultClient,
 }: WeddingModalProps) {
   const [eventType, setEventType] = useState('Matrimonio');
-  const [brideName, setBrideName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [address, setAddress] = useState('');
@@ -59,7 +60,15 @@ export default function WeddingModal({
   useEffect(() => {
     if (initialWedding) {
       setEventType(initialWedding.event_type || 'Matrimonio');
-      setBrideName(initialWedding.bride_name);
+      const parts = (initialWedding.bride_name || '').trim().split(' ');
+      const existingClient = clients.find(c => c.id === initialWedding.client_id || c.full_name === initialWedding.bride_name);
+      if (existingClient) {
+        setFirstName(existingClient.first_name || parts[0] || '');
+        setLastName(existingClient.last_name && existingClient.last_name !== '-' ? existingClient.last_name : parts.slice(1).join(' '));
+      } else {
+        setFirstName(parts[0] || '');
+        setLastName(parts.slice(1).join(' '));
+      }
       setSelectedClientId(initialWedding.client_id);
       setAddress(initialWedding.address || '');
       const [wd, wt] = initialWedding.wedding_date.split('T');
@@ -88,10 +97,12 @@ export default function WeddingModal({
     } else {
       setEventType('Matrimonio');
       if (defaultClient) {
-        setBrideName(defaultClient.full_name);
+        setFirstName(defaultClient.first_name || defaultClient.full_name.split(' ')[0] || '');
+        setLastName(defaultClient.last_name && defaultClient.last_name !== '-' ? defaultClient.last_name : defaultClient.full_name.split(' ').slice(1).join(' '));
         setSelectedClientId(defaultClient.id);
       } else {
-        setBrideName('');
+        setFirstName('');
+        setLastName('');
         setSelectedClientId(undefined);
       }
       setAddress('');
@@ -110,12 +121,19 @@ export default function WeddingModal({
       setVoucherDeduction('');
       setSyncGoogleCalendar(true); // Default checked as requested
     }
-  }, [initialWedding, defaultDate, defaultClient]);
+  }, [initialWedding, defaultDate, defaultClient, clients]);
 
   if (!isOpen) return null;
 
-  const filteredClients = brideName.trim()
-    ? clients.filter(c => c.full_name.toLowerCase().includes(brideName.toLowerCase())).slice(0, 5)
+  const clientSearchQuery = `${firstName} ${lastName}`.trim().toLowerCase();
+  const filteredClients = clientSearchQuery
+    ? clients
+        .filter(c =>
+          c.full_name.toLowerCase().includes(clientSearchQuery) ||
+          c.first_name.toLowerCase().includes(firstName.trim().toLowerCase()) ||
+          (lastName.trim() && c.last_name.toLowerCase().includes(lastName.trim().toLowerCase()))
+        )
+        .slice(0, 5)
     : [];
 
   // Economic calculations:
@@ -135,9 +153,9 @@ export default function WeddingModal({
 
   // Recommended vouchers matching current bride/client name/id
   const matchingVouchers = availableVouchers.filter(v => {
-    if (!brideName.trim()) return false;
-    const nameMatch = v.recipient_name?.toLowerCase().includes(brideName.trim().toLowerCase()) ||
-                      v.buyer_name?.toLowerCase().includes(brideName.trim().toLowerCase());
+    if (!clientSearchQuery) return false;
+    const nameMatch = v.recipient_name?.toLowerCase().includes(clientSearchQuery) ||
+                      v.buyer_name?.toLowerCase().includes(clientSearchQuery);
     const idMatch = selectedClientId && (v.recipient_id === selectedClientId || v.buyer_id === selectedClientId);
     return nameMatch || idMatch;
   });
@@ -145,11 +163,13 @@ export default function WeddingModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const computedFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const finalBrideName = computedFullName || eventType;
     const fullWeddingDateTime = `${weddingDate}T${weddingTime}:00`;
     const fullTrialDateTime = trialDate ? `${trialDate}T${trialTime}:00` : null;
 
     const weddingData: Omit<WeddingService, 'id'> = {
-      bride_name: brideName.trim() || eventType,
+      bride_name: finalBrideName,
       client_id: selectedClientId,
       event_type: eventType,
       address: address.trim() || undefined,
@@ -173,16 +193,16 @@ export default function WeddingModal({
     if (syncGoogleCalendar) {
       // Event 1: Event/Wedding Day
       syncCalendarAutomatically({
-        title: `✨ ${eventType.toUpperCase()}: ${brideName.trim()}`,
+        title: `✨ ${eventType.toUpperCase()}: ${finalBrideName}`,
         startDate: fullWeddingDateTime,
         location: address.trim() || '',
-        details: `Tipo: ${eventType}\nCliente: ${brideName}\nPersone da truccare: ${peopleCount}\nIndirizzo/Luogo: ${address || 'Non specificato'}\nTotale Servizio: ${totalNum}€\nAcconto/Ricevuto: ${depositNum}€\nDa saldare: ${calculatedBalance}€\nNote: ${notes}`,
+        details: `Tipo: ${eventType}\nCliente: ${finalBrideName}\nPersone da truccare: ${peopleCount}\nIndirizzo/Luogo: ${address || 'Non specificato'}\nTotale Servizio: ${totalNum}€\nAcconto/Ricevuto: ${depositNum}€\nDa saldare: ${calculatedBalance}€\nNote: ${notes}`,
       });
 
       // Event 2: Trial if set
       if (fullTrialDateTime) {
         syncCalendarAutomatically({
-          title: `💄 Prova Trucco: ${brideName.trim()} (${eventType})`,
+          title: `💄 Prova Trucco: ${finalBrideName} (${eventType})`,
           startDate: fullTrialDateTime,
           location: address.trim() || '',
           details: `Prova trucco per evento del ${weddingDate}\nAcconto prova: ${depositNum}€\nNote: ${notes}`,
@@ -240,22 +260,46 @@ export default function WeddingModal({
             </div>
           </div>
 
-          {/* Nome Cliente / Sposa */}
+          {/* Cliente / Sposa: Nome & Cognome separati con Autocomplete */}
           <div className="relative">
-            <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5">
-              Cliente (Opzionale)
-            </label>
-            <input
-              type="text"
-              placeholder="es. Laura Rossi (o lascia vuoto)"
-              value={brideName}
-              onChange={e => {
-                setBrideName(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-base"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5">
+                  Nome Cliente <span className="text-stone-500 font-normal lowercase">(opzionale)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="es. Laura"
+                  value={firstName}
+                  onChange={e => {
+                    setFirstName(e.target.value);
+                    setSelectedClientId(undefined);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5">
+                  Cognome <span className="text-stone-500 font-normal lowercase">(opzionale)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="es. Rossi"
+                  value={lastName}
+                  onChange={e => {
+                    setLastName(e.target.value);
+                    setSelectedClientId(undefined);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
+                />
+              </div>
+            </div>
+
             {showSuggestions && filteredClients.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden z-20">
                 {filteredClients.map(c => (
@@ -263,13 +307,19 @@ export default function WeddingModal({
                     type="button"
                     key={c.id}
                     onClick={() => {
-                      setBrideName(c.full_name);
+                      setFirstName(c.first_name || c.full_name.split(' ')[0] || '');
+                      setLastName(c.last_name && c.last_name !== '-' ? c.last_name : c.full_name.split(' ').slice(1).join(' '));
                       setSelectedClientId(c.id);
                       setShowSuggestions(false);
                     }}
                     className="w-full px-4 py-2.5 text-left hover:bg-pink-950/40 text-stone-200 text-sm flex items-center justify-between border-b border-stone-700/50 last:border-0"
                   >
-                    <span className="font-medium text-white">{c.full_name}</span>
+                    <div>
+                      <span className="font-bold text-white">{c.first_name || c.full_name}</span>
+                      {c.last_name && c.last_name !== '-' && (
+                        <span className="text-stone-300 ml-1.5">{c.last_name}</span>
+                      )}
+                    </div>
                     {c.phone && <span className="text-stone-400 text-xs">{c.phone}</span>}
                   </button>
                 ))}
@@ -636,7 +686,7 @@ export default function WeddingModal({
                             Residuo attuale: <strong className="text-amber-400">{rem}€</strong> • Dopo: <strong className="text-emerald-400">{left}€</strong>
                             {!curV.recipient_name && (
                               <span className="block text-indigo-300 mt-0.5">
-                                Assegna automaticamente a: <strong>{brideName || 'cliente'}</strong>
+                                Assegna automaticamente a: <strong>{`${firstName} ${lastName}`.trim() || 'cliente'}</strong>
                               </span>
                             )}
                           </p>

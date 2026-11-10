@@ -3,14 +3,14 @@ import initialData from '@/data/initialData.json';
 import { CloudSync } from '@/lib/supabase';
 
 const STORAGE_KEYS = {
-  LOCATIONS: 'fede_locations',
-  CLIENTS: 'fede_clients',
-  APPOINTMENTS: 'fede_appointments',
-  WEDDINGS: 'fede_weddings',
-  EXTRA_MAKEUPS: 'fede_extra_makeups',
-  EXPENSES: 'fede_expenses',
-  GIFT_VOUCHERS: 'fede_gift_vouchers',
-  SETTINGS: 'fede_settings',
+  LOCATIONS: 'fede_locations_v2',
+  CLIENTS: 'fede_clients_v2',
+  APPOINTMENTS: 'fede_appointments_v2',
+  WEDDINGS: 'fede_weddings_v2',
+  EXTRA_MAKEUPS: 'fede_extra_makeups_v2',
+  EXPENSES: 'fede_expenses_v2',
+  GIFT_VOUCHERS: 'fede_gift_vouchers_v2',
+  SETTINGS: 'fede_settings_v2',
   PIN_AUTH: 'fede_pin_auth',
 };
 

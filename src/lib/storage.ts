@@ -46,6 +46,12 @@ export const DataService = {
   },
   saveLocations(locations: Location[]): void {
     setStorage(STORAGE_KEYS.LOCATIONS, locations);
+    CloudSync.syncAllLocations(locations);
+  },
+  deleteLocation(id: string): void {
+    const list = this.getLocations().filter(l => l.id !== id);
+    setStorage(STORAGE_KEYS.LOCATIONS, list);
+    CloudSync.deleteLocation(id);
   },
 
   getClients(): Client[] {

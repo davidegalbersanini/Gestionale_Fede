@@ -146,6 +146,49 @@ export const CloudSync = {
     }
   },
 
+  async upsertLocation(loc: Location) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      await (supabase.from('locations') as any).upsert({
+        id: loc.id,
+        name: loc.name,
+        color: loc.color,
+        address: loc.address || '',
+        active: loc.active ?? true,
+      });
+    } catch (e) {
+      console.error('upsertLocation error:', e);
+    }
+  },
+
+  async deleteLocation(id: string) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      await (supabase.from('locations') as any).delete().eq('id', id);
+    } catch (e) {
+      console.error('deleteLocation error:', e);
+    }
+  },
+
+  async syncAllLocations(locations: Location[]) {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      const records = locations.map(l => ({
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        address: l.address || '',
+        active: l.active ?? true,
+      }));
+      await (supabase.from('locations') as any).upsert(records);
+    } catch (e) {
+      console.error('syncAllLocations error:', e);
+    }
+  },
+
   async upsertClient(client: Client) {
     const supabase = getSupabase();
     if (!supabase) return;
@@ -235,25 +278,6 @@ export const CloudSync = {
     }
   },
 
-  async upsertLocation(loc: Location) {
-    const supabase = getSupabase();
-    if (!supabase) return;
-    try {
-      await (supabase.from('locations') as any).upsert(loc);
-    } catch (e) {
-      console.error('upsertLocation error:', e);
-    }
-  },
-
-  async deleteLocation(id: string) {
-    const supabase = getSupabase();
-    if (!supabase) return;
-    try {
-      await (supabase.from('locations') as any).delete().eq('id', id);
-    } catch (e) {
-      console.error('deleteLocation error:', e);
-    }
-  },
 
   async upsertGiftVoucher(voucher: GiftVoucher, allVouchersFallback?: GiftVoucher[]) {
     const supabase = getSupabase();

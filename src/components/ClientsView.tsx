@@ -10,6 +10,7 @@ import {
   Calendar,
   Clock,
   ChevronRight,
+  ChevronLeft,
   X,
   History,
   Sparkles,
@@ -44,6 +45,7 @@ export default function ClientsView({
   onOpenNewVoucherForClient,
 }: ClientsViewProps) {
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -185,14 +187,29 @@ export default function ClientsView({
           type="text"
           placeholder="Cerca per nome, cognome o telefono..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => {
+            setSearch(e.target.value);
+            setCurrentPage(1);
+          }}
           className="w-full bg-stone-900 border border-stone-800 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
         />
       </div>
 
-      {/* Client List Grid */}
+      {/* Pagination summary info */}
+      {filteredClients.length > 50 && (
+        <div className="flex items-center justify-between text-xs text-stone-400 px-1">
+          <span>
+            Mostrati {Math.min((currentPage - 1) * 50 + 1, filteredClients.length)} - {Math.min(currentPage * 50, filteredClients.length)} di {filteredClients.length} clienti
+          </span>
+          <span>
+            Pagina {currentPage} di {Math.ceil(filteredClients.length / 50)}
+          </span>
+        </div>
+      )}
+
+      {/* Client List Grid (50 per page) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filteredClients.map(c => (
+        {filteredClients.slice((currentPage - 1) * 50, currentPage * 50).map(c => (
           <div
             key={c.id}
             onClick={() => setSelectedClient(c)}
@@ -221,6 +238,34 @@ export default function ClientsView({
           </div>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {Math.ceil(filteredClients.length / 50) > 1 && (
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-stone-900 border border-stone-800 text-xs sm:text-sm">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Precedente
+          </button>
+
+          <span className="text-stone-400 font-medium">
+            Pagina <span className="text-white font-bold">{currentPage}</span> di{' '}
+            <span className="text-white font-bold">{Math.ceil(filteredClients.length / 50)}</span>
+          </span>
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredClients.length / 50), p + 1))}
+            disabled={currentPage >= Math.ceil(filteredClients.length / 50)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          >
+            Successiva
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Client Detail Drawer / Modal */}
       {selectedClient && (

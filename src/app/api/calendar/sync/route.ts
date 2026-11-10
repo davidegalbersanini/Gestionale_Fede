@@ -13,6 +13,7 @@ export async function POST(request: Request) {
       endDate: body.endDate,
       details: body.details,
       location: body.location,
+      colorHex: body.colorHex,
     });
     return NextResponse.json(result);
   } catch (err: any) {

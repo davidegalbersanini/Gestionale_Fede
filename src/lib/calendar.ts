@@ -11,6 +11,7 @@ export interface GoogleCalendarEventParams {
   endDate?: string;
   details?: string;
   location?: string;
+  colorHex?: string;
 }
 
 export function createGoogleCalendarUrl(params: GoogleCalendarEventParams): string {

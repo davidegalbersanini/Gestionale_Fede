@@ -49,6 +49,7 @@ export default function SettingsModal({
   const [newLocColor, setNewLocColor] = useState('#ec4899');
   const [editingLocId, setEditingLocId] = useState<string | null>(null);
   const [editingLocAddress, setEditingLocAddress] = useState('');
+  const [editingLocColor, setEditingLocColor] = useState('#ec4899');
 
   const [isSaved, setIsSaved] = useState(false);
 
@@ -107,8 +108,10 @@ export default function SettingsModal({
     setNewLocAddress('');
   };
 
-  const handleUpdateLocationAddress = (id: string, address: string) => {
-    const updated = locations.map(l => (l.id === id ? { ...l, address: address.trim() || undefined } : l));
+  const handleUpdateLocation = (id: string, address: string, color?: string) => {
+    const updated = locations.map(l =>
+      l.id === id ? { ...l, address: address.trim() || undefined, color: color || l.color } : l
+    );
     onUpdateLocations(updated);
     DataService.saveLocations(updated);
     setEditingLocId(null);
@@ -178,10 +181,10 @@ export default function SettingsModal({
             </div>
           </div>
 
-          {/* Sedi Management con Indirizzo Google Maps */}
+          {/* Sedi Management */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
-              <MapPin className="w-4 h-4" /> Sedi di Lavoro & Google Maps
+              <MapPin className="w-4 h-4" /> Sedi di Lavoro
             </h3>
 
             <div className="space-y-2">
@@ -196,11 +199,16 @@ export default function SettingsModal({
                       <button
                         type="button"
                         onClick={() => {
-                          setEditingLocId(editingLocId === loc.id ? null : loc.id);
-                          setEditingLocAddress(loc.address || '');
+                          if (editingLocId === loc.id) {
+                            setEditingLocId(null);
+                          } else {
+                            setEditingLocId(loc.id);
+                            setEditingLocAddress(loc.address || '');
+                            setEditingLocColor(loc.color || '#ec4899');
+                          }
                         }}
                         className="text-stone-400 hover:text-white p-1"
-                        title="Modifica indirizzo"
+                        title="Modifica sede"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -215,9 +223,19 @@ export default function SettingsModal({
                     </div>
                   </div>
 
-                  {/* Address display or edit */}
+                  {/* Address & Color edit */}
                   {editingLocId === loc.id ? (
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1 items-stretch sm:items-center">
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] text-stone-400 font-semibold uppercase">Colore:</label>
+                        <input
+                          type="color"
+                          value={editingLocColor}
+                          onChange={e => setEditingLocColor(e.target.value)}
+                          className="w-7 h-7 rounded-lg bg-transparent border-0 cursor-pointer p-0"
+                          title="Scegli colore sede"
+                        />
+                      </div>
                       <input
                         type="text"
                         placeholder="Indirizzo (es. Via Garibaldi 10, Milano)..."
@@ -227,8 +245,8 @@ export default function SettingsModal({
                       />
                       <button
                         type="button"
-                        onClick={() => handleUpdateLocationAddress(loc.id, editingLocAddress)}
-                        className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold"
+                        onClick={() => handleUpdateLocation(loc.id, editingLocAddress, editingLocColor)}
+                        className="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold"
                       >
                         Salva
                       </button>

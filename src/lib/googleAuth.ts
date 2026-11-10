@@ -185,6 +185,48 @@ export interface SyncEventParams {
   endDate?: string;
   details?: string;
   location?: string;
+  colorHex?: string;
+}
+
+// Map any hex color to the closest standard Google Calendar colorId (1 - 11)
+function findClosestGoogleColorId(hex?: string): string | undefined {
+  if (!hex) return undefined;
+  const cleanHex = hex.replace('#', '').trim();
+  if (cleanHex.length !== 6) return undefined;
+
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+
+  const googleColors: { id: string; rgb: [number, number, number] }[] = [
+    { id: '1', rgb: [164, 189, 252] }, // Lavender
+    { id: '2', rgb: [122, 231, 191] }, // Sage
+    { id: '3', rgb: [219, 173, 255] }, // Grape
+    { id: '4', rgb: [255, 136, 124] }, // Flamingo / Rose
+    { id: '5', rgb: [251, 215, 91] },  // Banana / Yellow
+    { id: '6', rgb: [255, 184, 120] }, // Tangerine / Orange
+    { id: '7', rgb: [70, 189, 211] },  // Peacock / Cyan
+    { id: '8', rgb: [225, 225, 225] }, // Graphite / Gray
+    { id: '9', rgb: [84, 132, 237] },  // Blueberry / Blue
+    { id: '10', rgb: [81, 183, 73] },  // Basil / Green
+    { id: '11', rgb: [220, 33, 39] },  // Tomato / Red
+  ];
+
+  let closestId = '4';
+  let minDistance = Infinity;
+
+  for (const gc of googleColors) {
+    const dist =
+      Math.pow(r - gc.rgb[0], 2) +
+      Math.pow(g - gc.rgb[1], 2) +
+      Math.pow(b - gc.rgb[2], 2);
+    if (dist < minDistance) {
+      minDistance = dist;
+      closestId = gc.id;
+    }
+  }
+
+  return closestId;
 }
 
 export async function syncGoogleCalendarEvent(params: SyncEventParams): Promise<{ success: boolean; eventId?: string; error?: string }> {
@@ -198,13 +240,19 @@ export async function syncGoogleCalendarEvent(params: SyncEventParams): Promise<
     ? new Date(params.endDate).toISOString()
     : new Date(new Date(params.startDate).getTime() + 60 * 60 * 1000).toISOString();
 
-  const eventBody = {
+  const colorId = findClosestGoogleColorId(params.colorHex);
+
+  const eventBody: any = {
     summary: params.title,
     description: params.details || '',
     location: params.location || '',
     start: { dateTime: startIso },
     end: { dateTime: endIso },
   };
+
+  if (colorId) {
+    eventBody.colorId = colorId;
+  }
 
   try {
     let url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';

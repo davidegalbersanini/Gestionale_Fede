@@ -198,6 +198,7 @@ export default function AppointmentModal({
         startDate: fullDateTime,
         endDate: fullEndDateTime,
         location: locationString,
+        colorHex: selectedLoc?.color,
         details: `Tipo: Trattamento PMU\nTrattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nTotale Trattamento: ${totalNum}€\nDenaro Ricevuto: ${paymentNum}€\nDa Saldare: ${calculatedBalance}€\nNote: ${notes}`,
       }).then(res => {
         if (res.eventId && appData) {
@@ -291,22 +292,6 @@ export default function AppointmentModal({
                 </button>
               ))}
             </div>
-            {selectedLoc?.address && (
-              <div className="mt-2 flex items-center justify-between px-3 py-2 bg-stone-800/50 rounded-xl border border-stone-700/40 text-xs text-stone-300">
-                <span className="truncate flex items-center gap-1.5 text-stone-400">
-                  <MapPin className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
-                  <span className="truncate">{selectedLoc.address}</span>
-                </span>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedLoc.address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-rose-400 hover:text-rose-300 flex items-center gap-1 font-semibold flex-shrink-0 ml-2"
-                >
-                  Maps <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            )}
           </div>
 
           {/* Trattamento / Servizio PMU */}

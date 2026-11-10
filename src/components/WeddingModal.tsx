@@ -35,8 +35,10 @@ export default function WeddingModal({
   const [address, setAddress] = useState('');
   const [weddingDate, setWeddingDate] = useState(defaultDate || new Date().toISOString().slice(0, 10));
   const [weddingTime, setWeddingTime] = useState('08:30');
+  const [weddingEndTime, setWeddingEndTime] = useState('11:30');
   const [trialDate, setTrialDate] = useState('');
   const [trialTime, setTrialTime] = useState('15:00');
+  const [trialEndTime, setTrialEndTime] = useState('16:30');
   const [peopleCount, setPeopleCount] = useState(1);
   const [totalPrice, setTotalPrice] = useState('');
   const [trialDeposit, setTrialDeposit] = useState('');
@@ -63,13 +65,16 @@ export default function WeddingModal({
       const [wd, wt] = initialWedding.wedding_date.split('T');
       setWeddingDate(wd || defaultDate || new Date().toISOString().slice(0, 10));
       setWeddingTime(wt ? wt.slice(0, 5) : '08:30');
+      setWeddingEndTime(initialWedding.end_time || '11:30');
       if (initialWedding.trial_date) {
         const [td, tt] = initialWedding.trial_date.split('T');
         setTrialDate(td || '');
         setTrialTime(tt ? tt.slice(0, 5) : '15:00');
+        setTrialEndTime(initialWedding.trial_end_time || '16:30');
       } else {
         setTrialDate('');
         setTrialTime('15:00');
+        setTrialEndTime('16:30');
       }
       setPeopleCount(initialWedding.people_count || 1);
       const existingTot = initialWedding.total_price || (initialWedding.trial_deposit + initialWedding.wedding_balance);
@@ -92,8 +97,10 @@ export default function WeddingModal({
       setAddress('');
       setWeddingDate(defaultDate || new Date().toISOString().slice(0, 10));
       setWeddingTime('08:30');
+      setWeddingEndTime('11:30');
       setTrialDate('');
       setTrialTime('15:00');
+      setTrialEndTime('16:30');
       setPeopleCount(1);
       setTotalPrice('');
       setTrialDeposit('');
@@ -138,8 +145,8 @@ export default function WeddingModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const fullWeddingDateTime = weddingDate; // Data senza orario fittizio
-    const fullTrialDateTime = trialDate || null;
+    const fullWeddingDateTime = `${weddingDate}T${weddingTime}:00`;
+    const fullTrialDateTime = trialDate ? `${trialDate}T${trialTime}:00` : null;
 
     const weddingData: Omit<WeddingService, 'id'> = {
       bride_name: brideName.trim() || eventType,
@@ -147,7 +154,9 @@ export default function WeddingModal({
       event_type: eventType,
       address: address.trim() || undefined,
       wedding_date: fullWeddingDateTime,
+      end_time: weddingEndTime,
       trial_date: fullTrialDateTime,
+      trial_end_time: trialDate ? trialEndTime : undefined,
       people_count: peopleCount,
       trial_deposit: depositNum,
       wedding_balance: calculatedBalance,
@@ -294,20 +303,40 @@ export default function WeddingModal({
             />
           </div>
 
-          {/* Data Evento (senza orario) */}
+          {/* Data e Orari Evento */}
           <div className="p-4 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-3">
             <div className="flex items-center gap-2 text-pink-400 text-xs font-bold uppercase tracking-wider">
               <Heart className="w-3.5 h-3.5" /> Evento
             </div>
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">Data</label>
-              <input
-                type="date"
-                required
-                value={weddingDate}
-                onChange={e => setWeddingDate(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-stone-400 mb-1">Data *</label>
+                <input
+                  type="date"
+                  required
+                  value={weddingDate}
+                  onChange={e => setWeddingDate(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-stone-400 mb-1">Inizio</label>
+                <input
+                  type="time"
+                  value={weddingTime}
+                  onChange={e => setWeddingTime(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-stone-400 mb-1">Fine</label>
+                <input
+                  type="time"
+                  value={weddingEndTime}
+                  onChange={e => setWeddingEndTime(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+                />
+              </div>
             </div>
           </div>
 
@@ -316,14 +345,36 @@ export default function WeddingModal({
             <div className="flex items-center gap-2 text-stone-300 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Prova Trucco (Opzionale)
             </div>
-            <div>
-              <label className="block text-xs text-stone-400 mb-1">Data Prova</label>
-              <input
-                type="date"
-                value={trialDate}
-                onChange={e => setTrialDate(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-stone-400 mb-1">Data Prova</label>
+                <input
+                  type="date"
+                  value={trialDate}
+                  onChange={e => setTrialDate(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-stone-400 mb-1">Inizio</label>
+                <input
+                  type="time"
+                  disabled={!trialDate}
+                  value={trialTime}
+                  onChange={e => setTrialTime(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-stone-400 mb-1">Fine</label>
+                <input
+                  type="time"
+                  disabled={!trialDate}
+                  value={trialEndTime}
+                  onChange={e => setTrialEndTime(e.target.value)}
+                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
+                />
+              </div>
             </div>
           </div>
 

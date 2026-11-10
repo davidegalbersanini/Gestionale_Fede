@@ -59,10 +59,11 @@ export default function AgendaView({
 }: AgendaViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  // Multi-select filters: array of selected filter keys ('all', loc.id, or 'weddings')
-  const [selectedFilters, setSelectedFilters] = useState<string[]>(['all']);
+  // Filter mode: 'all' | 'pmu' | 'events'
+  const [eventTypeFilter, setEventTypeFilter] = useState<'all' | 'pmu' | 'events'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+  const [listPage, setListPage] = useState(1);
 
   // Location map for fast lookup
   const locMap = useMemo(() => {
@@ -137,40 +138,15 @@ export default function AgendaView({
     return events.sort((a, b) => b.date.localeCompare(a.date));
   }, [appointments, weddings, locMap]);
 
-  // Toggle multi-select filter
-  const toggleFilter = (key: string) => {
-    if (key === 'all') {
-      setSelectedFilters(['all']);
-      return;
-    }
-
-    let updated = selectedFilters.includes('all') ? [] : [...selectedFilters];
-
-    if (updated.includes(key)) {
-      updated = updated.filter(k => k !== key);
-      if (updated.length === 0) {
-        updated = ['all'];
-      }
-    } else {
-      updated.push(key);
-    }
-
-    setSelectedFilters(updated);
-  };
-
   // Filtered events
   const filteredEvents = useMemo(() => {
     return unifiedEvents.filter(ev => {
-      // Multi-select Location / Event filter
-      if (!selectedFilters.includes('all')) {
-        const matchesWedding =
-          selectedFilters.includes('weddings') &&
-          (ev.type === 'wedding_day' || ev.type === 'wedding_trial');
-        const matchesLoc = ev.rawPmu && selectedFilters.includes(ev.rawPmu.location_id);
-
-        if (!matchesWedding && !matchesLoc) {
-          return false;
-        }
+      // Filter between PMU vs Eventi
+      if (eventTypeFilter === 'pmu' && ev.type !== 'pmu') {
+        return false;
+      }
+      if (eventTypeFilter === 'events' && ev.type === 'pmu') {
+        return false;
       }
 
       // Search query
@@ -186,7 +162,7 @@ export default function AgendaView({
 
       return true;
     });
-  }, [unifiedEvents, selectedFilters, searchQuery]);
+  }, [unifiedEvents, eventTypeFilter, searchQuery]);
 
   // Days for monthly grid
   const monthStart = startOfMonth(currentDate);
@@ -274,44 +250,35 @@ export default function AgendaView({
           />
         </div>
 
-        {/* Multi-Selection Filter Chips */}
+        {/* PMU vs Eventi Filter Chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          {/* Chip Tutte */}
           <button
-            onClick={() => toggleFilter('all')}
+            onClick={() => { setEventTypeFilter('all'); setListPage(1); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              selectedFilters.includes('all')
+              eventTypeFilter === 'all'
                 ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
                 : 'bg-stone-800 text-stone-400 hover:text-white'
             }`}
           >
-            Tutte
+            Tutti
           </button>
 
-          {/* Sedi chips */}
-          {locations.map(loc => {
-            const isSelected = selectedFilters.includes(loc.id);
-            return (
-              <button
-                key={loc.id}
-                onClick={() => toggleFilter(loc.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  isSelected
-                    ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
-                    : 'bg-stone-800 text-stone-400 hover:text-white'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: loc.color }} />
-                <span>{loc.name}</span>
-              </button>
-            );
-          })}
-
-          {/* Eventi chip */}
           <button
-            onClick={() => toggleFilter('weddings')}
+            onClick={() => { setEventTypeFilter('pmu'); setListPage(1); }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              selectedFilters.includes('weddings')
+              eventTypeFilter === 'pmu'
+                ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
+                : 'bg-stone-800 text-stone-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>PMU</span>
+          </button>
+
+          <button
+            onClick={() => { setEventTypeFilter('events'); setListPage(1); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              eventTypeFilter === 'events'
                 ? 'bg-pink-600 text-white shadow-sm ring-1 ring-pink-400'
                 : 'bg-stone-800 text-stone-400 hover:text-white'
             }`}
@@ -486,14 +453,52 @@ export default function AgendaView({
           </div>
         </div>
       ) : (
-        /* Full List View */
-        <div className="bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-6 space-y-3">
-          <div className="text-stone-400 text-xs font-semibold uppercase tracking-wider pb-1">
-            Visualizzati {filteredEvents.length} appuntamenti
+        /* Full List View with 50 items per page */
+        <div className="bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
+            <div className="text-stone-400 text-xs font-semibold uppercase tracking-wider">
+              Visualizzati {filteredEvents.length} appuntamenti
+            </div>
+            {filteredEvents.length > 50 && (
+              <div className="text-stone-400 text-xs">
+                Mostrati {Math.min((listPage - 1) * 50 + 1, filteredEvents.length)} - {Math.min(listPage * 50, filteredEvents.length)} di {filteredEvents.length}
+              </div>
+            )}
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredEvents.slice(0, 100).map(ev => renderEventCard(ev, onSelectPmu, onSelectWedding))}
+            {filteredEvents
+              .slice((listPage - 1) * 50, listPage * 50)
+              .map(ev => renderEventCard(ev, onSelectPmu, onSelectWedding))}
           </div>
+
+          {/* Pagination Controls */}
+          {Math.ceil(filteredEvents.length / 50) > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-stone-800 text-xs sm:text-sm">
+              <button
+                onClick={() => setListPage(p => Math.max(1, p - 1))}
+                disabled={listPage <= 1}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Precedente
+              </button>
+
+              <span className="text-stone-400 font-medium">
+                Pagina <span className="text-white font-bold">{listPage}</span> di{' '}
+                <span className="text-white font-bold">{Math.ceil(filteredEvents.length / 50)}</span>
+              </span>
+
+              <button
+                onClick={() => setListPage(p => Math.min(Math.ceil(filteredEvents.length / 50), p + 1))}
+                disabled={listPage >= Math.ceil(filteredEvents.length / 50)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                Successiva
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -588,8 +593,8 @@ function renderEventCard(
         </div>
       </div>
 
-      {/* Address / Google Maps link if available */}
-      {ev.address && (
+      {/* Address / Google Maps link if available (only for non-saved addresses/weddings) */}
+      {ev.address && !ev.rawPmu && (
         <div className="mb-2 flex items-center justify-between text-[11px] text-stone-400 bg-stone-900/50 px-2.5 py-1 rounded-lg border border-stone-700/40">
           <span className="truncate flex items-center gap-1 text-stone-300">
             <MapPin className="w-3 h-3 text-rose-400 flex-shrink-0" />

@@ -445,8 +445,16 @@ export default function Home() {
               setLocations(newLocs);
               DataService.saveLocations(newLocs);
             }}
+            onSaveLocation={loc => {
+              DataService.addOrUpdateLocation(loc);
+              setLocations(DataService.getLocations());
+            }}
+            onDeleteLocationProp={id => {
+              DataService.deleteLocation(id);
+              setLocations(DataService.getLocations());
+            }}
             onSaveServicePrice={item => {
-              const saved = DataService.addOrUpdateServicePrice(item);
+              DataService.addOrUpdateServicePrice(item);
               setServicePrices(DataService.getServicePrices());
             }}
             onDeleteServicePrice={id => {

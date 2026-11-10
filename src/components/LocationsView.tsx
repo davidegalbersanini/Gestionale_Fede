@@ -20,6 +20,8 @@ interface LocationsViewProps {
   locations: Location[];
   servicePrices: ServicePrice[];
   onUpdateLocations: (locations: Location[]) => void;
+  onSaveLocation?: (location: Location) => void;
+  onDeleteLocationProp?: (id: string) => void;
   onSaveServicePrice: (item: Partial<ServicePrice> & { location_id: string; name: string; price: number }) => void;
   onDeleteServicePrice: (id: string) => void;
 }
@@ -28,6 +30,8 @@ export default function LocationsView({
   locations,
   servicePrices,
   onUpdateLocations,
+  onSaveLocation,
+  onDeleteLocationProp,
   onSaveServicePrice,
   onDeleteServicePrice,
 }: LocationsViewProps) {
@@ -66,7 +70,11 @@ export default function LocationsView({
       active: true,
     };
 
-    onUpdateLocations([...locations, newLoc]);
+    if (onSaveLocation) {
+      onSaveLocation(newLoc);
+    } else {
+      onUpdateLocations([...locations, newLoc]);
+    }
     setNewLocName('');
     setNewLocAddress('');
     setIsAddingLoc(false);
@@ -75,17 +83,21 @@ export default function LocationsView({
   // Handle Update Location
   const handleSaveEditLocation = (id: string) => {
     if (!editingLocName.trim()) return;
-    const updated = locations.map(l =>
-      l.id === id
-        ? {
-            ...l,
-            name: editingLocName.trim(),
-            address: editingLocAddress.trim() || undefined,
-            color: editingLocColor || l.color,
-          }
-        : l
-    );
-    onUpdateLocations(updated);
+    const existing = locations.find(l => l.id === id);
+    const updatedLoc: Location = {
+      id,
+      name: editingLocName.trim(),
+      address: editingLocAddress.trim() || undefined,
+      color: editingLocColor || existing?.color || '#ec4899',
+      active: existing?.active ?? true,
+    };
+
+    if (onSaveLocation) {
+      onSaveLocation(updatedLoc);
+    } else {
+      const updated = locations.map(l => (l.id === id ? updatedLoc : l));
+      onUpdateLocations(updated);
+    }
     setEditingLocId(null);
   };
 
@@ -96,8 +108,12 @@ export default function LocationsView({
       return;
     }
     if (confirm('Sei sicura di voler eliminare questa sede? I trattamenti associati non saranno più visibili per questa sede.')) {
-      const updated = locations.filter(l => l.id !== id);
-      onUpdateLocations(updated);
+      if (onDeleteLocationProp) {
+        onDeleteLocationProp(id);
+      } else {
+        const updated = locations.filter(l => l.id !== id);
+        onUpdateLocations(updated);
+      }
     }
   };
 

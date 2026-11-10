@@ -48,10 +48,25 @@ export const DataService = {
     setStorage(STORAGE_KEYS.LOCATIONS, locations);
     CloudSync.syncAllLocations(locations);
   },
+  addOrUpdateLocation(loc: Location): Location {
+    const list = this.getLocations();
+    const idx = list.findIndex(l => l.id === loc.id);
+    let updatedList: Location[];
+    if (idx >= 0) {
+      updatedList = list.map(l => (l.id === loc.id ? loc : l));
+    } else {
+      updatedList = [...list, loc];
+    }
+    setStorage(STORAGE_KEYS.LOCATIONS, updatedList);
+    CloudSync.upsertLocation(loc);
+    CloudSync.syncAllLocations(updatedList);
+    return loc;
+  },
   deleteLocation(id: string): void {
     const list = this.getLocations().filter(l => l.id !== id);
     setStorage(STORAGE_KEYS.LOCATIONS, list);
     CloudSync.deleteLocation(id);
+    CloudSync.syncAllLocations(list);
   },
 
   getClients(): Client[] {
@@ -381,7 +396,7 @@ export const DataService = {
     if (!cloud) return null;
 
     if (cloud.locations && cloud.locations.length > 0) {
-      this.saveLocations(cloud.locations);
+      setStorage(STORAGE_KEYS.LOCATIONS, cloud.locations);
     }
     if (cloud.clients && cloud.clients.length > 0) {
       this.saveClients(cloud.clients);

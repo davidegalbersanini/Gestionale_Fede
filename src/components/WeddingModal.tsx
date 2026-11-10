@@ -452,7 +452,8 @@ export default function WeddingModal({
                       if (bestMatch) {
                         setSelectedVoucherId(bestMatch.id);
                         const rem = bestMatch.remaining_amount ?? bestMatch.amount;
-                        setVoucherDeduction(String(rem));
+                        const defaultDeduction = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                        setVoucherDeduction(String(defaultDeduction));
                       }
                     }
                   }}
@@ -479,7 +480,8 @@ export default function WeddingModal({
                           const chosen = availableVouchers.find(v => v.id === vId);
                           if (chosen) {
                             const rem = chosen.remaining_amount ?? chosen.amount;
-                            setVoucherDeduction(String(rem));
+                            const defaultDeduction = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                            setVoucherDeduction(String(defaultDeduction));
                           }
                         }}
                         className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
@@ -511,15 +513,54 @@ export default function WeddingModal({
 
                   {selectedVoucherId && (
                     <div>
-                      <label className="block text-[11px] font-semibold text-stone-300 mb-1">
-                        Importo da scalare (€)
+                      <label className="block text-[11px] font-semibold text-stone-300 mb-1 flex items-center justify-between">
+                        <span>Importo da scalare (€)</span>
+                        {(() => {
+                          const curV = availableVouchers.find(v => v.id === selectedVoucherId);
+                          if (!curV) return null;
+                          const rem = curV.remaining_amount ?? curV.amount;
+                          const maxApplicable = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                          return (
+                            <span className="text-[10px] text-stone-400 font-normal">
+                              Max: {maxApplicable}€
+                            </span>
+                          );
+                        })()}
                       </label>
                       <input
                         type="number"
                         step="any"
+                        min="0"
+                        max={(() => {
+                          const curV = availableVouchers.find(v => v.id === selectedVoucherId);
+                          if (!curV) return undefined;
+                          const rem = curV.remaining_amount ?? curV.amount;
+                          return totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                        })()}
                         placeholder="0.00"
                         value={voucherDeduction}
-                        onChange={e => setVoucherDeduction(e.target.value)}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          if (raw === '') {
+                            setVoucherDeduction('');
+                            return;
+                          }
+                          const num = parseFloat(raw);
+                          if (isNaN(num)) {
+                            setVoucherDeduction('');
+                            return;
+                          }
+                          const curV = availableVouchers.find(v => v.id === selectedVoucherId);
+                          const rem = curV ? (curV.remaining_amount ?? curV.amount) : Infinity;
+                          const maxApplicable = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                          if (num > maxApplicable) {
+                            setVoucherDeduction(String(maxApplicable));
+                          } else if (num < 0) {
+                            setVoucherDeduction('0');
+                          } else {
+                            setVoucherDeduction(raw);
+                          }
+                        }}
                         className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
                       />
                       {(() => {

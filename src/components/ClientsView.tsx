@@ -52,18 +52,25 @@ export default function ClientsView({
   const [newNotes, setNewNotes] = useState('');
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
-  // Filter clients
+  // Filter and sort clients alphabetically
   const filteredClients = useMemo(() => {
-    if (!search.trim()) return clients;
-    const q = search.toLowerCase();
-    return clients.filter(
-      c =>
-        c.full_name.toLowerCase().includes(q) ||
-        (c.first_name && c.first_name.toLowerCase().includes(q)) ||
-        (c.last_name && c.last_name.toLowerCase().includes(q)) ||
-        (c.phone && c.phone.includes(q)) ||
-        (c.notes && c.notes.toLowerCase().includes(q))
-    );
+    let list = clients;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = clients.filter(
+        c =>
+          c.full_name.toLowerCase().includes(q) ||
+          (c.first_name && c.first_name.toLowerCase().includes(q)) ||
+          (c.last_name && c.last_name.toLowerCase().includes(q)) ||
+          (c.phone && c.phone.includes(q)) ||
+          (c.notes && c.notes.toLowerCase().includes(q))
+      );
+    }
+    return [...list].sort((a, b) => {
+      const nameA = (a.last_name ? `${a.last_name} ${a.first_name}` : a.full_name).trim();
+      const nameB = (b.last_name ? `${b.last_name} ${b.first_name}` : b.full_name).trim();
+      return nameA.localeCompare(nameB, 'it', { sensitivity: 'base' });
+    });
   }, [clients, search]);
 
   // History for selected client

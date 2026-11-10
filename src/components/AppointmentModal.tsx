@@ -458,14 +458,28 @@ export default function AppointmentModal({
                   onChange={e => {
                     const checked = e.target.checked;
                     setUsedGiftVoucher(checked);
+                    let newVoucherDeduct = 0;
                     if (checked && !selectedVoucherId && availableVouchers.length > 0) {
                       const bestMatch = matchingVouchers[0] || availableVouchers[0];
                       if (bestMatch) {
                         setSelectedVoucherId(bestMatch.id);
                         const rem = bestMatch.remaining_amount ?? bestMatch.amount;
-                        const defaultDeduction = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                        setVoucherDeduction(String(defaultDeduction));
+                        newVoucherDeduct = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                        setVoucherDeduction(String(newVoucherDeduct));
                       }
+                    } else if (checked && selectedVoucherId) {
+                      const curV = availableVouchers.find(v => v.id === selectedVoucherId);
+                      const rem = curV ? (curV.remaining_amount ?? curV.amount) : 0;
+                      newVoucherDeduct = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                      setVoucherDeduction(String(newVoucherDeduct));
+                    } else {
+                      newVoucherDeduct = 0;
+                    }
+
+                    // Cap payment so it doesn't exceed (total - voucher)
+                    const maxPay = Math.max(0, totalNum - newVoucherDeduct);
+                    if ((parseFloat(payment) || 0) > maxPay) {
+                      setPayment(maxPay > 0 ? String(maxPay) : '');
                     }
                   }}
                   className="w-4 h-4 rounded border-stone-600 bg-stone-900 text-amber-500 focus:ring-0 cursor-pointer"
@@ -489,10 +503,19 @@ export default function AppointmentModal({
                           const vId = e.target.value;
                           setSelectedVoucherId(vId);
                           const chosen = availableVouchers.find(v => v.id === vId);
+                          let newVoucherDeduct = 0;
                           if (chosen) {
                             const rem = chosen.remaining_amount ?? chosen.amount;
-                            const defaultDeduction = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                            setVoucherDeduction(String(defaultDeduction));
+                            newVoucherDeduct = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                            setVoucherDeduction(String(newVoucherDeduct));
+                          } else {
+                            setVoucherDeduction('');
+                          }
+
+                          // Cap payment so it doesn't exceed (total - voucher)
+                          const maxPay = Math.max(0, totalNum - newVoucherDeduct);
+                          if ((parseFloat(payment) || 0) > maxPay) {
+                            setPayment(maxPay > 0 ? String(maxPay) : '');
                           }
                         }}
                         className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
@@ -552,24 +575,36 @@ export default function AppointmentModal({
                         value={voucherDeduction}
                         onChange={e => {
                           const raw = e.target.value;
+                          let validDed = 0;
                           if (raw === '') {
                             setVoucherDeduction('');
-                            return;
-                          }
-                          const num = parseFloat(raw);
-                          if (isNaN(num)) {
-                            setVoucherDeduction('');
-                            return;
-                          }
-                          const curV = availableVouchers.find(v => v.id === selectedVoucherId);
-                          const rem = curV ? (curV.remaining_amount ?? curV.amount) : Infinity;
-                          const maxApplicable = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                          if (num > maxApplicable) {
-                            setVoucherDeduction(String(maxApplicable));
-                          } else if (num < 0) {
-                            setVoucherDeduction('0');
+                            validDed = 0;
                           } else {
-                            setVoucherDeduction(raw);
+                            const num = parseFloat(raw);
+                            if (isNaN(num)) {
+                              setVoucherDeduction('');
+                              validDed = 0;
+                            } else {
+                              const curV = availableVouchers.find(v => v.id === selectedVoucherId);
+                              const rem = curV ? (curV.remaining_amount ?? curV.amount) : Infinity;
+                              const maxApplicable = totalNum > 0 ? Math.min(rem, totalNum) : rem;
+                              if (num > maxApplicable) {
+                                validDed = maxApplicable;
+                                setVoucherDeduction(String(maxApplicable));
+                              } else if (num < 0) {
+                                validDed = 0;
+                                setVoucherDeduction('0');
+                              } else {
+                                validDed = num;
+                                setVoucherDeduction(raw);
+                              }
+                            }
+                          }
+
+                          // Cap payment so it doesn't exceed (total - voucher)
+                          const maxPay = Math.max(0, totalNum - validDed);
+                          if ((parseFloat(payment) || 0) > maxPay) {
+                            setPayment(maxPay > 0 ? String(maxPay) : '');
                           }
                         }}
                         className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"

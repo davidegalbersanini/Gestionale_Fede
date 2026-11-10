@@ -137,13 +137,12 @@ export default function WeddingModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!brideName.trim()) return;
 
-    const fullWeddingDateTime = `${weddingDate}T${weddingTime}:00`;
-    const fullTrialDateTime = trialDate ? `${trialDate}T${trialTime}:00` : null;
+    const fullWeddingDateTime = weddingDate; // Data senza orario fittizio
+    const fullTrialDateTime = trialDate || null;
 
     const weddingData: Omit<WeddingService, 'id'> = {
-      bride_name: brideName.trim(),
+      bride_name: brideName.trim() || eventType,
       client_id: selectedClientId,
       event_type: eventType,
       address: address.trim() || undefined,
@@ -235,12 +234,11 @@ export default function WeddingModal({
           {/* Nome Cliente / Sposa */}
           <div className="relative">
             <label className="block text-xs font-semibold text-pink-300 uppercase tracking-wider mb-1.5">
-              Cliente *
+              Cliente (Opzionale)
             </label>
             <input
               type="text"
-              required
-              placeholder="es. Laura Rossi"
+              placeholder="es. Laura Rossi (o lascia vuoto)"
               value={brideName}
               onChange={e => {
                 setBrideName(e.target.value);
@@ -296,31 +294,20 @@ export default function WeddingModal({
             />
           </div>
 
-          {/* Data e Ora Evento */}
+          {/* Data Evento (senza orario) */}
           <div className="p-4 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-3">
             <div className="flex items-center gap-2 text-pink-400 text-xs font-bold uppercase tracking-wider">
               <Heart className="w-3.5 h-3.5" /> Evento
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-stone-400 mb-1">Data</label>
-                <input
-                  type="date"
-                  required
-                  value={weddingDate}
-                  onChange={e => setWeddingDate(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-400 mb-1">Inizio</label>
-                <input
-                  type="time"
-                  value={weddingTime}
-                  onChange={e => setWeddingTime(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-                />
-              </div>
+            <div>
+              <label className="block text-xs text-stone-400 mb-1">Data</label>
+              <input
+                type="date"
+                required
+                value={weddingDate}
+                onChange={e => setWeddingDate(e.target.value)}
+                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+              />
             </div>
           </div>
 
@@ -329,25 +316,14 @@ export default function WeddingModal({
             <div className="flex items-center gap-2 text-stone-300 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Prova Trucco (Opzionale)
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-stone-400 mb-1">Data Prova</label>
-                <input
-                  type="date"
-                  value={trialDate}
-                  onChange={e => setTrialDate(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-stone-400 mb-1">Orario Prova</label>
-                <input
-                  type="time"
-                  value={trialTime}
-                  onChange={e => setTrialTime(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-                />
-              </div>
+            <div>
+              <label className="block text-xs text-stone-400 mb-1">Data Prova</label>
+              <input
+                type="date"
+                value={trialDate}
+                onChange={e => setTrialDate(e.target.value)}
+                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+              />
             </div>
           </div>
 

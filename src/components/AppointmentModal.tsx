@@ -164,8 +164,8 @@ export default function AppointmentModal({
     e.preventDefault();
     if (!clientName.trim()) return;
 
-    const fullDateTime = `${appointmentDate}T${appointmentTime}:00`;
-    const fullEndDateTime = `${appointmentDate}T${appointmentEndTime}:00`;
+    const fullDateTime = appointmentDate; // Senza orario fittizio
+    const fullEndDateTime = appointmentDate;
 
     const appData: Omit<Appointment, 'id'> = {
       client_id: selectedClientId,
@@ -174,19 +174,16 @@ export default function AppointmentModal({
       category: 'pmu',
       treatment: treatment.trim(),
       appointment_date: fullDateTime,
-      end_time: appointmentEndTime,
       total_price: totalNum,
       payment: paymentNum,
       balance: calculatedBalance,
       touch_up_date: touchUpDate || null,
-      touch_up_time: touchUpDate ? touchUpTime : undefined,
-      touch_up_end_time: touchUpDate ? touchUpEndTime : undefined,
       notes: notes.trim(),
       used_gift_voucher: usedGiftVoucher,
       used_gift_voucher_id: usedGiftVoucher && selectedVoucherId ? selectedVoucherId : undefined,
       used_gift_voucher_amount: usedGiftVoucher && voucherDeductNum > 0 ? voucherDeductNum : undefined,
       sync_google_calendar: syncGoogleCalendar,
-      status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
+      status: fullDateTime < new Date().toISOString().slice(0, 10) ? 'completato' : 'programmato',
     };
 
     // Google Calendar Sync with location address if present
@@ -339,48 +336,18 @@ export default function AppointmentModal({
             </div>
           </div>
 
-          {/* Data e Ora Inizio / Ora Fine */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                Data
-              </label>
-              <input
-                type="date"
-                required
-                value={appointmentDate}
-                onChange={e => setAppointmentDate(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-rose-400" /> Inizio
-              </label>
-              <input
-                type="time"
-                required
-                value={appointmentTime}
-                onChange={e => {
-                  const val = e.target.value;
-                  setAppointmentTime(val);
-                  setAppointmentEndTime(addHoursToTime(val, 2));
-                }}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-amber-400" /> Fine
-              </label>
-              <input
-                type="time"
-                required
-                value={appointmentEndTime}
-                onChange={e => setAppointmentEndTime(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-              />
-            </div>
+          {/* Data Trattamento (senza orari) */}
+          <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50">
+            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+              Data *
+            </label>
+            <input
+              type="date"
+              required
+              value={appointmentDate}
+              onChange={e => setAppointmentDate(e.target.value)}
+              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+            />
           </div>
 
           {/* Aspetti Economici: Totale Trattamento (input), Denaro Ricevuto (input), Da saldare (calcolato) */}
@@ -649,7 +616,7 @@ export default function AppointmentModal({
             </div>
           </div>
 
-          {/* Data e Orari Ritocco (Inizio e Fine) */}
+          {/* Data Ritocco (senza orari) */}
           <div className="p-3.5 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider">
@@ -668,44 +635,14 @@ export default function AppointmentModal({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div>
-                <label className="block text-[11px] text-stone-400 mb-1">Data</label>
-                <input
-                  type="date"
-                  value={touchUpDate}
-                  onChange={e => setTouchUpDate(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-rose-400" /> Inizio
-                </label>
-                <input
-                  type="time"
-                  disabled={!touchUpDate}
-                  value={touchUpTime}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setTouchUpTime(val);
-                    setTouchUpEndTime(addHoursToTime(val, 1.5));
-                  }}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-amber-400" /> Fine
-                </label>
-                <input
-                  type="time"
-                  disabled={!touchUpDate}
-                  value={touchUpEndTime}
-                  onChange={e => setTouchUpEndTime(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
-                />
-              </div>
+            <div>
+              <label className="block text-[11px] text-stone-400 mb-1">Data</label>
+              <input
+                type="date"
+                value={touchUpDate}
+                onChange={e => setTouchUpDate(e.target.value)}
+                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+              />
             </div>
 
             {touchUpDate && (
@@ -716,7 +653,7 @@ export default function AppointmentModal({
                   onChange={e => setCreateTouchUpFollowup(e.target.checked)}
                   className="rounded border-stone-700 bg-stone-900 text-rose-500"
                 />
-                <span>Crea ritocco in agenda ({touchUpTime} - {touchUpEndTime})</span>
+                <span>Crea ritocco in agenda</span>
               </label>
             )}
           </div>

@@ -138,13 +138,15 @@ export default function ClientsView({
 
   const handleCreateClient = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) return;
+    const cleanFirst = firstName.trim();
+    const cleanLast = lastName.trim();
+    if (!cleanFirst && !cleanLast) return;
 
-    const full_name = `${firstName.trim()} ${lastName.trim()}`;
+    const full_name = cleanLast ? `${cleanFirst} ${cleanLast}`.trim() : cleanFirst;
 
     onSaveClient({
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
+      first_name: cleanFirst || cleanLast,
+      last_name: cleanLast || '-',
       full_name,
       phone: newPhone.trim(),
       notes: newNotes.trim(),
@@ -573,12 +575,11 @@ export default function ClientsView({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
-                    Cognome *
+                    Cognome
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder="es. Raimondi"
+                    placeholder="Opzionale"
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
                     className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"

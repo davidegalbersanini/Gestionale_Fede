@@ -1,6 +1,7 @@
 import { Location, Client, Appointment, WeddingService, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
 import initialData from '@/data/initialData.json';
 import { CloudSync } from '@/lib/supabase';
+import { PASTEL_LOCATION_PALETTE } from '@/lib/locationColors';
 
 const STORAGE_KEYS = {
   LOCATIONS: 'fede_locations_v2',
@@ -41,7 +42,39 @@ function setStorage<T>(key: string, data: T): void {
 
 export const DataService = {
   getLocations(): Location[] {
-    return getStorage<Location[]>(STORAGE_KEYS.LOCATIONS, initialData.locations);
+    const raw = getStorage<Location[]>(STORAGE_KEYS.LOCATIONS, initialData.locations);
+    // Auto-migrate legacy high-saturation colors to elegant pastel palette
+    const legacyMap: Record<string, string> = {
+      '#ec4899': '#F472B6', // Beauty Center
+      '#EC4899': '#F472B6',
+      '#398e62': '#34D399', // The Touch
+      '#398E62': '#34D399',
+      '#f43f5e': '#34D399',
+      '#F43F5E': '#34D399',
+      '#5f36ab': '#A78BFA', // AliceinWondernails
+      '#5F36AB': '#A78BFA',
+      '#8b5cf6': '#A78BFA',
+      '#8B5CF6': '#A78BFA',
+    };
+    let changed = false;
+    const sanitized = raw.map((loc, idx) => {
+      const curColor = (loc.color || '').trim();
+      let newColor = curColor;
+      if (legacyMap[curColor]) {
+        newColor = legacyMap[curColor];
+      } else if (!newColor || newColor === '#000000') {
+        newColor = PASTEL_LOCATION_PALETTE[idx % PASTEL_LOCATION_PALETTE.length];
+      }
+      if (newColor !== loc.color) {
+        changed = true;
+        return { ...loc, color: newColor };
+      }
+      return loc;
+    });
+    if (changed) {
+      setStorage(STORAGE_KEYS.LOCATIONS, sanitized);
+    }
+    return sanitized;
   },
   saveLocations(locations: Location[]): void {
     setStorage(STORAGE_KEYS.LOCATIONS, locations);

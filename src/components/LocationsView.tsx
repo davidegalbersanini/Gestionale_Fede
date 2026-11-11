@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Location, ServicePrice } from '@/types';
+import { getNextPastelLocationColor, PASTEL_LOCATION_PALETTE } from '@/lib/locationColors';
 import {
   Store,
   MapPin,
@@ -39,13 +40,20 @@ export default function LocationsView({
   const [isAddingLoc, setIsAddingLoc] = useState(false);
   const [newLocName, setNewLocName] = useState('');
   const [newLocAddress, setNewLocAddress] = useState('');
-  const [newLocColor, setNewLocColor] = useState('#ec4899');
+  const [newLocColor, setNewLocColor] = useState(() => getNextPastelLocationColor(locations));
+
+  // Quando si apre il form o cambiano le sedi esistenti, assegna di default il prossimo colore pastello libero
+  useEffect(() => {
+    if (isAddingLoc) {
+      setNewLocColor(getNextPastelLocationColor(locations));
+    }
+  }, [isAddingLoc, locations]);
 
   // Edit Location State
   const [editingLocId, setEditingLocId] = useState<string | null>(null);
   const [editingLocName, setEditingLocName] = useState('');
   const [editingLocAddress, setEditingLocAddress] = useState('');
-  const [editingLocColor, setEditingLocColor] = useState('#ec4899');
+  const [editingLocColor, setEditingLocColor] = useState('#F472B6');
 
   // New Service Form State (per location)
   const [addingServiceLocId, setAddingServiceLocId] = useState<string | null>(null);
@@ -78,6 +86,7 @@ export default function LocationsView({
     setNewLocName('');
     setNewLocAddress('');
     setIsAddingLoc(false);
+    setNewLocColor(getNextPastelLocationColor([...locations, newLoc]));
   };
 
   // Handle Update Location
@@ -213,10 +222,10 @@ export default function LocationsView({
               />
             </div>
 
-            <div className="sm:col-span-3 flex items-center gap-2">
-              <div className="flex-1">
+            <div className="sm:col-span-3 flex flex-col gap-2">
+              <div>
                 <label className="block text-[11px] font-semibold text-stone-400 uppercase mb-1">
-                  Colore
+                  Colore Pastello
                 </label>
                 <div className="flex items-center gap-2 bg-stone-800 border border-stone-700 rounded-xl px-2.5 py-1.5">
                   <input
@@ -228,11 +237,36 @@ export default function LocationsView({
                   <span className="text-xs font-mono text-stone-300">{newLocColor}</span>
                 </div>
               </div>
+
+              {/* Swatch rapidi della palette pastello */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                {PASTEL_LOCATION_PALETTE.map(c => {
+                  const isSelected = newLocColor.toUpperCase() === c.toUpperCase();
+                  const isAlreadyUsed = locations.some(l => (l.color || '').toUpperCase() === c.toUpperCase());
+                  return (
+                    <button
+                      type="button"
+                      key={c}
+                      onClick={() => setNewLocColor(c)}
+                      title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
+                      className={`w-5 h-5 rounded-full transition-all relative ${
+                        isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-sm' : 'opacity-80 hover:opacity-100 hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: c }}
+                    >
+                      {isAlreadyUsed && !isSelected && (
+                        <span className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-stone-950/60" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
               <button
                 type="submit"
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-md mt-auto h-[38px]"
+                className="w-full px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-md mt-1 h-[38px]"
               >
-                Crea
+                Crea Sede
               </button>
             </div>
           </div>

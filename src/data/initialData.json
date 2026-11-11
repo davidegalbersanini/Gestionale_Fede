@@ -1,23 +1,23 @@
 {
   "locations": [
     {
-      "id": "loc-thetouch",
-      "name": "The Touch",
-      "color": "#f43f5e",
-      "address": "The Touch Monza",
-      "active": true
-    },
-    {
       "id": "loc-beautycent",
-      "name": "Beauty Cent",
-      "color": "#ec4899",
+      "name": "Beauty Center",
+      "color": "#F472B6",
       "address": "Beauty Cent",
       "active": true
     },
     {
-      "id": "loc-studio",
-      "name": "Studio Privato",
-      "color": "#8b5cf6",
+      "id": "loc-thetouch",
+      "name": "The Touch",
+      "color": "#34D399",
+      "address": "The Touch Busto Arsizio",
+      "active": true
+    },
+    {
+      "id": "loc-1794419155074",
+      "name": "AliceinWondernails",
+      "color": "#A78BFA",
       "address": "",
       "active": true
     }

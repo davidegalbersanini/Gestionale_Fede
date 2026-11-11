@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Appointment, WeddingService, Location, UnifiedEvent } from '@/types';
+import { PASTEL_EVENT_COLORS } from '@/lib/locationColors';
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -107,7 +108,7 @@ export default function AgendaView({
         client_name: w.bride_name,
         date: w.wedding_date,
         location_name: 'Location Evento',
-        location_color: '#f43f5e',
+        location_color: PASTEL_EVENT_COLORS.EVENT_DAY,
         address: w.address,
         amount: w.trial_deposit,
         balance: w.wedding_balance,
@@ -124,7 +125,7 @@ export default function AgendaView({
           client_name: w.bride_name,
           date: w.trial_date,
           location_name: 'Studio',
-          location_color: '#f59e0b',
+          location_color: PASTEL_EVENT_COLORS.EVENT_TRIAL,
           address: w.address,
           amount: w.trial_deposit,
           balance: 0,
@@ -538,9 +539,25 @@ function renderEventCard(
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
             {isWedding ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 flex items-center gap-1">
-                <Heart className="w-2.5 h-2.5 fill-current" />
-                {ev.type === 'wedding_day' ? (ev.rawWedding?.event_type || 'Evento') : 'Prova Trucco'}
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border"
+                style={{
+                  backgroundColor: `${ev.location_color}25`,
+                  borderColor: `${ev.location_color}40`,
+                  color: ev.location_color,
+                }}
+              >
+                {ev.type === 'wedding_day' ? (
+                  <>
+                    <Heart className="w-2.5 h-2.5 fill-current" />
+                    <span>{ev.rawWedding?.event_type || 'Evento'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-2.5 h-2.5" />
+                    <span>Prova Trucco</span>
+                  </>
+                )}
               </span>
             ) : isGeneric ? (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">

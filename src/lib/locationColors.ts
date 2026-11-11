@@ -5,11 +5,19 @@ export const PASTEL_LOCATION_PALETTE: readonly string[] = [
   '#34D399', // Salvia / Menta Pastello (The Touch)
   '#A78BFA', // Lavanda / Lilla Pastello (AliceinWondernails)
   '#38BDF8', // Celeste / Azzurro Pastello
-  '#FBBF24', // Pesca Dorata / Miele Pastello
-  '#FB7185', // Corallo / Melone Pastello
   '#2DD4BF', // Tiffany / Acqua Pastello
   '#C084FC', // Malva Pastello
+  '#818CF8', // Indaco Chiaro Pastello
+  '#94A3B8', // Ardesia Polvere Pastello
 ] as const;
+
+// Colori pastello distinti e dedicati al mondo Eventi & Cerimonie
+export const PASTEL_EVENT_COLORS = {
+  // Giorno dell'Evento / Matrimonio: Pesca Corallo Pastello elegante e romantico
+  EVENT_DAY: '#FB7185',
+  // Prova Trucco: Miele Dorato / Vaniglia Pastello caldo e distinto
+  EVENT_TRIAL: '#FBBF24',
+} as const;
 
 /**
  * Trova il primo colore pastello della palette che non sia ancora stato utilizzato

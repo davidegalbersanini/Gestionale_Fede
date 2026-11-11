@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { WeddingService, Client, GiftVoucher } from '@/types';
 import { syncCalendarAutomatically } from '@/lib/calendar';
+import { PASTEL_EVENT_COLORS } from '@/lib/locationColors';
 import { X, Calendar as CalendarIcon, Heart, Sparkles, Users, MapPin, ExternalLink, Gift, Check } from 'lucide-react';
 
 interface WeddingModalProps {
@@ -198,6 +199,7 @@ export default function WeddingModal({
         startDate: fullWeddingDateTime,
         endDate: fullWeddingEndDateTime,
         location: address.trim() || '',
+        colorHex: PASTEL_EVENT_COLORS.EVENT_DAY,
         details: `Tipo: ${eventType}\nCliente: ${finalBrideName}\nPersone da truccare: ${peopleCount}\nIndirizzo/Luogo: ${address || 'Non specificato'}\nOrario: ${weddingTime} - ${weddingEndTime}\nTotale Servizio: ${totalNum}€\nAcconto/Ricevuto: ${depositNum}€\nDa saldare: ${calculatedBalance}€\nNote: ${notes}`,
       });
 
@@ -209,6 +211,7 @@ export default function WeddingModal({
           startDate: fullTrialDateTime,
           endDate: fullTrialEndDateTime,
           location: address.trim() || '',
+          colorHex: PASTEL_EVENT_COLORS.EVENT_TRIAL,
           details: `Prova trucco per evento del ${weddingDate}\nOrario: ${trialTime} - ${trialEndTime}\nAcconto prova: ${depositNum}€\nNote: ${notes}`,
         });
       }

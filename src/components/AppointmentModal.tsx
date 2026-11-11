@@ -241,7 +241,9 @@ export default function AppointmentModal({
         {/* Header */}
         <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full animate-pulse bg-rose-500" />
+            <span className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-rose-400 fill-rose-500/30" />
+            </span>
             <h2 className="text-lg font-bold text-white">
               {initialAppointment ? 'Modifica PMU' : 'Nuovo PMU'}
             </h2>

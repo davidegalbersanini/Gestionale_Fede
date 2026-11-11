@@ -222,7 +222,7 @@ export default function AgendaView({
             onClick={() => onOpenNewPmu(selectedDayIso)}
             className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Sparkles className="w-4 h-4" />
             <span>PMU</span>
           </button>
 

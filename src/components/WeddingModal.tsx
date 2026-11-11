@@ -192,20 +192,24 @@ export default function WeddingModal({
     // Google Calendar Sync with event address
     if (syncGoogleCalendar) {
       // Event 1: Event/Wedding Day
+      const fullWeddingEndDateTime = weddingEndTime ? `${weddingDate}T${weddingEndTime}:00` : undefined;
       syncCalendarAutomatically({
         title: `✨ ${eventType.toUpperCase()}: ${finalBrideName}`,
         startDate: fullWeddingDateTime,
+        endDate: fullWeddingEndDateTime,
         location: address.trim() || '',
-        details: `Tipo: ${eventType}\nCliente: ${finalBrideName}\nPersone da truccare: ${peopleCount}\nIndirizzo/Luogo: ${address || 'Non specificato'}\nTotale Servizio: ${totalNum}€\nAcconto/Ricevuto: ${depositNum}€\nDa saldare: ${calculatedBalance}€\nNote: ${notes}`,
+        details: `Tipo: ${eventType}\nCliente: ${finalBrideName}\nPersone da truccare: ${peopleCount}\nIndirizzo/Luogo: ${address || 'Non specificato'}\nOrario: ${weddingTime} - ${weddingEndTime}\nTotale Servizio: ${totalNum}€\nAcconto/Ricevuto: ${depositNum}€\nDa saldare: ${calculatedBalance}€\nNote: ${notes}`,
       });
 
       // Event 2: Trial if set
-      if (fullTrialDateTime) {
+      if (fullTrialDateTime && trialDate) {
+        const fullTrialEndDateTime = trialEndTime ? `${trialDate}T${trialEndTime}:00` : undefined;
         syncCalendarAutomatically({
           title: `💄 Prova Trucco: ${finalBrideName} (${eventType})`,
           startDate: fullTrialDateTime,
+          endDate: fullTrialEndDateTime,
           location: address.trim() || '',
-          details: `Prova trucco per evento del ${weddingDate}\nAcconto prova: ${depositNum}€\nNote: ${notes}`,
+          details: `Prova trucco per evento del ${weddingDate}\nOrario: ${trialTime} - ${trialEndTime}\nAcconto prova: ${depositNum}€\nNote: ${notes}`,
         });
       }
     }

@@ -19,6 +19,8 @@ import {
   UploadCloud,
   RefreshCw,
   Gift,
+  ExternalLink,
+  CheckCircle2,
   X
 } from 'lucide-react';
 
@@ -43,15 +45,18 @@ export default function DashboardView({
   onUpdateSettings,
   onShowToast,
 }: DashboardViewProps) {
-  const currentYearStr = String(new Date().getFullYear());
+  const nowDate = new Date();
+  const currentYearStr = String(nowDate.getFullYear());
+  const currentMonthIdx = nowDate.getMonth();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
 
   // Excel Export Modal state
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportRange, setExportRange] = useState<'all' | 'current_year' | 'custom'>('all');
+  const [exportRange, setExportRange] = useState<'all' | 'selected_year' | 'current_month' | 'custom'>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [exportSuccessInfo, setExportSuccessInfo] = useState<{ fileName: string; webViewLink?: string } | null>(null);
 
   const monthNames = [
     'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -189,10 +194,16 @@ export default function DashboardView({
     let start: string | undefined = undefined;
     let end: string | undefined = undefined;
 
-    if (exportRange === 'current_year') {
-      periodLabel = `Anno ${currentYearStr}`;
-      start = `${currentYearStr}-01-01`;
-      end = `${currentYearStr}-12-31`;
+    if (exportRange === 'selected_year') {
+      periodLabel = `Anno ${selectedYear}`;
+      start = `${selectedYear}-01-01`;
+      end = `${selectedYear}-12-31`;
+    } else if (exportRange === 'current_month') {
+      const mPadded = String(currentMonthIdx + 1).padStart(2, '0');
+      const lastDay = new Date(Number(currentYearStr), currentMonthIdx + 1, 0).getDate();
+      periodLabel = `${monthNames[currentMonthIdx]} ${currentYearStr}`;
+      start = `${currentYearStr}-${mPadded}-01`;
+      end = `${currentYearStr}-${mPadded}-${String(lastDay).padStart(2, '0')}`;
     } else if (exportRange === 'custom') {
       periodLabel = `Dal ${customStartDate || 'inizio'} al ${customEndDate || 'oggi'}`;
       start = customStartDate || undefined;
@@ -214,30 +225,35 @@ export default function DashboardView({
         },
       });
 
-      setIsExcelModalOpen(false);
-
       if (result.driveSuccess) {
+        setExportSuccessInfo({
+          fileName: result.fileName,
+          webViewLink: result.driveWebViewLink,
+        });
         if (onShowToast) {
-          onShowToast('Report Excel caricato con successo direttamente su Google Drive!');
-        }
-      } else if (result.scopeMissing) {
-        if (onShowToast) {
-          onShowToast('Caricamento non riuscito: ricollega l\'Account Google nelle Impostazioni per concedere i permessi Drive.');
-        }
-      } else if (result.driveError?.includes('Account Google non collegato')) {
-        if (onShowToast) {
-          onShowToast('Errore: collega prima il tuo Account Google nelle Impostazioni per caricare il file su Drive.');
+          onShowToast('Report Excel caricato con successo su Google Drive!');
         }
       } else {
-        if (onShowToast) {
-          onShowToast(`Caricamento su Drive non riuscito: ${result.driveError || 'Verifica la connessione Google'}`);
+        setIsExcelModalOpen(false);
+        if (result.scopeMissing) {
+          if (onShowToast) {
+            onShowToast('Caricamento non riuscito: ricollega l\'Account Google nelle Impostazioni per concedere i permessi Drive.');
+          }
+        } else if (result.driveError?.includes('Account Google non collegato')) {
+          if (onShowToast) {
+            onShowToast('Errore: collega prima il tuo Account Google nelle Impostazioni per caricare il file su Drive.');
+          }
+        } else {
+          if (onShowToast) {
+            onShowToast(`Caricamento su Drive non riuscito: ${result.driveError || 'Verifica la connessione Google'}`);
+          }
         }
       }
     } catch (err: any) {
       console.error('Export error:', err);
       setIsExcelModalOpen(false);
       if (onShowToast) {
-        onShowToast('File scaricato sul dispositivo.');
+        onShowToast('Errore durante la generazione o il caricamento del report su Google Drive.');
       }
     } finally {
       setIsExporting(false);
@@ -275,7 +291,10 @@ export default function DashboardView({
 
           {/* Excel Export Button */}
           <button
-            onClick={() => setIsExcelModalOpen(true)}
+            onClick={() => {
+              setExportSuccessInfo(null);
+              setIsExcelModalOpen(true);
+            }}
             className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
@@ -560,109 +579,161 @@ export default function DashboardView({
                 <h3 className="text-base font-bold text-white">Esporta Report su Google Drive</h3>
               </div>
               <button
-                onClick={() => setIsExcelModalOpen(false)}
+                onClick={() => {
+                  setExportSuccessInfo(null);
+                  setIsExcelModalOpen(false);
+                }}
                 className="text-stone-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider">
-                  Periodo
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setExportRange('all')}
-                    className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
-                      exportRange === 'all'
-                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
-                        : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
-                    }`}
-                  >
-                    Tutto lo storico
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setExportRange('current_year')}
-                    className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
-                      exportRange === 'current_year'
-                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
-                        : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
-                    }`}
-                  >
-                    Anno in corso ({currentYearStr})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setExportRange('custom')}
-                    className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
-                      exportRange === 'custom'
-                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
-                        : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
-                    }`}
-                  >
-                    Personalizzato
-                  </button>
+            {exportSuccessInfo ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 flex flex-col items-center text-center gap-2">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                  <h4 className="text-sm font-bold text-white">Report caricato con successo!</h4>
+                  <p className="text-xs text-stone-300 break-all">{exportSuccessInfo.fileName}</p>
+                  <p className="text-[11px] text-emerald-300/80">
+                    Cartella Drive: <span className="font-semibold">Gestionale Fede - Report</span>
+                  </p>
                 </div>
-              </div>
 
-              {exportRange === 'custom' && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div>
-                    <label className="block text-xs text-stone-400 mb-1">Da data</label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={e => setCustomStartDate(e.target.value)}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-stone-400 mb-1">A data</label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={e => setCustomEndDate(e.target.value)}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsExcelModalOpen(false)}
-                  disabled={isExporting}
-                  className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 disabled:opacity-50 text-stone-300 text-xs font-semibold"
-                >
-                  Annulla
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExecuteExport}
-                  disabled={isExporting}
-                  className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50"
-                >
-                  {isExporting ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Caricamento su Drive...</span>
-                    </>
-                  ) : (
-                    <>
-                      <UploadCloud className="w-4 h-4" />
-                      <span>Carica su Drive</span>
-                    </>
+                <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+                  {exportSuccessInfo.webViewLink && (
+                    <a
+                      href={exportSuccessInfo.webViewLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Apri File su Google Drive</span>
+                    </a>
                   )}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportSuccessInfo(null);
+                      setIsExcelModalOpen(false);
+                    }}
+                    className="py-2.5 px-5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold"
+                  >
+                    Chiudi
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider">
+                    Periodo
+                  </label>
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExportRange('all')}
+                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
+                        exportRange === 'all'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                          : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Tutto lo storico
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setExportRange('selected_year')}
+                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
+                        exportRange === 'selected_year'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                          : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Anno selezionato ({selectedYear})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setExportRange('current_month')}
+                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
+                        exportRange === 'current_month'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                          : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Mese corrente ({monthNames[currentMonthIdx]} {currentYearStr})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setExportRange('custom')}
+                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
+                        exportRange === 'custom'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-emerald-300'
+                          : 'bg-stone-800/60 border-stone-700/60 text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Personalizzato
+                    </button>
+                  </div>
+                </div>
+
+                {exportRange === 'custom' && (
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <label className="block text-xs text-stone-400 mb-1">Da data</label>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={e => setCustomStartDate(e.target.value)}
+                        className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone-400 mb-1">A data</label>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={e => setCustomEndDate(e.target.value)}
+                        className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsExcelModalOpen(false)}
+                    disabled={isExporting}
+                    className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 disabled:opacity-50 text-stone-300 text-xs font-semibold"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExecuteExport}
+                    disabled={isExporting}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50"
+                  >
+                    {isExporting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Caricamento su Drive...</span>
+                      </>
+                    ) : (
+                      <>
+                        <UploadCloud className="w-4 h-4" />
+                        <span>Carica su Drive</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

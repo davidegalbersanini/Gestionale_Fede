@@ -1,4 +1,4 @@
-import { Location, Client, Appointment, WeddingService, ExtraMakeup, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
+import { Location, Client, Appointment, WeddingService, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
 import initialData from '@/data/initialData.json';
 import { CloudSync } from '@/lib/supabase';
 
@@ -7,7 +7,6 @@ const STORAGE_KEYS = {
   CLIENTS: 'fede_clients_v2',
   APPOINTMENTS: 'fede_appointments_v2',
   WEDDINGS: 'fede_weddings_v2',
-  EXTRA_MAKEUPS: 'fede_extra_makeups_v2',
   EXPENSES: 'fede_expenses_v2',
   GIFT_VOUCHERS: 'fede_gift_vouchers_v2',
   SERVICE_PRICES: 'fede_service_prices_v2',
@@ -201,12 +200,18 @@ export const DataService = {
     this.saveAppointments(appointments);
     CloudSync.upsertAppointment(newApp);
 
-    // Ensure client exists in Rubrica
+    // Ensure client exists in Rubrica and link client_id
     if (newApp.client_name) {
-      this.addOrUpdateClient({
+      const ensured = this.addOrUpdateClient({
         id: newApp.client_id,
         full_name: newApp.client_name,
       });
+      if (ensured && (!newApp.client_id || newApp.client_id !== ensured.id)) {
+        newApp.client_id = ensured.id;
+        appointments[0] = newApp;
+        this.saveAppointments(appointments);
+        CloudSync.upsertAppointment(newApp);
+      }
     }
 
     return newApp;
@@ -215,6 +220,15 @@ export const DataService = {
     const appointments = this.getAppointments();
     const idx = appointments.findIndex(a => a.id === app.id);
     if (idx >= 0) {
+      if (app.client_name) {
+        const ensured = this.addOrUpdateClient({
+          id: app.client_id,
+          full_name: app.client_name,
+        });
+        if (ensured && !app.client_id) {
+          app.client_id = ensured.id;
+        }
+      }
       appointments[idx] = app;
       this.saveAppointments(appointments);
       CloudSync.upsertAppointment(app);
@@ -242,12 +256,19 @@ export const DataService = {
     this.saveWeddings(weddings);
     CloudSync.upsertWedding(newWedding);
 
-    // Ensure bride exists in Rubrica
+    // Ensure bride exists in Rubrica and link client_id
     if (newWedding.bride_name) {
-      this.addOrUpdateClient({
+      const ensured = this.addOrUpdateClient({
+        id: newWedding.client_id,
         full_name: newWedding.bride_name,
         notes: `Sposa - Matrimonio: ${newWedding.wedding_date.slice(0, 10)}`,
       });
+      if (ensured && (!newWedding.client_id || newWedding.client_id !== ensured.id)) {
+        newWedding.client_id = ensured.id;
+        weddings[0] = newWedding;
+        this.saveWeddings(weddings);
+        CloudSync.upsertWedding(newWedding);
+      }
     }
 
     return newWedding;
@@ -256,6 +277,15 @@ export const DataService = {
     const weddings = this.getWeddings();
     const idx = weddings.findIndex(w => w.id === wedding.id);
     if (idx >= 0) {
+      if (wedding.bride_name) {
+        const ensured = this.addOrUpdateClient({
+          id: wedding.client_id,
+          full_name: wedding.bride_name,
+        });
+        if (ensured && !wedding.client_id) {
+          wedding.client_id = ensured.id;
+        }
+      }
       weddings[idx] = wedding;
       this.saveWeddings(weddings);
       CloudSync.upsertWedding(wedding);

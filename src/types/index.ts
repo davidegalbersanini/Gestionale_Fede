@@ -80,14 +80,6 @@ export interface WeddingService {
   status: AppointmentStatus;
 }
 
-export interface ExtraMakeup {
-  id: string;
-  client_id?: string;
-  client_name: string;
-  amount: number;
-  status: string;
-}
-
 export interface Expense {
   id: string;
   date: string; // ISO date

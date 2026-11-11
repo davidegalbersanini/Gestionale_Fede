@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AppSettings, Location } from '@/types';
-import { DataService } from '@/lib/storage';
+import { AppSettings } from '@/types';
 import { checkGoogleCalendarStatus, startGoogleCalendarConnect, disconnectGoogleCalendar } from '@/lib/calendar';
 import {
   Settings as SettingsIcon,
@@ -10,15 +9,9 @@ import {
   Lock,
   Target,
   LogOut,
-  MapPin,
-  Plus,
-  Trash2,
   Check,
-  Calendar as CalendarIcon,
   Cloud,
   RefreshCw,
-  ExternalLink,
-  Edit2
 } from 'lucide-react';
 
 interface SettingsModalProps {

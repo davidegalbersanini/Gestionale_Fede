@@ -185,7 +185,27 @@ export const DataService = {
   },
 
   getAppointments(): Appointment[] {
-    return getStorage<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialData.appointments as Appointment[]);
+    const raw = getStorage<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialData.appointments as Appointment[]);
+    // Auto-migrate past appointments imported from Excel that were already fully paid
+    const now = new Date().toISOString();
+    let changed = false;
+    const sanitized = raw.map(a => {
+      if (a.appointment_date && a.appointment_date < now && (Number(a.balance) > 0 || (a.status !== 'annullato' && a.payment < (a.total_price || a.payment + a.balance)))) {
+        changed = true;
+        const finalPayment = a.total_price !== undefined ? a.total_price : ((Number(a.payment) || 0) + (Number(a.balance) || 0));
+        return {
+          ...a,
+          payment: finalPayment,
+          balance: 0,
+          status: a.status === 'annullato' ? a.status : ('completato' as const),
+        };
+      }
+      return a;
+    });
+    if (changed) {
+      setStorage(STORAGE_KEYS.APPOINTMENTS, sanitized);
+    }
+    return sanitized;
   },
   saveAppointments(appointments: Appointment[]): void {
     setStorage(STORAGE_KEYS.APPOINTMENTS, appointments);
@@ -241,7 +261,27 @@ export const DataService = {
   },
 
   getWeddings(): WeddingService[] {
-    return getStorage<WeddingService[]>(STORAGE_KEYS.WEDDINGS, initialData.weddings as WeddingService[]);
+    const raw = getStorage<WeddingService[]>(STORAGE_KEYS.WEDDINGS, initialData.weddings as WeddingService[]);
+    // Auto-migrate past weddings imported from Excel that were already fully paid
+    const now = new Date().toISOString();
+    let changed = false;
+    const sanitized = raw.map(w => {
+      if (w.wedding_date && w.wedding_date < now && (Number(w.wedding_balance) > 0 || (w.status !== 'annullato' && (Number(w.trial_deposit) + Number(w.wedding_balance)) < (w.total_price || 0)))) {
+        changed = true;
+        const finalDeposit = w.total_price !== undefined ? w.total_price : ((Number(w.trial_deposit) || 0) + (Number(w.wedding_balance) || 0));
+        return {
+          ...w,
+          trial_deposit: finalDeposit,
+          wedding_balance: 0,
+          status: w.status === 'annullato' ? w.status : ('completato' as const),
+        };
+      }
+      return w;
+    });
+    if (changed) {
+      setStorage(STORAGE_KEYS.WEDDINGS, sanitized);
+    }
+    return sanitized;
   },
   saveWeddings(weddings: WeddingService[]): void {
     setStorage(STORAGE_KEYS.WEDDINGS, weddings);

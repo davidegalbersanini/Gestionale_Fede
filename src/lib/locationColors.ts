@@ -1,15 +1,14 @@
-// Palette pastello armonica, variegata e ben differenziata per le sedi di lavoro (max ~8 sedi)
-// Ogni tonalità copre una famiglia cromatica nettamente diversa (Rosa, Smeraldo, Lavanda, Ambra/Ocra, Cielo, Corallo/Salmone, Menta, Indaco)
-// per essere immediatamente riconoscibile a colpo d'occhio senza confondersi.
+// Palette pastello armonica, variegata e con 8 famiglie cromatiche nettamente distinte
+// 1. Rosa, 2. Smeraldo, 3. Viola, 4. Giallo Ambra, 5. Azzurro Cielo, 6. Verde Mela/Lime, 7. Terracotta Mattone, 8. Ardesia/Argento
 export const PASTEL_LOCATION_PALETTE: readonly string[] = [
   '#F472B6', // 1. Rosa Cipria Pastello (Beauty Center)
-  '#10B981', // 2. Verde Smeraldo / Menta Intensa (The Touch)
-  '#8B5CF6', // 3. Viola Lavanda / Orchidea (AliceinWondernails)
-  '#F59E0B', // 4. Ambra / Senape Pastello Caldo
-  '#0EA5E9', // 5. Celeste Cielo / Fiordaliso Pastello
-  '#FB923C', // 6. Albicocca / Arancio Pastello
-  '#14B8A6', // 7. Verde Acqua / Ottanio Pastello
-  '#6366F1', // 8. Indaco / Blu Notte Pastello
+  '#10B981', // 2. Verde Smeraldo / Menta (The Touch)
+  '#8B5CF6', // 3. Viola Orchidea / Lavanda (AliceinWondernails)
+  '#F59E0B', // 4. Giallo Ambra / Senape Caldo
+  '#0EA5E9', // 5. Celeste Cielo / Fiordaliso
+  '#84CC16', // 6. Verde Mela / Lime Chiaro (Brillante e acido, ben distinto dallo smeraldo)
+  '#BE5B38', // 7. Terracotta / Rame Mattone (Caldo e terroso, ben distinto dal rosa e dall'ambra)
+  '#94A3B8', // 8. Ardesia Polvere / Argento Freddo (Neutro elegante, completamente diverso da tutti)
 ] as const;
 
 // Colori pastello distinti e dedicati al mondo Eventi & Cerimonie

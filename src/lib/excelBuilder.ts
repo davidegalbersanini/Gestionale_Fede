@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { addCharts, ChartSpec } from 'chartsheet';
 import { Appointment, WeddingService, Expense, Location, GiftVoucher } from '@/types';
 
 export interface ExportFilterOptions {
@@ -774,6 +775,407 @@ function joinFormulaParts(parts: string[], result: number): ExcelJS.CellValue {
   return { formula: parts.join('+'), result };
 }
 
+interface MonthBucketData {
+  pmuCash: number;
+  vouchersCash: number;
+  wedCash: number;
+  pmuBal: number;
+  wedBal: number;
+  expenses: number;
+  pmuCount: number;
+  wedCount: number;
+}
+
+interface ChartsSheetBuildParams {
+  chartsWs: ExcelJS.Worksheet;
+  generatedLabel: string;
+  sortedMonths: string[];
+  monthBuckets: Map<string, MonthBucketData>;
+  monthStartRow: number;
+  kpiFirstRow: number;
+  catStartRow: number;
+  sortedExpCats: string[];
+  expCatStats: Map<string, { count: number; total: number }>;
+  pmuMeta: { hasRows: boolean; lastDataRow: number; sumPaid: number };
+  wedMeta: { hasRows: boolean; lastDataRow: number; sumPaid: number };
+  expMeta: { hasRows: boolean; lastDataRow: number; sumExpenses: number };
+  vouchMeta: { hasRows: boolean; lastDataRow: number; sumInitial: number };
+  totalIncassatoReale: number;
+}
+
+function buildChartsSheet(params: ChartsSheetBuildParams): ChartSpec[] {
+  const {
+    chartsWs,
+    generatedLabel,
+    sortedMonths,
+    monthBuckets,
+    monthStartRow,
+    kpiFirstRow,
+    catStartRow,
+    sortedExpCats,
+    expCatStats,
+    pmuMeta,
+    wedMeta,
+    expMeta,
+    vouchMeta,
+    totalIncassatoReale,
+  } = params;
+
+  const chartColWidths = [
+    3,   // A: Margine
+    18,  // B: Mese
+    16,  // C: Incassi (€)
+    16,  // D: Spese (€)
+    16,  // E: Utile Netto (€)
+    13,  // F: N° PMU
+    13,  // G: N° Eventi
+    4,   // H: Spacer
+    24,  // I: Canale Ricavi
+    17,  // J: Incasso Reale (€)
+    14,  // K: % Incidenza
+    4,   // L: Spacer
+    24,  // M: Categoria Spesa
+    17,  // N: Totale Speso (€)
+    14,  // O: % Spese
+    3,   // P: Margine
+  ];
+  chartColWidths.forEach((w, i) => {
+    chartsWs.getColumn(i + 1).width = w;
+  });
+
+  styleBanner(chartsWs, 'GESTIONALE FEDE — GRAFICI DIREZIONALI & TREND', generatedLabel, 15);
+
+  // Section Header for Backing Data Tables at row 37
+  chartsWs.mergeCells(37, 2, 37, 15);
+  const secCell = chartsWs.getCell(37, 2);
+  secCell.value = 'TABELLE DATI SOTTOSTANTI AI GRAFICI (DINAMICHE & COLLEGATE)';
+  secCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: COLORS.primaryDark } };
+  secCell.fill = solidFill(COLORS.sectionBg);
+  secCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  chartsWs.getRow(37).height = 24;
+  for (let c = 2; c <= 15; c++) {
+    chartsWs.getCell(37, c).border = {
+      top: { style: 'thin', color: { argb: COLORS.primaryDark } },
+      bottom: { style: 'thin', color: { argb: COLORS.primaryDark } },
+      left: { style: 'thin', color: { argb: COLORS.border } },
+      right: { style: 'thin', color: { argb: COLORS.border } },
+    };
+  }
+
+  // Row 39: Table Group Titles
+  chartsWs.mergeCells(39, 2, 39, 7);
+  const tTitleA = chartsWs.getCell(39, 2);
+  tTitleA.value = '1. ANDAMENTO MENSILE & VOLUME LAVORO';
+  tTitleA.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COLORS.white } };
+  tTitleA.fill = solidFill(COLORS.primaryDark);
+  tTitleA.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+  chartsWs.mergeCells(39, 9, 39, 11);
+  const tTitleB = chartsWs.getCell(39, 9);
+  tTitleB.value = '2. MIX RICAVI PER CANALE';
+  tTitleB.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COLORS.white } };
+  tTitleB.fill = solidFill(COLORS.primaryDark);
+  tTitleB.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+  chartsWs.mergeCells(39, 13, 39, 15);
+  const tTitleC = chartsWs.getCell(39, 13);
+  tTitleC.value = '3. SPESE PER CATEGORIA';
+  tTitleC.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COLORS.white } };
+  tTitleC.fill = solidFill(COLORS.primaryDark);
+  tTitleC.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+
+  chartsWs.getRow(39).height = 22;
+
+  // Row 40: Table Column Headers
+  const row40 = chartsWs.getRow(40);
+  row40.height = 26;
+  const styleHeaderCell = (colIdx: number, val: string, align: 'left' | 'right' | 'center' = 'right') => {
+    const cell = row40.getCell(colIdx);
+    cell.value = val;
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COLORS.white } };
+    cell.fill = solidFill(COLORS.headerBg);
+    cell.alignment = { vertical: 'middle', horizontal: align };
+    cell.border = THIN_BORDER;
+  };
+
+  styleHeaderCell(2, 'Mese', 'left');
+  styleHeaderCell(3, 'Incassi (€)', 'right');
+  styleHeaderCell(4, 'Spese (€)', 'right');
+  styleHeaderCell(5, 'Utile Netto (€)', 'right');
+  styleHeaderCell(6, 'N° PMU', 'right');
+  styleHeaderCell(7, 'N° Eventi', 'right');
+
+  styleHeaderCell(9, 'Canale Ricavi', 'left');
+  styleHeaderCell(10, 'Incasso Reale (€)', 'right');
+  styleHeaderCell(11, '% Incidenza', 'right');
+
+  styleHeaderCell(13, 'Categoria Spesa', 'left');
+  styleHeaderCell(14, 'Totale Speso (€)', 'right');
+  styleHeaderCell(15, '% Spese', 'right');
+
+  // --- Populate Table A (rows 41+) ---
+  const monthCount = sortedMonths.length;
+  const tableALastDataRow = monthCount > 0 ? 40 + monthCount : 41;
+
+  if (monthCount === 0) {
+    const row = chartsWs.getRow(41);
+    row.height = 21;
+    row.getCell(2).value = 'Nessun Periodo';
+    row.getCell(3).value = 0;
+    row.getCell(4).value = 0;
+    row.getCell(5).value = 0;
+    row.getCell(6).value = 0;
+    row.getCell(7).value = 0;
+    for (let c = 2; c <= 7; c++) {
+      const cell = row.getCell(c);
+      cell.fill = solidFill(COLORS.white);
+      cell.border = THIN_BORDER;
+      cell.font = { name: 'Calibri', size: 10, color: { argb: COLORS.textDark } };
+      if (c >= 3 && c <= 5) cell.numFmt = CURRENCY_FMT;
+      if (c >= 6) cell.numFmt = INT_FMT;
+    }
+  } else {
+    sortedMonths.forEach((ym, idx) => {
+      const r = 41 + idx;
+      const row = chartsWs.getRow(r);
+      row.height = 21;
+      const [yStr, mStr] = ym.split('-');
+      const yr = Number(yStr);
+      const mo = Number(mStr);
+      const lastDay = new Date(Date.UTC(yr, mo, 0)).getUTCDate();
+      const dStart = `DATE(${yr},${mo},1)`;
+      const dEnd = `DATE(${yr},${mo},${lastDay})`;
+
+      const b = monthBuckets.get(ym)!;
+      const summaryMonthRow = monthStartRow + idx;
+
+      for (let c = 2; c <= 7; c++) {
+        const cell = row.getCell(c);
+        cell.fill = solidFill(idx % 2 === 1 ? COLORS.zebraBg : COLORS.white);
+        cell.border = THIN_BORDER;
+        cell.font = { name: 'Calibri', size: 10, color: { argb: COLORS.textDark } };
+        cell.alignment = { vertical: 'middle', horizontal: c === 2 ? 'left' : 'right' };
+      }
+
+      row.getCell(2).value = `${MONTH_NAMES_IT[mo - 1] || mStr} ${yr}`;
+      row.getCell(3).numFmt = CURRENCY_FMT;
+      row.getCell(3).value = { formula: `'Riepilogo & Metriche'!D${summaryMonthRow}`, result: b.pmuCash + b.vouchersCash + b.wedCash };
+      row.getCell(4).numFmt = CURRENCY_FMT;
+      row.getCell(4).value = { formula: `'Riepilogo & Metriche'!F${summaryMonthRow}`, result: b.expenses };
+      row.getCell(5).numFmt = CURRENCY_FMT;
+      row.getCell(5).value = { formula: `'Riepilogo & Metriche'!G${summaryMonthRow}`, result: (b.pmuCash + b.vouchersCash + b.wedCash) - b.expenses };
+
+      row.getCell(6).numFmt = INT_FMT;
+      row.getCell(6).value = pmuMeta.hasRows
+        ? {
+            formula: `COUNTIFS('PMU & Trattamenti'!$A$4:$A$${pmuMeta.lastDataRow}, ">="&${dStart}, 'PMU & Trattamenti'!$A$4:$A$${pmuMeta.lastDataRow}, "<="&${dEnd}, 'PMU & Trattamenti'!$K$4:$K$${pmuMeta.lastDataRow}, "<>annullato")`,
+            result: b.pmuCount,
+          }
+        : 0;
+
+      row.getCell(7).numFmt = INT_FMT;
+      row.getCell(7).value = wedMeta.hasRows
+        ? {
+            formula: `COUNTIFS('Eventi & Cerimonie'!$A$4:$A$${wedMeta.lastDataRow}, ">="&${dStart}, 'Eventi & Cerimonie'!$A$4:$A$${wedMeta.lastDataRow}, "<="&${dEnd}, 'Eventi & Cerimonie'!$K$4:$K$${wedMeta.lastDataRow}, "<>annullato")`,
+            result: b.wedCount,
+          }
+        : 0;
+    });
+  }
+
+  // Total row Table A
+  const totRowA = chartsWs.getRow(tableALastDataRow + 1);
+  totRowA.height = 24;
+  for (let c = 2; c <= 7; c++) {
+    const cell = totRowA.getCell(c);
+    cell.fill = solidFill(COLORS.totalBg);
+    cell.border = TOTAL_BORDER;
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COLORS.textSageDark } };
+    cell.alignment = { vertical: 'middle', horizontal: c === 2 ? 'left' : 'right' };
+  }
+  totRowA.getCell(2).value = 'TOTALE PERIODO';
+  totRowA.getCell(3).numFmt = CURRENCY_FMT;
+  totRowA.getCell(3).value = { formula: `SUM(C41:C${tableALastDataRow})`, result: totalIncassatoReale };
+  totRowA.getCell(4).numFmt = CURRENCY_FMT;
+  totRowA.getCell(4).value = { formula: `SUM(D41:D${tableALastDataRow})`, result: expMeta.sumExpenses };
+  totRowA.getCell(5).numFmt = CURRENCY_FMT;
+  totRowA.getCell(5).value = { formula: `C${tableALastDataRow + 1}-D${tableALastDataRow + 1}`, result: totalIncassatoReale - expMeta.sumExpenses };
+  totRowA.getCell(6).numFmt = INT_FMT;
+  totRowA.getCell(6).value = { formula: `SUM(F41:F${tableALastDataRow})`, result: Array.from(monthBuckets.values()).reduce((acc, m) => acc + m.pmuCount, 0) };
+  totRowA.getCell(7).numFmt = INT_FMT;
+  totRowA.getCell(7).value = { formula: `SUM(G41:G${tableALastDataRow})`, result: Array.from(monthBuckets.values()).reduce((acc, m) => acc + m.wedCount, 0) };
+
+  // --- Populate Table B (Mix Ricavi, rows 41 to 44) ---
+  const mixData = [
+    { label: 'PMU & Trattamenti', kpiIdx: 0, val: pmuMeta.sumPaid },
+    { label: 'Buoni Regalo', kpiIdx: 1, val: vouchMeta.sumInitial },
+    { label: 'Eventi & Cerimonie', kpiIdx: 2, val: wedMeta.sumPaid },
+  ];
+  mixData.forEach((item, idx) => {
+    const r = 41 + idx;
+    const row = chartsWs.getRow(r);
+    row.height = 21;
+    for (let c = 9; c <= 11; c++) {
+      const cell = row.getCell(c);
+      cell.fill = solidFill(idx % 2 === 1 ? COLORS.zebraBg : COLORS.white);
+      cell.border = THIN_BORDER;
+      cell.font = { name: 'Calibri', size: 10, color: { argb: COLORS.textDark } };
+      cell.alignment = { vertical: 'middle', horizontal: c === 9 ? 'left' : 'right' };
+    }
+    row.getCell(9).value = item.label;
+    row.getCell(10).numFmt = CURRENCY_FMT;
+    row.getCell(10).value = { formula: `'Riepilogo & Metriche'!B${kpiFirstRow + item.kpiIdx}`, result: item.val };
+    row.getCell(11).numFmt = PCT_FMT;
+    row.getCell(11).value = {
+      formula: `IF($J$44>0, J${r}/$J$44, 0)`,
+      result: totalIncassatoReale > 0 ? item.val / totalIncassatoReale : 0,
+    };
+  });
+  const totRowB = chartsWs.getRow(44);
+  totRowB.height = 24;
+  for (let c = 9; c <= 11; c++) {
+    const cell = totRowB.getCell(c);
+    cell.fill = solidFill(COLORS.totalBg);
+    cell.border = TOTAL_BORDER;
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COLORS.textSageDark } };
+    cell.alignment = { vertical: 'middle', horizontal: c === 9 ? 'left' : 'right' };
+  }
+  totRowB.getCell(9).value = 'TOTALE INCASSI';
+  totRowB.getCell(10).numFmt = CURRENCY_FMT;
+  totRowB.getCell(10).value = { formula: 'SUM(J41:J43)', result: totalIncassatoReale };
+  totRowB.getCell(11).numFmt = PCT_FMT;
+  totRowB.getCell(11).value = totalIncassatoReale > 0 ? 1 : 0;
+
+  // --- Populate Table C (Spese per Categoria, rows 41+) ---
+  const catCount = sortedExpCats.length;
+  const tableCLastDataRow = catCount > 0 ? 40 + catCount : 41;
+  const totRowCNum = tableCLastDataRow + 1;
+
+  if (catCount === 0) {
+    const row = chartsWs.getRow(41);
+    row.height = 21;
+    for (let c = 13; c <= 15; c++) {
+      const cell = row.getCell(c);
+      cell.fill = solidFill(COLORS.white);
+      cell.border = THIN_BORDER;
+      cell.font = { name: 'Calibri', size: 10, color: { argb: COLORS.textDark } };
+      cell.alignment = { vertical: 'middle', horizontal: c === 13 ? 'left' : 'right' };
+    }
+    row.getCell(13).value = 'Nessuna Spesa';
+    row.getCell(14).numFmt = CURRENCY_FMT;
+    row.getCell(14).value = 0;
+    row.getCell(15).numFmt = PCT_FMT;
+    row.getCell(15).value = 0;
+  } else {
+    sortedExpCats.forEach((cat, idx) => {
+      const r = 41 + idx;
+      const row = chartsWs.getRow(r);
+      row.height = 21;
+      for (let c = 13; c <= 15; c++) {
+        const cell = row.getCell(c);
+        cell.fill = solidFill(idx % 2 === 1 ? COLORS.zebraBg : COLORS.white);
+        cell.border = THIN_BORDER;
+        cell.font = { name: 'Calibri', size: 10, color: { argb: COLORS.textDark } };
+        cell.alignment = { vertical: 'middle', horizontal: c === 13 ? 'left' : 'right' };
+      }
+      const catTot = expCatStats.get(cat)?.total || 0;
+      row.getCell(13).value = cat;
+      row.getCell(14).numFmt = CURRENCY_FMT;
+      row.getCell(14).value = { formula: `'Riepilogo & Metriche'!C${catStartRow + idx}`, result: catTot };
+      row.getCell(15).numFmt = PCT_FMT;
+      row.getCell(15).value = {
+        formula: `IF($N$${totRowCNum}>0, N${r}/$N$${totRowCNum}, 0)`,
+        result: expMeta.sumExpenses > 0 ? catTot / expMeta.sumExpenses : 0,
+      };
+    });
+  }
+
+  const totRowC = chartsWs.getRow(totRowCNum);
+  totRowC.height = 24;
+  for (let c = 13; c <= 15; c++) {
+    const cell = totRowC.getCell(c);
+    cell.fill = solidFill(COLORS.totalBg);
+    cell.border = TOTAL_BORDER;
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: COLORS.textSageDark } };
+    cell.alignment = { vertical: 'middle', horizontal: c === 13 ? 'left' : 'right' };
+  }
+  totRowC.getCell(13).value = 'TOTALE SPESE';
+  totRowC.getCell(14).numFmt = CURRENCY_FMT;
+  totRowC.getCell(14).value = { formula: `SUM(N41:N${tableCLastDataRow})`, result: expMeta.sumExpenses };
+  totRowC.getCell(15).numFmt = PCT_FMT;
+  totRowC.getCell(15).value = expMeta.sumExpenses > 0 ? 1 : 0;
+
+  chartsWs.views = [{ showGridLines: true }];
+
+  const chartSpecs: ChartSpec[] = [
+    // 1) Andamento Mensile Fatturato vs Spese
+    {
+      sheet: 'Grafici & Trend',
+      type: 'column',
+      title: 'Andamento Mensile: Fatturato vs Spese',
+      categories: `'Grafici & Trend'!$B$41:$B$${tableALastDataRow}`,
+      series: [
+        { nameRef: "'Grafici & Trend'!$C$40", ref: `'Grafici & Trend'!$C$41:$C$${tableALastDataRow}`, color: '34624D' },
+        { nameRef: "'Grafici & Trend'!$D$40", ref: `'Grafici & Trend'!$D$41:$D$${tableALastDataRow}`, color: 'DC2626' },
+        { nameRef: "'Grafici & Trend'!$E$40", ref: `'Grafici & Trend'!$E$41:$E$${tableALastDataRow}`, color: '166534' },
+      ],
+      anchor: { col: 1, row: 3 },
+      width: 610,
+      height: 310,
+      gapWidth: 120,
+      legend: 'b',
+    },
+    // 2) Mix Ricavi: PMU vs Eventi
+    {
+      sheet: 'Grafici & Trend',
+      type: 'doughnut',
+      title: 'Mix Ricavi per Canale',
+      categories: "'Grafici & Trend'!$I$41:$I$43",
+      series: [
+        { nameRef: "'Grafici & Trend'!$J$40", ref: "'Grafici & Trend'!$J$41:$J$43" },
+      ],
+      anchor: { col: 8, row: 3 },
+      width: 530,
+      height: 310,
+      dataLabels: true,
+      legend: 'r',
+    },
+    // 3) Composizione Spese per Categoria
+    {
+      sheet: 'Grafici & Trend',
+      type: 'pie',
+      title: 'Composizione Spese per Categoria',
+      categories: `'Grafici & Trend'!$M$41:$M$${tableCLastDataRow}`,
+      series: [
+        { nameRef: "'Grafici & Trend'!$N$40", ref: `'Grafici & Trend'!$N$41:$N$${tableCLastDataRow}` },
+      ],
+      anchor: { col: 1, row: 19 },
+      width: 610,
+      height: 310,
+      dataLabels: true,
+      legend: 'r',
+    },
+    // 4) Volume di Lavoro Mensile
+    {
+      sheet: 'Grafici & Trend',
+      type: 'column',
+      title: 'Volume di Lavoro Mensile (N° Appuntamenti)',
+      categories: `'Grafici & Trend'!$B$41:$B$${tableALastDataRow}`,
+      series: [
+        { nameRef: "'Grafici & Trend'!$F$40", ref: `'Grafici & Trend'!$F$41:$F$${tableALastDataRow}`, color: 'F472B6' },
+        { nameRef: "'Grafici & Trend'!$G$40", ref: `'Grafici & Trend'!$G$41:$G$${tableALastDataRow}`, color: 'FB7185' },
+      ],
+      anchor: { col: 8, row: 19 },
+      width: 530,
+      height: 310,
+      gapWidth: 120,
+      legend: 'b',
+    },
+  ];
+
+  return chartSpecs;
+}
+
 export async function buildExcelReportBuffer(input: ExcelReportInput): Promise<{
   buffer: Buffer;
   fileName: string;
@@ -812,9 +1214,12 @@ export async function buildExcelReportBuffer(input: ExcelReportInput): Promise<{
   wb.creator = 'Gestionale Fede';
   wb.created = now;
 
-  // Create Riepilogo first so it appears as the opening tab, then populate after detail sheets calculate row coordinates
+  // Create Riepilogo and Grafici tabs upfront so they appear as the opening executive tabs
   const summaryWs = wb.addWorksheet('Riepilogo & Metriche', {
     properties: { tabColor: { argb: COLORS.primaryDark } },
+  });
+  const chartsWs = wb.addWorksheet('Grafici & Trend', {
+    properties: { tabColor: { argb: COLORS.headerBg } },
   });
 
   // Build detail sheets
@@ -1001,19 +1406,12 @@ export async function buildExcelReportBuffer(input: ExcelReportInput): Promise<{
   );
 
   // Collect months
-  const monthBuckets = new Map<string, {
-    pmuCash: number;
-    vouchersCash: number;
-    wedCash: number;
-    pmuBal: number;
-    wedBal: number;
-    expenses: number;
-  }>();
+  const monthBuckets = new Map<string, MonthBucketData>();
 
   const ensureMonth = (ym: string) => {
     let b = monthBuckets.get(ym);
     if (!b) {
-      b = { pmuCash: 0, vouchersCash: 0, wedCash: 0, pmuBal: 0, wedBal: 0, expenses: 0 };
+      b = { pmuCash: 0, vouchersCash: 0, wedCash: 0, pmuBal: 0, wedBal: 0, expenses: 0, pmuCount: 0, wedCount: 0 };
       monthBuckets.set(ym, b);
     }
     return b;
@@ -1039,6 +1437,7 @@ export async function buildExcelReportBuffer(input: ExcelReportInput): Promise<{
     const b = ensureMonth(ym);
     b.pmuCash += Number(a.payment) || 0;
     b.pmuBal += Number(a.balance) || 0;
+    b.pmuCount += 1;
   });
   filteredVouchers.forEach(v => {
     const ym = v.purchase_date.slice(0, 7);
@@ -1054,6 +1453,7 @@ export async function buildExcelReportBuffer(input: ExcelReportInput): Promise<{
     const b = ensureMonth(ym);
     b.wedCash += Number(w.trial_deposit) || 0;
     b.wedBal += Number(w.wedding_balance) || 0;
+    b.wedCount += 1;
   });
   filteredExpenses.forEach(e => {
     const ym = e.date.slice(0, 7);
@@ -1385,6 +1785,23 @@ export async function buildExcelReportBuffer(input: ExcelReportInput): Promise<{
 
   configureSheetPrintAndFreeze(summaryWs, 2, 7, 2, false);
 
+  const chartSpecs = buildChartsSheet({
+    chartsWs,
+    generatedLabel,
+    sortedMonths,
+    monthBuckets,
+    monthStartRow,
+    kpiFirstRow,
+    catStartRow,
+    sortedExpCats,
+    expCatStats,
+    pmuMeta,
+    wedMeta,
+    expMeta,
+    vouchMeta,
+    totalIncassatoReale,
+  });
+
   // Filename
   const dateStr = `${romeNow.year}-${romeNow.month}-${romeNow.day}`;
   const timeStr = `${romeNow.hour}-${romeNow.minute}`;
@@ -1392,8 +1809,16 @@ export async function buildExcelReportBuffer(input: ExcelReportInput): Promise<{
   const fileName = `Gestionale_Fede_Report_${cleanFilter}_${dateStr}_${timeStr}.xlsx`;
 
   const arrayBuffer = await wb.xlsx.writeBuffer();
+  let buffer: Buffer = Buffer.from(arrayBuffer);
+  try {
+    const charted = await addCharts(buffer, chartSpecs);
+    buffer = Buffer.from(charted);
+  } catch (chartErr) {
+    console.error('Error adding charts with chartsheet:', chartErr);
+  }
+
   return {
-    buffer: Buffer.from(arrayBuffer),
+    buffer,
     fileName,
   };
 }

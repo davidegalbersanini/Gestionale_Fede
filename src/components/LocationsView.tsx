@@ -229,7 +229,7 @@ export default function LocationsView({
                   Colore Sede
                 </label>
                 {/* Palette consigliata */}
-                <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                <div className="flex items-center gap-2 flex-wrap mb-2.5">
                   {PASTEL_LOCATION_PALETTE.map(c => {
                     const isSelected = newLocColor.toUpperCase() === c.toUpperCase();
                     const isAlreadyUsed = locations.some(l => (l.color || '').toUpperCase() === c.toUpperCase());
@@ -239,13 +239,13 @@ export default function LocationsView({
                         key={c}
                         onClick={() => setNewLocColor(c)}
                         title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
-                        className={`w-5 h-5 rounded-full transition-all relative ${
-                          isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-sm' : 'opacity-85 hover:opacity-100 hover:scale-105'
+                        className={`w-6 h-6 rounded-full transition-all relative border border-white/20 ${
+                          isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
                         }`}
                         style={{ backgroundColor: c }}
                       >
                         {isAlreadyUsed && !isSelected && (
-                          <span className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-stone-950/60" />
+                          <span className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-stone-950/70" />
                         )}
                       </button>
                     );
@@ -345,7 +345,7 @@ export default function LocationsView({
                       <span className="text-[11px] font-semibold text-stone-400 uppercase">Colore:</span>
                       
                       {/* Swatches */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {PASTEL_LOCATION_PALETTE.map(c => {
                           const isSelected = editingLocColor.toUpperCase() === c.toUpperCase();
                           const isAlreadyUsed = locations.some(l => l.id !== loc.id && (l.color || '').toUpperCase() === c.toUpperCase());
@@ -355,13 +355,13 @@ export default function LocationsView({
                               key={c}
                               onClick={() => setEditingLocColor(c)}
                               title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
-                              className={`w-5 h-5 rounded-full transition-all relative ${
-                                isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-sm' : 'opacity-85 hover:opacity-100 hover:scale-105'
+                              className={`w-6 h-6 rounded-full transition-all relative border border-white/20 ${
+                                isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
                               }`}
                               style={{ backgroundColor: c }}
                             >
                               {isAlreadyUsed && !isSelected && (
-                                <span className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-stone-950/60" />
+                                <span className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-stone-950/70" />
                               )}
                             </button>
                           );

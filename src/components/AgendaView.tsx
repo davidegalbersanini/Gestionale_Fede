@@ -47,6 +47,8 @@ interface AgendaViewProps {
   onSelectWedding: (w: WeddingService) => void;
 }
 
+const ITEMS_PER_PAGE = 48; // Divisibile per 1, 2, 3 (e 4) colonne per evitare spazi vuoti in fondo alla griglia
+
 export default function AgendaView({
   appointments,
   weddings,
@@ -246,7 +248,10 @@ export default function AgendaView({
             type="text"
             placeholder="Cerca cliente, trattamento, luogo..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={e => {
+              setSearchQuery(e.target.value);
+              setListPage(1);
+            }}
             className="w-full bg-stone-800/80 border border-stone-700/60 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
           />
         </div>
@@ -454,27 +459,27 @@ export default function AgendaView({
           </div>
         </div>
       ) : (
-        /* Full List View with 50 items per page */
+        /* Full List View with ITEMS_PER_PAGE items per page */
         <div className="bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
             <div className="text-stone-400 text-xs font-semibold uppercase tracking-wider">
               Visualizzati {filteredEvents.length} appuntamenti
             </div>
-            {filteredEvents.length > 50 && (
+            {filteredEvents.length > ITEMS_PER_PAGE && (
               <div className="text-stone-400 text-xs">
-                Mostrati {Math.min((listPage - 1) * 50 + 1, filteredEvents.length)} - {Math.min(listPage * 50, filteredEvents.length)} di {filteredEvents.length}
+                Mostrati {Math.min((listPage - 1) * ITEMS_PER_PAGE + 1, filteredEvents.length)} - {Math.min(listPage * ITEMS_PER_PAGE, filteredEvents.length)} di {filteredEvents.length}
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredEvents
-              .slice((listPage - 1) * 50, listPage * 50)
+              .slice((listPage - 1) * ITEMS_PER_PAGE, listPage * ITEMS_PER_PAGE)
               .map(ev => renderEventCard(ev, onSelectPmu, onSelectWedding))}
           </div>
 
           {/* Pagination Controls */}
-          {Math.ceil(filteredEvents.length / 50) > 1 && (
+          {Math.ceil(filteredEvents.length / ITEMS_PER_PAGE) > 1 && (
             <div className="flex items-center justify-between pt-4 border-t border-stone-800 text-xs sm:text-sm">
               <button
                 onClick={() => setListPage(p => Math.max(1, p - 1))}
@@ -487,12 +492,12 @@ export default function AgendaView({
 
               <span className="text-stone-400 font-medium">
                 Pagina <span className="text-white font-bold">{listPage}</span> di{' '}
-                <span className="text-white font-bold">{Math.ceil(filteredEvents.length / 50)}</span>
+                <span className="text-white font-bold">{Math.ceil(filteredEvents.length / ITEMS_PER_PAGE)}</span>
               </span>
 
               <button
-                onClick={() => setListPage(p => Math.min(Math.ceil(filteredEvents.length / 50), p + 1))}
-                disabled={listPage >= Math.ceil(filteredEvents.length / 50)}
+                onClick={() => setListPage(p => Math.min(Math.ceil(filteredEvents.length / ITEMS_PER_PAGE), p + 1))}
+                disabled={listPage >= Math.ceil(filteredEvents.length / ITEMS_PER_PAGE)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 Successiva

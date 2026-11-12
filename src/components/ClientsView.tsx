@@ -35,6 +35,8 @@ interface ClientsViewProps {
   onOpenNewVoucherForClient?: (client: Client) => void;
 }
 
+const ITEMS_PER_PAGE = 48; // Divisibile per 1, 2, 3 (e 4) colonne per evitare spazi vuoti in fondo alla griglia
+
 export default function ClientsView({
   clients,
   appointments,
@@ -252,20 +254,20 @@ export default function ClientsView({
       </div>
 
       {/* Pagination summary info */}
-      {filteredClients.length > 50 && (
+      {filteredClients.length > ITEMS_PER_PAGE && (
         <div className="flex items-center justify-between text-xs text-stone-400 px-1">
           <span>
-            Mostrati {Math.min((currentPage - 1) * 50 + 1, filteredClients.length)} - {Math.min(currentPage * 50, filteredClients.length)} di {filteredClients.length} clienti
+            Mostrati {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredClients.length)} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredClients.length)} di {filteredClients.length} clienti
           </span>
           <span>
-            Pagina {currentPage} di {Math.ceil(filteredClients.length / 50)}
+            Pagina {currentPage} di {Math.ceil(filteredClients.length / ITEMS_PER_PAGE)}
           </span>
         </div>
       )}
 
-      {/* Client List Grid (50 per page) */}
+      {/* Client List Grid (divisibile per numero di colonne) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filteredClients.slice((currentPage - 1) * 50, currentPage * 50).map(c => (
+        {filteredClients.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(c => (
           <div
             key={c.id}
             onClick={() => setSelectedClient(c)}
@@ -296,7 +298,7 @@ export default function ClientsView({
       </div>
 
       {/* Pagination Controls */}
-      {Math.ceil(filteredClients.length / 50) > 1 && (
+      {Math.ceil(filteredClients.length / ITEMS_PER_PAGE) > 1 && (
         <div className="flex items-center justify-between p-4 rounded-2xl bg-stone-900 border border-stone-800 text-xs sm:text-sm">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -309,12 +311,12 @@ export default function ClientsView({
 
           <span className="text-stone-400 font-medium">
             Pagina <span className="text-white font-bold">{currentPage}</span> di{' '}
-            <span className="text-white font-bold">{Math.ceil(filteredClients.length / 50)}</span>
+            <span className="text-white font-bold">{Math.ceil(filteredClients.length / ITEMS_PER_PAGE)}</span>
           </span>
 
           <button
-            onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredClients.length / 50), p + 1))}
-            disabled={currentPage >= Math.ceil(filteredClients.length / 50)}
+            onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredClients.length / ITEMS_PER_PAGE), p + 1))}
+            disabled={currentPage >= Math.ceil(filteredClients.length / ITEMS_PER_PAGE)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Successiva

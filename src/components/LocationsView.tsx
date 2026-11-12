@@ -14,7 +14,8 @@ import {
   Tag,
   Check,
   X,
-  Sparkles
+  Sparkles,
+  Palette,
 } from 'lucide-react';
 
 interface LocationsViewProps {
@@ -225,41 +226,56 @@ export default function LocationsView({
             <div className="sm:col-span-3 flex flex-col gap-2">
               <div>
                 <label className="block text-[11px] font-semibold text-stone-400 uppercase mb-1">
-                  Colore Pastello
+                  Colore Sede
                 </label>
-                <div className="flex items-center gap-2 bg-stone-800 border border-stone-700 rounded-xl px-2.5 py-1.5">
-                  <input
-                    type="color"
-                    value={newLocColor}
-                    onChange={e => setNewLocColor(e.target.value)}
-                    className="w-6 h-6 rounded-lg bg-transparent border-0 cursor-pointer p-0"
-                  />
-                  <span className="text-xs font-mono text-stone-300">{newLocColor}</span>
+                {/* Palette consigliata */}
+                <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                  {PASTEL_LOCATION_PALETTE.map(c => {
+                    const isSelected = newLocColor.toUpperCase() === c.toUpperCase();
+                    const isAlreadyUsed = locations.some(l => (l.color || '').toUpperCase() === c.toUpperCase());
+                    return (
+                      <button
+                        type="button"
+                        key={c}
+                        onClick={() => setNewLocColor(c)}
+                        title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
+                        className={`w-5 h-5 rounded-full transition-all relative ${
+                          isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-sm' : 'opacity-85 hover:opacity-100 hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: c }}
+                      >
+                        {isAlreadyUsed && !isSelected && (
+                          <span className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-stone-950/60" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
 
-              {/* Swatch rapidi della palette pastello */}
-              <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                {PASTEL_LOCATION_PALETTE.map(c => {
-                  const isSelected = newLocColor.toUpperCase() === c.toUpperCase();
-                  const isAlreadyUsed = locations.some(l => (l.color || '').toUpperCase() === c.toUpperCase());
-                  return (
-                    <button
-                      type="button"
-                      key={c}
-                      onClick={() => setNewLocColor(c)}
-                      title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
-                      className={`w-5 h-5 rounded-full transition-all relative ${
-                        isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-sm' : 'opacity-80 hover:opacity-100 hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: c }}
-                    >
-                      {isAlreadyUsed && !isSelected && (
-                        <span className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-stone-950/60" />
-                      )}
-                    </button>
-                  );
-                })}
+                {/* Selettore colore personalizzato esplicito */}
+                <label className="flex items-center justify-between gap-2 bg-stone-800/90 hover:bg-stone-800 border border-stone-700/80 rounded-xl px-2.5 py-1.5 cursor-pointer transition-all group">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="relative flex items-center justify-center">
+                      <span
+                        className="w-5 h-5 rounded-full shadow-inner border border-stone-600/50 flex-shrink-0"
+                        style={{ backgroundColor: newLocColor }}
+                      />
+                      <input
+                        type="color"
+                        value={newLocColor}
+                        onChange={e => setNewLocColor(e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </div>
+                    <span className="text-[11px] font-medium text-stone-300 group-hover:text-white flex items-center gap-1 truncate">
+                      <Palette className="w-3 h-3 text-rose-400" />
+                      <span>Colore su misura...</span>
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-stone-400 bg-stone-900/60 px-1.5 py-0.5 rounded border border-stone-700/50">
+                    {newLocColor}
+                  </span>
+                </label>
               </div>
 
               <button
@@ -289,44 +305,91 @@ export default function LocationsView({
               <div className="p-4 sm:p-5 bg-stone-900/90 border-b border-stone-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 {isEditingThisLoc ? (
                   /* Edit Location Form */
-                  <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={editingLocColor}
-                        onChange={e => setEditingLocColor(e.target.value)}
-                        className="w-8 h-8 rounded-xl bg-transparent border-0 cursor-pointer p-0"
-                        title="Cambia colore sede"
-                      />
-                      <input
-                        type="text"
-                        value={editingLocName}
-                        onChange={e => setEditingLocName(e.target.value)}
-                        placeholder="Nome sede"
-                        className="bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-sm text-white font-bold"
-                      />
+                  <div className="flex-1 flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                      <div className="flex-1 flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editingLocName}
+                          onChange={e => setEditingLocName(e.target.value)}
+                          placeholder="Nome sede"
+                          className="bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-sm text-white font-bold min-w-[140px]"
+                        />
+                        <input
+                          type="text"
+                          value={editingLocAddress}
+                          onChange={e => setEditingLocAddress(e.target.value)}
+                          placeholder="Indirizzo (opzionale)"
+                          className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-xs text-white"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => handleSaveEditLocation(loc.id)}
+                          className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          Salva
+                        </button>
+                        <button
+                          onClick={() => setEditingLocId(null)}
+                          className="px-2.5 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs"
+                        >
+                          Annulla
+                        </button>
+                      </div>
                     </div>
-                    <input
-                      type="text"
-                      value={editingLocAddress}
-                      onChange={e => setEditingLocAddress(e.target.value)}
-                      placeholder="Indirizzo (opzionale)"
-                      className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-xs text-white"
-                    />
-                    <div className="flex items-center gap-2 justify-end">
-                      <button
-                        onClick={() => handleSaveEditLocation(loc.id)}
-                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm"
-                      >
-                        <Check className="w-3.5 h-3.5" />
-                        Salva
-                      </button>
-                      <button
-                        onClick={() => setEditingLocId(null)}
-                        className="px-2.5 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs"
-                      >
-                        Annulla
-                      </button>
+
+                    {/* Color selection row with palette swatches + custom picker button */}
+                    <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-stone-800/80">
+                      <span className="text-[11px] font-semibold text-stone-400 uppercase">Colore:</span>
+                      
+                      {/* Swatches */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {PASTEL_LOCATION_PALETTE.map(c => {
+                          const isSelected = editingLocColor.toUpperCase() === c.toUpperCase();
+                          const isAlreadyUsed = locations.some(l => l.id !== loc.id && (l.color || '').toUpperCase() === c.toUpperCase());
+                          return (
+                            <button
+                              type="button"
+                              key={c}
+                              onClick={() => setEditingLocColor(c)}
+                              title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
+                              className={`w-5 h-5 rounded-full transition-all relative ${
+                                isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-sm' : 'opacity-85 hover:opacity-100 hover:scale-105'
+                              }`}
+                              style={{ backgroundColor: c }}
+                            >
+                              {isAlreadyUsed && !isSelected && (
+                                <span className="absolute inset-0 m-auto w-1 h-1 rounded-full bg-stone-950/60" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Custom color picker */}
+                      <label className="flex items-center gap-1.5 bg-stone-800/90 hover:bg-stone-800 border border-stone-700/80 rounded-lg px-2 py-1 cursor-pointer transition-all group ml-auto sm:ml-0">
+                        <div className="relative flex items-center justify-center">
+                          <span
+                            className="w-4 h-4 rounded-full shadow-inner border border-stone-600/50 flex-shrink-0"
+                            style={{ backgroundColor: editingLocColor }}
+                          />
+                          <input
+                            type="color"
+                            value={editingLocColor}
+                            onChange={e => setEditingLocColor(e.target.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          />
+                        </div>
+                        <span className="text-[10px] font-medium text-stone-300 group-hover:text-white flex items-center gap-1">
+                          <Palette className="w-2.5 h-2.5 text-rose-400" />
+                          <span>Personalizzato</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-stone-400">
+                          {editingLocColor}
+                        </span>
+                      </label>
                     </div>
                   </div>
                 ) : (

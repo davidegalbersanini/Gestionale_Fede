@@ -1,14 +1,15 @@
-// Palette pastello armonica e professionale per sedi di lavoro (max ~8 sedi)
-// Ogni colore è morbido, leggibile sia su tema dark che light, e ben distinguibile dagli altri
+// Palette pastello armonica, variegata e ben differenziata per le sedi di lavoro (max ~8 sedi)
+// Ogni tonalità copre una famiglia cromatica nettamente diversa (Rosa, Smeraldo, Lavanda, Ambra/Ocra, Cielo, Corallo/Salmone, Menta, Indaco)
+// per essere immediatamente riconoscibile a colpo d'occhio senza confondersi.
 export const PASTEL_LOCATION_PALETTE: readonly string[] = [
-  '#F472B6', // Rosa Cipria / Rosa Pastello (Beauty Center)
-  '#34D399', // Salvia / Menta Pastello (The Touch)
-  '#A78BFA', // Lavanda / Lilla Pastello (AliceinWondernails)
-  '#38BDF8', // Celeste / Azzurro Pastello
-  '#2DD4BF', // Tiffany / Acqua Pastello
-  '#C084FC', // Malva Pastello
-  '#818CF8', // Indaco Chiaro Pastello
-  '#94A3B8', // Ardesia Polvere Pastello
+  '#F472B6', // 1. Rosa Cipria Pastello (Beauty Center)
+  '#10B981', // 2. Verde Smeraldo / Menta Intensa (The Touch)
+  '#8B5CF6', // 3. Viola Lavanda / Orchidea (AliceinWondernails)
+  '#F59E0B', // 4. Ambra / Senape Pastello Caldo
+  '#0EA5E9', // 5. Celeste Cielo / Fiordaliso Pastello
+  '#FB923C', // 6. Albicocca / Arancio Pastello
+  '#14B8A6', // 7. Verde Acqua / Ottanio Pastello
+  '#6366F1', // 8. Indaco / Blu Notte Pastello
 ] as const;
 
 // Colori pastello distinti e dedicati al mondo Eventi & Cerimonie

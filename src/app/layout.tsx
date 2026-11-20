@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: 'Fede App',
   },
   icons: {
@@ -25,7 +25,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0d0c11',
+  themeColor: '#fafaf9',
 };
 
 export default function RootLayout({
@@ -34,15 +34,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="it" className="dark">
+    <html lang="it">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body className="min-h-screen bg-stone-950 font-sans antialiased text-stone-100">
+      <body className="min-h-screen bg-stone-50 font-sans antialiased text-stone-900">
         {children}
       </body>
     </html>
   );
 }
-

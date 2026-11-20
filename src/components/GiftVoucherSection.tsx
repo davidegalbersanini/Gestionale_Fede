@@ -74,7 +74,7 @@ export default function GiftVoucherSection({
     : 0;
 
   return (
-    <div className="pt-2 border-t border-stone-700/60 space-y-2">
+    <div className="pt-2 border-t border-stone-200 space-y-2">
       <label className="flex items-center gap-2 cursor-pointer select-none">
         <input
           type="checkbox"
@@ -101,10 +101,10 @@ export default function GiftVoucherSection({
               onChangeDeduction(String(newDed));
             }
           }}
-          className="w-4 h-4 rounded border-stone-600 bg-stone-900 text-amber-500 focus:ring-0 cursor-pointer"
+          className="w-4 h-4 rounded border-stone-300 bg-white text-amber-600 focus:ring-0 cursor-pointer"
         />
-        <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-          <Gift className="w-3.5 h-3.5 text-amber-400" />
+        <span className="text-xs font-bold text-amber-700 flex items-center gap-1.5">
+          <Gift className="w-3.5 h-3.5 text-amber-600" />
           Usa Buono Regalo
         </span>
       </label>
@@ -112,7 +112,7 @@ export default function GiftVoucherSection({
       {usedGiftVoucher && (
         <div className="pl-6 space-y-2 pt-1">
           <div>
-            <label className="block text-[11px] font-semibold text-stone-300 mb-1">
+            <label className="block text-[11px] font-semibold text-stone-700 mb-1">
               Seleziona Buono
             </label>
             {availableVouchers.length > 0 ? (
@@ -130,7 +130,7 @@ export default function GiftVoucherSection({
                     onChangeDeduction('');
                   }
                 }}
-                className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
+                className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-xs focus:ring-2 focus:ring-amber-400"
               >
                 <option value="">-- Seleziona Buono --</option>
                 {matchingVouchers.length > 0 && (
@@ -153,7 +153,7 @@ export default function GiftVoucherSection({
                 </optgroup>
               </select>
             ) : (
-              <p className="text-xs text-amber-300/80 italic">
+              <p className="text-xs text-amber-700 italic">
                 Nessun buono con credito residuo.
               </p>
             )}
@@ -161,9 +161,9 @@ export default function GiftVoucherSection({
 
           {selectedVoucherId && selectedVoucher && (
             <div>
-              <label className="block text-[11px] font-semibold text-stone-300 mb-1 flex items-center justify-between">
+              <label className="block text-[11px] font-semibold text-stone-700 mb-1 flex items-center justify-between">
                 <span>Importo da scalare (€)</span>
-                <span className="text-[10px] text-stone-400 font-normal">
+                <span className="text-[10px] text-stone-500 font-normal">
                   Max: {maxApplicable}€
                 </span>
               </label>
@@ -193,16 +193,16 @@ export default function GiftVoucherSection({
                     onChangeDeduction(raw);
                   }
                 }}
-                className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
+                className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-xs focus:ring-2 focus:ring-amber-400"
               />
-              <p className="text-[10px] text-stone-400 mt-1">
+              <p className="text-[10px] text-stone-600 mt-1">
                 Residuo disponibile:{' '}
-                <strong className="text-amber-400">{selectedEffRem}€</strong> • Dopo:{' '}
-                <strong className="text-emerald-400">
+                <strong className="text-amber-700">{selectedEffRem}€</strong> • Dopo:{' '}
+                <strong className="text-emerald-700">
                   {Math.max(0, selectedEffRem - (parseFloat(voucherDeduction) || 0))}€
                 </strong>
                 {!selectedVoucher.recipient_name && (
-                  <span className="block text-indigo-300 mt-0.5">
+                  <span className="block text-indigo-700 mt-0.5">
                     Assegna automaticamente a:{' '}
                     <strong>{clientDisplayName || 'cliente'}</strong>
                   </span>

@@ -70,7 +70,6 @@ export default function PinLock({ onSuccess }: PinLockProps) {
     setErrorMessage(null);
   }, [isVerifying]);
 
-  // Physical keyboard listener for PC / Mac
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key >= '0' && e.key <= '9') {
@@ -89,15 +88,15 @@ export default function PinLock({ onSuccess }: PinLockProps) {
   const hasError = Boolean(errorMessage);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-b from-stone-900 via-stone-950 to-black text-white p-4 select-none flex items-center justify-center">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-b from-rose-50/70 via-stone-50 to-stone-100 text-stone-900 p-4 select-none flex items-center justify-center">
       <div className="w-full max-w-sm flex flex-col items-center my-auto py-4">
         {/* Header with Brand Logo */}
         <div className="flex flex-col items-center mb-6 text-center">
-          <div className="h-16 px-4 rounded-3xl bg-white/95 border border-stone-200/80 flex items-center justify-center shadow-2xl shadow-rose-950/40 mb-3.5">
+          <div className="h-16 px-4 rounded-3xl bg-white border border-stone-200 flex items-center justify-center shadow-lg shadow-rose-200/50 mb-3.5">
             <img src="/logo.png" alt="Gestionale Fede" className="h-10 w-auto object-contain" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-white mb-0.5">Gestionale Fede</h1>
-          <p className="text-xs text-rose-300 font-medium tracking-wide uppercase">
+          <h1 className="text-2xl font-black tracking-tight text-stone-900 mb-0.5">Gestionale Fede</h1>
+          <p className="text-xs text-rose-600 font-semibold tracking-wide uppercase">
             PMU & Eventi • Beauty Management
           </p>
         </div>
@@ -110,18 +109,18 @@ export default function PinLock({ onSuccess }: PinLockProps) {
                 key={i}
                 className={`w-3.5 h-3.5 rounded-full border-2 transition-all duration-200 ${
                   pin.length > i
-                    ? 'bg-rose-500 border-rose-500 scale-110 shadow-lg shadow-rose-500/50'
-                    : 'border-stone-600 bg-transparent'
+                    ? 'bg-rose-500 border-rose-500 scale-110 shadow-md shadow-rose-300'
+                    : 'border-stone-300 bg-white'
                 } ${hasError ? '!border-red-500 !bg-red-500' : ''}`}
               />
             ))}
           </div>
           {isVerifying ? (
-            <span className="text-rose-300 text-xs font-medium flex items-center gap-1.5">
+            <span className="text-rose-600 text-xs font-medium flex items-center gap-1.5">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Verifica PIN...
             </span>
           ) : errorMessage ? (
-            <span className="text-red-400 text-xs font-medium text-center animate-fade-in">
+            <span className="text-red-600 text-xs font-medium text-center animate-fade-in">
               {errorMessage}
             </span>
           ) : (
@@ -137,7 +136,7 @@ export default function PinLock({ onSuccess }: PinLockProps) {
               type="button"
               disabled={isVerifying}
               onClick={() => handleDigit(d)}
-              className="w-16 h-16 mx-auto rounded-full bg-stone-800/80 hover:bg-stone-700 active:bg-rose-600 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center text-xl sm:text-2xl font-medium text-white shadow-md border border-stone-700/50 hover:border-stone-500"
+              className="w-16 h-16 mx-auto rounded-full bg-white hover:bg-rose-50 active:bg-rose-600 active:text-white active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center text-xl sm:text-2xl font-semibold text-stone-800 shadow-sm border border-stone-200 hover:border-rose-300"
             >
               {d}
             </button>
@@ -149,7 +148,7 @@ export default function PinLock({ onSuccess }: PinLockProps) {
             type="button"
             disabled={isVerifying}
             onClick={() => handleDigit('0')}
-            className="w-16 h-16 mx-auto rounded-full bg-stone-800/80 hover:bg-stone-700 active:bg-rose-600 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center text-xl sm:text-2xl font-medium text-white shadow-md border border-stone-700/50 hover:border-stone-500"
+            className="w-16 h-16 mx-auto rounded-full bg-white hover:bg-rose-50 active:bg-rose-600 active:text-white active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center text-xl sm:text-2xl font-semibold text-stone-800 shadow-sm border border-stone-200 hover:border-rose-300"
           >
             0
           </button>
@@ -159,19 +158,19 @@ export default function PinLock({ onSuccess }: PinLockProps) {
             disabled={isVerifying}
             onClick={handleDelete}
             aria-label="Cancella cifra"
-            className="w-16 h-16 mx-auto rounded-full bg-transparent hover:bg-stone-800/50 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center text-stone-400 hover:text-white"
+            className="w-16 h-16 mx-auto rounded-full bg-transparent hover:bg-stone-200/70 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center text-stone-500 hover:text-stone-900"
           >
             <Delete className="w-6 h-6" />
           </button>
         </div>
 
         {/* Remember toggle */}
-        <label className="flex items-center gap-2 text-stone-400 text-xs cursor-pointer select-none hover:text-stone-300">
+        <label className="flex items-center gap-2 text-stone-600 text-xs cursor-pointer select-none hover:text-stone-900">
           <input
             type="checkbox"
             checked={rememberDevice}
             onChange={e => setRememberDevice(e.target.checked)}
-            className="rounded border-stone-700 bg-stone-800 text-rose-500 focus:ring-0"
+            className="rounded border-stone-300 bg-white text-rose-500 focus:ring-0"
           />
           <span>Resta autenticata su questo dispositivo (30 giorni)</span>
         </label>

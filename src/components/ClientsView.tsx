@@ -242,18 +242,18 @@ export default function ClientsView({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between bg-stone-900/90 border border-stone-800 p-4 rounded-3xl">
-        <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+      <div className="flex items-center justify-between bg-white border border-stone-200 p-4 rounded-3xl">
+        <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
           <Users className="w-6 h-6 text-rose-500" />
           <span>Rubrica</span>
-          <span className="text-xs font-bold text-stone-400 bg-stone-800 px-2.5 py-0.5 rounded-full border border-stone-700">
+          <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-300">
             {clients.length}
           </span>
         </h1>
 
         <button
           onClick={() => setIsAddingClient(true)}
-          className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center gap-1.5 active:scale-95 transition-all"
+          className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-200/70 flex items-center gap-1.5 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Nuovo</span>
@@ -271,12 +271,12 @@ export default function ClientsView({
             setSearch(e.target.value);
             setCurrentPage(1);
           }}
-          className="w-full bg-stone-900 border border-stone-800 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+          className="w-full bg-white border border-stone-200 rounded-2xl pl-11 pr-4 py-3 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
         />
       </div>
 
       {filteredClients.length > ITEMS_PER_PAGE && (
-        <div className="flex items-center justify-between text-xs text-stone-400 px-1">
+        <div className="flex items-center justify-between text-xs text-stone-500 px-1">
           <span>
             Mostrati {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredClients.length)} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredClients.length)} di {filteredClients.length} clienti
           </span>
@@ -292,18 +292,18 @@ export default function ClientsView({
           <div
             key={c.id}
             onClick={() => setSelectedClient(c)}
-            className="p-4 rounded-2xl bg-stone-900 hover:bg-stone-800/80 border border-stone-800 transition-all cursor-pointer group flex items-center justify-between"
+            className="p-4 rounded-2xl bg-white hover:bg-stone-100 border border-stone-200 transition-all cursor-pointer group flex items-center justify-between"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-stone-800 to-stone-700 border border-stone-700 flex items-center justify-center font-bold text-sm text-rose-400 group-hover:scale-105 transition-transform flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-rose-50 to-stone-100 border border-stone-300 flex items-center justify-center font-bold text-sm text-rose-600 group-hover:scale-105 transition-transform flex-shrink-0">
                 {c.full_name ? c.full_name.charAt(0).toUpperCase() : '?'}
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate">
+                <h3 className="text-sm font-bold text-stone-900 group-hover:text-rose-600 transition-colors truncate">
                   {c.full_name}
                 </h3>
                 {c.phone ? (
-                  <p className="text-stone-400 text-xs flex items-center gap-1 truncate">
+                  <p className="text-stone-500 text-xs flex items-center gap-1 truncate">
                     <Phone className="w-3 h-3 text-stone-500 flex-shrink-0" />
                     {c.phone}
                   </p>
@@ -313,32 +313,32 @@ export default function ClientsView({
               </div>
             </div>
 
-            <ChevronRight className="w-4 h-4 text-stone-600 group-hover:text-stone-400 transition-colors flex-shrink-0 ml-2" />
+            <ChevronRight className="w-4 h-4 text-stone-600 group-hover:text-stone-500 transition-colors flex-shrink-0 ml-2" />
           </div>
         ))}
       </div>
 
       {/* Pagination Controls */}
       {Math.ceil(filteredClients.length / ITEMS_PER_PAGE) > 1 && (
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-stone-900 border border-stone-800 text-xs sm:text-sm">
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-stone-200 text-xs sm:text-sm">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage <= 1}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             <ChevronLeft className="w-4 h-4" />
             Precedente
           </button>
 
-          <span className="text-stone-400 font-medium">
-            Pagina <span className="text-white font-bold">{currentPage}</span> di{' '}
-            <span className="text-white font-bold">{Math.ceil(filteredClients.length / ITEMS_PER_PAGE)}</span>
+          <span className="text-stone-500 font-medium">
+            Pagina <span className="text-stone-900 font-bold">{currentPage}</span> di{' '}
+            <span className="text-stone-900 font-bold">{Math.ceil(filteredClients.length / ITEMS_PER_PAGE)}</span>
           </span>
 
           <button
             onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredClients.length / ITEMS_PER_PAGE), p + 1))}
             disabled={currentPage >= Math.ceil(filteredClients.length / ITEMS_PER_PAGE)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Successiva
             <ChevronRight className="w-4 h-4" />
@@ -349,7 +349,7 @@ export default function ClientsView({
       {/* Client Detail Modal */}
       {selectedClient && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/35 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
           onClick={e => {
             if (e.target === e.currentTarget) {
               setSelectedClient(null);
@@ -357,26 +357,26 @@ export default function ClientsView({
             }
           }}
         >
-          <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-            <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
+          <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
+            <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-12 h-12 rounded-2xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 font-black text-lg flex-shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-500/30 flex items-center justify-center text-rose-600 font-black text-lg flex-shrink-0">
                   {selectedClient.full_name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-white truncate">{selectedClient.full_name}</h2>
+                    <h2 className="text-lg font-bold text-stone-900 truncate">{selectedClient.full_name}</h2>
                     <button
                       type="button"
                       onClick={() => openEditModal(selectedClient)}
-                      className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-400 hover:text-white transition-colors flex-shrink-0"
+                      className="p-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-500 hover:text-stone-900 transition-colors flex-shrink-0"
                       title="Modifica anagrafica cliente"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <p className="text-stone-400 text-xs">
-                    Totale speso: <span className="font-bold text-emerald-400">{clientHistory.totalSpent}€</span>
+                  <p className="text-stone-500 text-xs">
+                    Totale speso: <span className="font-bold text-emerald-600">{clientHistory.totalSpent}€</span>
                   </p>
                 </div>
               </div>
@@ -385,23 +385,23 @@ export default function ClientsView({
                   setSelectedClient(null);
                   setDeleteErrorMessage(null);
                 }}
-                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 flex-shrink-0 ml-2"
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 flex-shrink-0 ml-2"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {deleteErrorMessage && (
-              <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 flex items-start gap-3 animate-fade-in text-amber-200 text-xs">
-                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-500/50 flex items-start gap-3 animate-fade-in text-amber-800 text-xs">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-amber-300">Impossibile eliminare questo contatto</p>
-                  <p className="mt-0.5 leading-relaxed text-amber-200/90">{deleteErrorMessage}</p>
+                  <p className="font-semibold text-amber-700">Impossibile eliminare questo contatto</p>
+                  <p className="mt-0.5 leading-relaxed text-amber-800">{deleteErrorMessage}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setDeleteErrorMessage(null)}
-                  className="text-amber-400 hover:text-amber-200"
+                  className="text-amber-600 hover:text-amber-800"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -415,16 +415,16 @@ export default function ClientsView({
                   <>
                     <a
                       href={`tel:${selectedClient.phone}`}
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 text-xs font-semibold flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-800 text-xs font-semibold flex items-center justify-center gap-2"
                     >
-                      <Phone className="w-3.5 h-3.5 text-rose-400" /> Chiama
+                      <Phone className="w-3.5 h-3.5 text-rose-600" /> Chiama
                     </a>
                     {whatsappDigits && (
                       <a
                         href={`https://wa.me/${whatsappDigits}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2"
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center justify-center gap-2"
                       >
                         WhatsApp
                       </a>
@@ -434,28 +434,28 @@ export default function ClientsView({
                   <button
                     type="button"
                     onClick={() => openEditModal(selectedClient)}
-                    className="flex-1 py-2 px-3 rounded-xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700/60 text-stone-400 hover:text-white text-xs flex items-center justify-center gap-1.5 transition-colors"
+                    className="flex-1 py-2 px-3 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-500 hover:text-stone-900 text-xs flex items-center justify-center gap-1.5 transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5 text-rose-400" />
+                    <Plus className="w-3.5 h-3.5 text-rose-600" />
                     <span>Aggiungi numero di telefono</span>
                   </button>
                 )}
               </div>
 
               {selectedClient.notes ? (
-                <div className="p-3.5 rounded-2xl bg-stone-800/50 border border-stone-700/60 text-xs">
-                  <div className="flex items-center justify-between text-stone-400 mb-1">
+                <div className="p-3.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs">
+                  <div className="flex items-center justify-between text-stone-500 mb-1">
                     <span className="font-semibold uppercase tracking-wider text-[10px]">Note Cliente</span>
                     <button
                       type="button"
                       onClick={() => openEditModal(selectedClient)}
-                      className="text-stone-400 hover:text-white"
+                      className="text-stone-500 hover:text-stone-900"
                       title="Modifica note"
                     >
                       <Pencil className="w-3 h-3" />
                     </button>
                   </div>
-                  <p className="text-stone-200 whitespace-pre-wrap leading-relaxed">{selectedClient.notes}</p>
+                  <p className="text-stone-800 whitespace-pre-wrap leading-relaxed">{selectedClient.notes}</p>
                 </div>
               ) : null}
 
@@ -465,9 +465,9 @@ export default function ClientsView({
                     onOpenNewAppointmentForClient(selectedClient);
                     setSelectedClient(null);
                   }}
-                  className="py-2.5 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  className="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-500/40 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5 text-rose-400" />
+                  <Plus className="w-3.5 h-3.5 text-rose-600" />
                   <span>PMU</span>
                 </button>
 
@@ -476,9 +476,9 @@ export default function ClientsView({
                     onOpenNewWeddingForClient(selectedClient);
                     setSelectedClient(null);
                   }}
-                  className="py-2.5 px-3 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 border border-pink-500/40 text-pink-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  className="py-2.5 px-3 rounded-xl bg-pink-50 hover:bg-pink-100 border border-pink-500/40 text-pink-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                 >
-                  <Heart className="w-3.5 h-3.5 text-pink-400" />
+                  <Heart className="w-3.5 h-3.5 text-pink-600" />
                   <span>Evento</span>
                 </button>
 
@@ -488,9 +488,9 @@ export default function ClientsView({
                       onOpenNewVoucherForClient(selectedClient);
                       setSelectedClient(null);
                     }}
-                    className="py-2.5 px-3 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                    className="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-500/40 text-amber-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
                   >
-                    <Gift className="w-3.5 h-3.5 text-amber-400" />
+                    <Gift className="w-3.5 h-3.5 text-amber-600" />
                     <span>Buono</span>
                   </button>
                 )}
@@ -498,12 +498,12 @@ export default function ClientsView({
 
               {/* Buoni Acquistati */}
               <div>
-                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Gift className="w-3.5 h-3.5" />
                   Buoni Acquistati ({clientHistory.purchasedVouchers.length})
                 </h4>
                 {clientHistory.purchasedVouchers.length === 0 ? (
-                  <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
+                  <p className="text-xs text-stone-500 italic bg-stone-50 p-3 rounded-xl">
                     Nessun buono acquistato.
                   </p>
                 ) : (
@@ -519,36 +519,36 @@ export default function ClientsView({
                           key={idx}
                           className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
                             isFullyUsed
-                              ? 'bg-stone-800/40 border-stone-800 text-stone-400'
+                              ? 'bg-stone-50 border-stone-200 text-stone-500'
                               : isPartial
-                              ? 'bg-amber-950/40 border-amber-500/50 text-amber-200'
-                              : 'bg-amber-950/20 border-amber-800/40 text-amber-200'
+                              ? 'bg-amber-50 border-amber-500/50 text-amber-800'
+                              : 'bg-amber-50/70 border-amber-200 text-amber-800'
                           }`}
                         >
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-white">Buono</span>
+                              <span className="font-bold text-stone-900">Buono</span>
                               <span
                                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                                   isFullyUsed
-                                    ? 'bg-stone-800 text-stone-400'
+                                    ? 'bg-stone-100 text-stone-500'
                                     : isPartial
-                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                                    ? 'bg-amber-100 text-amber-700 border border-amber-500/40'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 }`}
                               >
                                 {isFullyUsed ? 'Utilizzato' : isPartial ? 'Parzialmente Usato' : 'Da Usare'}
                               </span>
                             </div>
-                            <p className="text-stone-400 text-[11px] mt-0.5">
+                            <p className="text-stone-500 text-[11px] mt-0.5">
                               {v.recipient_name ? `Per: ${v.recipient_name} • ` : 'Beneficiario non specificato • '}
                               {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
                             </p>
                           </div>
                           <div className="text-right">
-                            <span className="font-bold text-amber-400 text-sm">{initVal}€</span>
+                            <span className="font-bold text-amber-600 text-sm">{initVal}€</span>
                             {remVal < initVal && (
-                              <p className="text-[10px] text-emerald-400 font-semibold">
+                              <p className="text-[10px] text-emerald-600 font-semibold">
                                 Rimasti: {remVal}€
                               </p>
                             )}
@@ -563,7 +563,7 @@ export default function ClientsView({
               {/* Buoni Ricevuti */}
               {clientHistory.receivedVouchers.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-bold text-pink-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-pink-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <Gift className="w-3.5 h-3.5" />
                     Buoni Ricevuti ({clientHistory.receivedVouchers.length})
                   </h4>
@@ -579,34 +579,34 @@ export default function ClientsView({
                           key={idx}
                           className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
                             isFullyUsed
-                              ? 'bg-stone-800/40 border-stone-800 text-stone-400'
+                              ? 'bg-stone-50 border-stone-200 text-stone-500'
                               : isPartial
-                              ? 'bg-pink-950/40 border-pink-500/50 text-pink-200'
-                              : 'bg-pink-950/20 border-pink-800/40 text-pink-200'
+                              ? 'bg-pink-50 border-pink-500/50 text-pink-800'
+                              : 'bg-pink-50/70 border-pink-800/40 text-pink-800'
                           }`}
                         >
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-white">Da: {v.buyer_name}</span>
+                              <span className="font-bold text-stone-900">Da: {v.buyer_name}</span>
                               <span
                                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                                   isFullyUsed
-                                    ? 'bg-stone-800 text-stone-400'
+                                    ? 'bg-stone-100 text-stone-500'
                                     : isPartial
-                                    ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40'
-                                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                                    ? 'bg-pink-100 text-pink-700 border border-pink-500/40'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 }`}
                               >
                                 {isFullyUsed ? 'Utilizzato' : isPartial ? 'Parzialmente Usato' : 'Da Usare'}
                               </span>
                             </div>
-                            <p className="text-stone-400 text-[11px] mt-0.5">
+                            <p className="text-stone-500 text-[11px] mt-0.5">
                               {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
                             </p>
                           </div>
                           <div className="text-right">
-                            <span className="font-bold text-pink-400 text-sm">{initVal}€</span>
-                            <p className="text-[10px] text-emerald-400 font-semibold">
+                            <span className="font-bold text-pink-600 text-sm">{initVal}€</span>
+                            <p className="text-[10px] text-emerald-600 font-semibold">
                               Disponibili: {remVal}€
                             </p>
                           </div>
@@ -619,27 +619,27 @@ export default function ClientsView({
 
               {/* In programma */}
               <div>
-                <h4 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
                   In programma ({clientHistory.upcoming.length})
                 </h4>
                 {clientHistory.upcoming.length === 0 ? (
-                  <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
+                  <p className="text-xs text-stone-500 italic bg-stone-50 p-3 rounded-xl">
                     Nessun appuntamento futuro.
                   </p>
                 ) : (
                   <div className="space-y-2">
                     {clientHistory.upcoming.map((item, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-rose-950/20 border border-rose-900/40 text-xs flex justify-between items-center">
+                      <div key={idx} className="p-3 rounded-xl bg-rose-50/70 border border-rose-200 text-xs flex justify-between items-center">
                         <div>
-                          <p className={`font-bold text-white ${item.status === 'annullato' ? 'line-through text-stone-400' : ''}`}>
+                          <p className={`font-bold text-stone-900 ${item.status === 'annullato' ? 'line-through text-stone-500' : ''}`}>
                             {item.title}
                           </p>
-                          <p className="text-stone-400 text-[11px]">
+                          <p className="text-stone-500 text-[11px]">
                             {item.date.slice(0, 10)} {item.status === 'annullato' ? '• Annullato' : ''}
                           </p>
                         </div>
-                        <span className={`font-bold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-rose-400'}`}>
+                        <span className={`font-bold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-rose-600'}`}>
                           {item.amount}€
                         </span>
                       </div>
@@ -650,27 +650,27 @@ export default function ClientsView({
 
               {/* Storico */}
               <div>
-                <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5" />
                   Storico ({clientHistory.past.length})
                 </h4>
                 {clientHistory.past.length === 0 ? (
-                  <p className="text-xs text-stone-500 italic bg-stone-800/40 p-3 rounded-xl">
+                  <p className="text-xs text-stone-500 italic bg-stone-50 p-3 rounded-xl">
                     Nessun trattamento passato.
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {clientHistory.past.map((item, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-stone-800/60 border border-stone-700/60 text-xs flex justify-between items-center">
+                      <div key={idx} className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs flex justify-between items-center">
                         <div>
-                          <p className={`font-medium text-white ${item.status === 'annullato' ? 'line-through text-stone-400' : ''}`}>
+                          <p className={`font-medium text-stone-900 ${item.status === 'annullato' ? 'line-through text-stone-500' : ''}`}>
                             {item.title}
                           </p>
-                          <p className="text-stone-400 text-[11px]">
+                          <p className="text-stone-500 text-[11px]">
                             {item.date.slice(0, 10)} {item.status === 'annullato' ? '• Annullato' : ''}
                           </p>
                         </div>
-                        <span className={`font-semibold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-emerald-400'}`}>
+                        <span className={`font-semibold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-emerald-600'}`}>
                           {item.amount}€
                         </span>
                       </div>
@@ -680,7 +680,7 @@ export default function ClientsView({
               </div>
 
               {/* Delete Client */}
-              <div className="pt-3 border-t border-stone-800">
+              <div className="pt-3 border-t border-stone-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -694,8 +694,8 @@ export default function ClientsView({
                   }}
                   className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                     clientHistory.totalCount > 0
-                      ? 'bg-stone-800/50 text-stone-500 border border-stone-800 hover:border-amber-700/50 hover:text-amber-400 cursor-not-allowed'
-                      : 'bg-red-950/40 hover:bg-red-900/60 text-red-300 border border-red-800/60 shadow-sm active:scale-98'
+                      ? 'bg-stone-50 text-stone-500 border border-stone-200 hover:border-amber-700/50 hover:text-amber-600 cursor-not-allowed'
+                      : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 shadow-sm active:scale-98'
                   }`}
                   title={
                     clientHistory.totalCount > 0
@@ -719,15 +719,15 @@ export default function ClientsView({
       {/* Add Client Modal */}
       {isAddingClient && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/35 backdrop-blur-sm p-4 overflow-y-auto"
           onClick={e => {
             if (e.target === e.currentTarget) setIsAddingClient(false);
           }}
         >
-          <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
-              <h3 className="text-base font-bold text-white">Nuovo Cliente</h3>
-              <button onClick={() => setIsAddingClient(false)} className="text-stone-400 hover:text-white">
+          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-4">
+              <h3 className="text-base font-bold text-stone-900">Nuovo Cliente</h3>
+              <button onClick={() => setIsAddingClient(false)} className="text-stone-500 hover:text-stone-900">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -735,7 +735,7 @@ export default function ClientsView({
             <form onSubmit={handleCreateClient} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Nome *
                   </label>
                   <input
@@ -744,11 +744,11 @@ export default function ClientsView({
                     placeholder="es. Martina"
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                    className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Cognome
                   </label>
                   <input
@@ -756,13 +756,13 @@ export default function ClientsView({
                     placeholder="Opzionale"
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                    className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                   Telefono
                 </label>
                 <input
@@ -770,12 +770,12 @@ export default function ClientsView({
                   placeholder="es. 340 1234567"
                   value={newPhone}
                   onChange={e => setNewPhone(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-900 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                   Note
                 </label>
                 <textarea
@@ -783,7 +783,7 @@ export default function ClientsView({
                   placeholder="Preferenze, allergie, pelle..."
                   value={newNotes}
                   onChange={e => setNewNotes(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-4 py-2 text-stone-900 text-sm"
                 />
               </div>
 
@@ -791,13 +791,13 @@ export default function ClientsView({
                 <button
                   type="button"
                   onClick={() => setIsAddingClient(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm font-semibold"
+                  className="flex-1 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold"
                 >
                   Annulla
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-950/40"
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-200/60"
                 >
                   Salva Cliente
                 </button>
@@ -810,18 +810,18 @@ export default function ClientsView({
       {/* Edit Client Modal */}
       {isEditingClient && selectedClient && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/35 backdrop-blur-sm p-4 overflow-y-auto"
           onClick={e => {
             if (e.target === e.currentTarget) setIsEditingClient(false);
           }}
         >
-          <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
+          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-4">
               <div className="flex items-center gap-2">
                 <Pencil className="w-5 h-5 text-rose-500" />
-                <h3 className="text-base font-bold text-white">Modifica Cliente</h3>
+                <h3 className="text-base font-bold text-stone-900">Modifica Cliente</h3>
               </div>
-              <button onClick={() => setIsEditingClient(false)} className="text-stone-400 hover:text-white">
+              <button onClick={() => setIsEditingClient(false)} className="text-stone-500 hover:text-stone-900">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -829,7 +829,7 @@ export default function ClientsView({
             <form onSubmit={handleUpdateClient} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Nome *
                   </label>
                   <input
@@ -838,11 +838,11 @@ export default function ClientsView({
                     placeholder="es. Martina"
                     value={editFirstName}
                     onChange={e => setEditFirstName(e.target.value)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                    className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Cognome
                   </label>
                   <input
@@ -850,13 +850,13 @@ export default function ClientsView({
                     placeholder="Opzionale"
                     value={editLastName}
                     onChange={e => setEditLastName(e.target.value)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white text-sm"
+                    className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                   Telefono
                 </label>
                 <input
@@ -864,12 +864,12 @@ export default function ClientsView({
                   placeholder="es. 340 1234567"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-900 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
+                <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                   Note
                 </label>
                 <textarea
@@ -877,7 +877,7 @@ export default function ClientsView({
                   placeholder="Preferenze, allergie, pelle..."
                   value={editNotes}
                   onChange={e => setEditNotes(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-4 py-2 text-stone-900 text-sm"
                 />
               </div>
 
@@ -885,13 +885,13 @@ export default function ClientsView({
                 <button
                   type="button"
                   onClick={() => setIsEditingClient(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm font-semibold"
+                  className="flex-1 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-sm font-semibold"
                 >
                   Annulla
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-950/40 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-200/60 flex items-center justify-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
                   <span>Salva Modifiche</span>

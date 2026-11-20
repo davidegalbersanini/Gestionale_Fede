@@ -75,20 +75,20 @@ export default function ClientAutocomplete({
 
   const ringClass =
     accent === 'pink'
-      ? 'focus:ring-pink-500'
+      ? 'focus:ring-pink-400'
       : accent === 'amber'
-      ? 'focus:ring-amber-500'
-      : 'focus:ring-rose-500';
+      ? 'focus:ring-amber-400'
+      : 'focus:ring-rose-400';
 
   const labelColorClass =
-    accent === 'pink' ? 'text-pink-300' : 'text-stone-400';
+    accent === 'pink' ? 'text-pink-700' : 'text-stone-600';
 
   const hoverItemClass =
     accent === 'pink'
-      ? 'hover:bg-pink-950/40'
+      ? 'hover:bg-pink-50'
       : accent === 'amber'
-      ? 'hover:bg-stone-700'
-      : 'hover:bg-rose-950/40';
+      ? 'hover:bg-amber-50'
+      : 'hover:bg-rose-50';
 
   return (
     <div ref={containerRef} className="relative">
@@ -109,7 +109,7 @@ export default function ClientAutocomplete({
               setShowSuggestions(true);
             }}
             onFocus={() => setShowSuggestions(true)}
-            className={`w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 ${ringClass} text-sm`}
+            className={`w-full bg-white border border-stone-300 rounded-xl px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 ${ringClass} text-sm`}
           />
         </div>
 
@@ -128,13 +128,13 @@ export default function ClientAutocomplete({
               setShowSuggestions(true);
             }}
             onFocus={() => setShowSuggestions(true)}
-            className={`w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 ${ringClass} text-sm`}
+            className={`w-full bg-white border border-stone-300 rounded-xl px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 ${ringClass} text-sm`}
           />
         </div>
       </div>
 
       {showSuggestions && filteredClients.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden z-20">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-stone-200 rounded-xl shadow-xl overflow-hidden z-20">
           {filteredClients.map(c => (
             <button
               type="button"
@@ -143,15 +143,15 @@ export default function ClientAutocomplete({
                 onSelectClient(c);
                 setShowSuggestions(false);
               }}
-              className={`w-full px-4 py-2.5 text-left ${hoverItemClass} text-stone-200 text-sm flex items-center justify-between border-b border-stone-700/50 last:border-0`}
+              className={`w-full px-4 py-2.5 text-left ${hoverItemClass} text-stone-700 text-sm flex items-center justify-between border-b border-stone-100 last:border-0`}
             >
               <div>
-                <span className="font-bold text-white">{c.first_name || c.full_name}</span>
+                <span className="font-bold text-stone-900">{c.first_name || c.full_name}</span>
                 {c.last_name && c.last_name !== '-' && (
-                  <span className="text-stone-300 ml-1.5">{c.last_name}</span>
+                  <span className="text-stone-600 ml-1.5">{c.last_name}</span>
                 )}
               </div>
-              {c.phone && <span className="text-stone-400 text-xs">{c.phone}</span>}
+              {c.phone && <span className="text-stone-500 text-xs">{c.phone}</span>}
             </button>
           ))}
         </div>

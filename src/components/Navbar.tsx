@@ -30,31 +30,31 @@ function SyncBadge({
     idle: {
       label: 'Cloud',
       title: 'Sincronizza con il cloud',
-      className: 'bg-stone-900 border-stone-800 text-stone-400 hover:text-white',
+      className: 'bg-white border-stone-200 text-stone-600 hover:text-stone-900 hover:bg-stone-50',
       icon: <Cloud className="w-3.5 h-3.5" />,
     },
     syncing: {
       label: 'Sync...',
       title: 'Sincronizzazione in corso...',
-      className: 'bg-sky-950/60 border-sky-700/50 text-sky-300',
+      className: 'bg-sky-50 border-sky-200 text-sky-700',
       icon: <RefreshCw className="w-3.5 h-3.5 animate-spin" />,
     },
     synced: {
       label: 'Sync OK',
       title: 'Dati sincronizzati con Supabase. Clicca per aggiornare.',
-      className: 'bg-emerald-950/50 border-emerald-700/50 text-emerald-400 hover:bg-emerald-950/80',
+      className: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100/70',
       icon: <Cloud className="w-3.5 h-3.5" />,
     },
     offline: {
       label: 'Offline',
       title: 'Modalità offline (dati salvati localmente). Clicca per riprovare.',
-      className: 'bg-amber-950/50 border-amber-700/50 text-amber-400 hover:bg-amber-950/80',
+      className: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100/70',
       icon: <CloudOff className="w-3.5 h-3.5" />,
     },
     error: {
       label: 'Errore Sync',
       title: 'Errore sincronizzazione cloud. Clicca per riprovare.',
-      className: 'bg-red-950/60 border-red-700/60 text-red-400 hover:bg-red-950/90',
+      className: 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100/70',
       icon: <AlertTriangle className="w-3.5 h-3.5" />,
     },
   };
@@ -95,22 +95,22 @@ export default function Navbar({
   return (
     <>
       {/* Desktop Top Header */}
-      <header className="hidden md:block sticky top-0 z-40 bg-stone-950/85 backdrop-blur-xl border-b border-stone-800">
+      <header className="hidden md:block sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-stone-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo / Brand */}
           <div className="flex items-center gap-3 cursor-pointer select-none" onClick={() => onSelectTab('agenda')}>
-            <div className="h-10 px-2 rounded-2xl bg-white/95 border border-stone-200/80 flex items-center justify-center shadow-md shadow-rose-950/20">
+            <div className="h-10 px-2 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-center shadow-xs">
               <img src="/logo.png" alt="Gestionale Fede" className="h-7 w-auto object-contain" />
             </div>
             <div>
-              <span className="text-base font-black tracking-tight text-white block">
+              <span className="text-base font-black tracking-tight text-stone-900 block">
                 Gestionale Fede
               </span>
             </div>
           </div>
 
           {/* Center Tabs */}
-          <nav className="flex items-center bg-stone-900 border border-stone-800 p-1 rounded-2xl shadow-inner">
+          <nav className="flex items-center bg-stone-100 border border-stone-200/80 p-1 rounded-2xl">
             {tabs.map(t => {
               const Icon = t.icon;
               const isActive = activeTab === t.id;
@@ -121,7 +121,7 @@ export default function Navbar({
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                     isActive
                       ? 'bg-rose-600 text-white shadow-sm'
-                      : 'text-stone-400 hover:text-white hover:bg-stone-800/60'
+                      : 'text-stone-600 hover:text-stone-900 hover:bg-white/80'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -136,7 +136,7 @@ export default function Navbar({
             <SyncBadge syncStatus={syncStatus} onResync={onResync} />
             <button
               onClick={onOpenSettings}
-              className="w-10 h-10 rounded-2xl bg-stone-900 hover:bg-stone-800 border border-stone-800 flex items-center justify-center text-stone-400 hover:text-white transition-colors"
+              className="w-10 h-10 rounded-2xl bg-white hover:bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-600 hover:text-stone-900 transition-colors"
               title="Impostazioni"
             >
               <Settings className="w-4 h-4" />
@@ -145,19 +145,19 @@ export default function Navbar({
         </div>
       </header>
 
-      {/* Mobile Top Header (Small brand + sync + settings) */}
-      <div className="md:hidden sticky top-0 z-40 bg-stone-950/90 backdrop-blur-xl border-b border-stone-800/80 px-4 py-3 flex items-center justify-between">
+      {/* Mobile Top Header */}
+      <div className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-stone-200/80 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 px-1.5 rounded-xl bg-white/95 border border-stone-200/80 flex items-center justify-center shadow-sm">
+          <div className="h-8 px-1.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center shadow-xs">
             <img src="/logo.png" alt="Gestionale Fede" className="h-5 w-auto object-contain" />
           </div>
-          <span className="text-sm font-black text-white tracking-tight">Gestionale Fede</span>
+          <span className="text-sm font-black text-stone-900 tracking-tight">Gestionale Fede</span>
         </div>
         <div className="flex items-center gap-2">
           <SyncBadge syncStatus={syncStatus} onResync={onResync} compact />
           <button
             onClick={onOpenSettings}
-            className="w-8 h-8 rounded-xl bg-stone-900 border border-stone-800 flex items-center justify-center text-stone-400 hover:text-white"
+            className="w-8 h-8 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-600 hover:text-stone-900"
             title="Impostazioni"
           >
             <Settings className="w-4 h-4" />
@@ -165,8 +165,8 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* Mobile Bottom Tab Bar (iOS Native Style) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-950/90 backdrop-blur-2xl border-t border-stone-800/80 pb-safe">
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-2xl border-t border-stone-200 pb-safe shadow-lg">
         <div className="grid grid-cols-5 h-16">
           {tabs.map(t => {
             const Icon = t.icon;
@@ -176,7 +176,7 @@ export default function Navbar({
                 key={t.id}
                 onClick={() => onSelectTab(t.id)}
                 className={`flex flex-col items-center justify-center gap-1 transition-all ${
-                  isActive ? 'text-rose-500' : 'text-stone-500 hover:text-stone-300'
+                  isActive ? 'text-rose-600' : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.75]'}`} />

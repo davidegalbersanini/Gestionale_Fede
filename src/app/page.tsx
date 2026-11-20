@@ -580,7 +580,7 @@ export default function Home() {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-stone-950 flex items-center justify-center text-stone-400 text-xs">
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-500 text-xs">
         Verifica sessione...
       </div>
     );
@@ -598,7 +598,7 @@ export default function Home() {
       : 'bg-emerald-600 border-emerald-400 text-white';
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col pb-20 md:pb-8">
+    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col pb-20 md:pb-8">
       {/* Navigation */}
       <Navbar
         activeTab={activeTab}
@@ -795,34 +795,34 @@ export default function Home() {
       {/* Linked Delete Confirmation Dialog */}
       {linkedDeleteTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-fade-in"
           onClick={e => {
             if (e.target === e.currentTarget) setLinkedDeleteTarget(null);
           }}
         >
-          <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-md w-full p-6 shadow-2xl text-stone-100">
+          <div className="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-6 shadow-2xl text-stone-900">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-500/30 flex items-center justify-center text-amber-600">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Appuntamento Collegato</h3>
-                <p className="text-xs text-stone-400">Rilevato un ritocco/prima seduta associato</p>
+                <h3 className="text-base font-bold text-stone-900">Appuntamento Collegato</h3>
+                <p className="text-xs text-stone-500">Rilevato un ritocco/prima seduta associato</p>
               </div>
             </div>
 
-            <p className="text-xs text-stone-300 mb-4 leading-relaxed">
+            <p className="text-xs text-stone-700 mb-4 leading-relaxed">
               Stai per eliminare l&apos;appuntamento di{' '}
-              <strong className="text-white">{linkedDeleteTarget.target.client_name}</strong> (
+              <strong className="text-stone-900">{linkedDeleteTarget.target.client_name}</strong> (
               {linkedDeleteTarget.target.treatment}) del {linkedDeleteTarget.target.appointment_date.slice(0, 10)}.
             </p>
 
-            <div className="bg-stone-800/80 p-3.5 rounded-2xl border border-stone-700/60 mb-5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1 mb-1">
+            <div className="bg-stone-100 p-3.5 rounded-2xl border border-stone-200 mb-5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1 mb-1">
                 <LinkIcon className="w-3 h-3" /> Appuntamento Collegato:
               </span>
-              <p className="text-xs font-semibold text-white">{linkedDeleteTarget.linked.treatment}</p>
-              <p className="text-[11px] text-stone-400">
+              <p className="text-xs font-semibold text-stone-900">{linkedDeleteTarget.linked.treatment}</p>
+              <p className="text-[11px] text-stone-500">
                 Data: {linkedDeleteTarget.linked.appointment_date.slice(0, 10)}{' '}
                 {linkedDeleteTarget.linked.appointment_date.includes('T')
                   ? `alle ${linkedDeleteTarget.linked.appointment_date.split('T')[1].slice(0, 5)}`
@@ -830,7 +830,7 @@ export default function Home() {
               </p>
             </div>
 
-            <p className="text-xs font-medium text-stone-300 mb-4">
+            <p className="text-xs font-medium text-stone-700 mb-4">
               Vuoi eliminare anche l&apos;appuntamento collegato?
             </p>
 
@@ -838,7 +838,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => executeDeletePmu(linkedDeleteTarget.target.id, true)}
-                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-950/40"
+                className="w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-red-200/60"
               >
                 <Trash2 className="w-4 h-4" /> Elimina ENTRAMBI gli appuntamenti
               </button>
@@ -846,7 +846,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => executeDeletePmu(linkedDeleteTarget.target.id, false)}
-                className="w-full py-2.5 px-4 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 font-medium text-xs transition-colors"
+                className="w-full py-2.5 px-4 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 font-medium text-xs transition-colors"
               >
                 Elimina SOLO questo appuntamento
               </button>
@@ -854,7 +854,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setLinkedDeleteTarget(null)}
-                className="w-full py-2 text-stone-400 hover:text-white text-xs font-medium transition-colors"
+                className="w-full py-2 text-stone-500 hover:text-stone-900 text-xs font-medium transition-colors"
               >
                 Annulla
               </button>

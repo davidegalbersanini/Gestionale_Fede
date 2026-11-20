@@ -196,13 +196,13 @@ export default function AgendaView({
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-900/90 border border-stone-800 p-4 rounded-3xl shadow-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-4 rounded-3xl shadow-sm">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
             <CalendarIcon className="w-6 h-6 text-rose-500" />
             Agenda
           </h1>
-          <p className="text-stone-400 text-xs">
+          <p className="text-stone-500 text-xs">
             {appointments.length} PMU • {weddings.length} eventi
           </p>
         </div>
@@ -211,13 +211,13 @@ export default function AgendaView({
           {onOpenGiftVouchers && (
             <button
               onClick={onOpenGiftVouchers}
-              className="relative px-3 py-2 rounded-2xl bg-stone-800 hover:bg-stone-700/80 border border-stone-700/80 text-amber-300 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              className="relative px-3 py-2 rounded-2xl bg-stone-100 hover:bg-stone-200 border border-stone-300 text-amber-700 font-bold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-1.5 active:scale-95 transition-all"
               title="Buoni Regalo"
             >
-              <Gift className="w-4 h-4 text-amber-400" />
+              <Gift className="w-4 h-4 text-amber-600" />
               <span>Buoni</span>
               {activeVouchersCount > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 text-[10px] font-black">
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-black">
                   {activeVouchersCount}
                 </span>
               )}
@@ -226,7 +226,7 @@ export default function AgendaView({
 
           <button
             onClick={() => onOpenNewPmu(selectedDayIso)}
-            className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+            className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-200/70 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
           >
             <Sparkles className="w-4 h-4" />
             <span>PMU</span>
@@ -234,7 +234,7 @@ export default function AgendaView({
 
           <button
             onClick={() => onOpenNewWedding(selectedDayIso)}
-            className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-pink-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+            className="flex-1 sm:flex-none px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-pink-200/70 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
           >
             <Heart className="w-4 h-4 fill-white" />
             <span>Evento</span>
@@ -243,7 +243,7 @@ export default function AgendaView({
       </div>
 
       {/* Filters & Search */}
-      <div className="space-y-2.5 bg-stone-900/60 p-3 rounded-2xl border border-stone-800">
+      <div className="space-y-2.5 bg-white p-3 rounded-2xl border border-stone-200">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -255,7 +255,7 @@ export default function AgendaView({
                 setSearchQuery(e.target.value);
                 setListPage(1);
               }}
-              className="w-full bg-stone-800/80 border border-stone-700/60 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+              className="w-full bg-stone-100 border border-stone-200 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
             />
           </div>
 
@@ -268,7 +268,7 @@ export default function AgendaView({
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                 eventTypeFilter === 'all'
                   ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
-                  : 'bg-stone-800 text-stone-400 hover:text-white'
+                  : 'bg-stone-100 text-stone-500 hover:text-stone-900'
               }`}
             >
               Tutti
@@ -282,7 +282,7 @@ export default function AgendaView({
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 eventTypeFilter === 'pmu'
                   ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
-                  : 'bg-stone-800 text-stone-400 hover:text-white'
+                  : 'bg-stone-100 text-stone-500 hover:text-stone-900'
               }`}
             >
               <Sparkles className="w-3 h-3" />
@@ -298,7 +298,7 @@ export default function AgendaView({
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 eventTypeFilter === 'events'
                   ? 'bg-pink-600 text-white shadow-sm ring-1 ring-pink-400'
-                  : 'bg-stone-800 text-stone-400 hover:text-white'
+                  : 'bg-stone-100 text-stone-500 hover:text-stone-900'
               }`}
             >
               <Heart className="w-3 h-3 fill-current" />
@@ -306,11 +306,11 @@ export default function AgendaView({
             </button>
           </div>
 
-          <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700/60">
+          <div className="flex items-center bg-stone-100 p-0.5 rounded-xl border border-stone-200">
             <button
               onClick={() => setViewMode('calendar')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                viewMode === 'calendar' ? 'bg-stone-700 text-white shadow-sm' : 'text-stone-400 hover:text-white'
+                viewMode === 'calendar' ? 'bg-stone-200 text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
               }`}
             >
               Mese
@@ -318,7 +318,7 @@ export default function AgendaView({
             <button
               onClick={() => setViewMode('list')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                viewMode === 'list' ? 'bg-stone-700 text-white shadow-sm' : 'text-stone-400 hover:text-white'
+                viewMode === 'list' ? 'bg-stone-200 text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
               }`}
             >
               Elenco
@@ -328,7 +328,7 @@ export default function AgendaView({
 
         {/* Location Filter Chips */}
         {eventTypeFilter !== 'events' && activeLocations.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none pt-1 border-t border-stone-800/70">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none pt-1 border-t border-stone-200">
             <button
               onClick={() => {
                 setSelectedLocationId('all');
@@ -336,8 +336,8 @@ export default function AgendaView({
               }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${
                 selectedLocationId === 'all'
-                  ? 'bg-stone-700 text-white border border-stone-600'
-                  : 'bg-stone-800/60 text-stone-400 hover:text-white border border-transparent'
+                  ? 'bg-stone-200 text-stone-900 border border-stone-300'
+                  : 'bg-stone-50 text-stone-500 hover:text-stone-900 border border-transparent'
               }`}
             >
               Tutte le sedi
@@ -353,8 +353,8 @@ export default function AgendaView({
                   }}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border ${
                     isSelected
-                      ? 'bg-stone-800 text-white border-rose-500/60 shadow-xs'
-                      : 'bg-stone-800/50 text-stone-400 hover:text-white border-stone-800'
+                      ? 'bg-stone-100 text-stone-900 border-rose-500/60 shadow-xs'
+                      : 'bg-stone-50 text-stone-500 hover:text-stone-900 border-stone-200'
                   }`}
                 >
                   <span
@@ -373,15 +373,15 @@ export default function AgendaView({
       {viewMode === 'calendar' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Calendar Grid */}
-          <div className="lg:col-span-2 bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-5 shadow-sm">
+          <div className="lg:col-span-2 bg-white border border-stone-200 rounded-3xl p-4 sm:p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base sm:text-lg font-bold text-white capitalize">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 capitalize">
                 {format(currentDate, 'MMMM yyyy', { locale: it })}
               </h2>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-                  className="w-8 h-8 rounded-xl bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-300"
+                  className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -391,13 +391,13 @@ export default function AgendaView({
                     setCurrentDate(now);
                     setSelectedDay(now);
                   }}
-                  className="px-2.5 py-1 text-xs rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 font-medium"
+                  className="px-2.5 py-1 text-xs rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium"
                 >
                   Oggi
                 </button>
                 <button
                   onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-                  className="w-8 h-8 rounded-xl bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-300"
+                  className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -428,10 +428,10 @@ export default function AgendaView({
                     onClick={() => setSelectedDay(day)}
                     className={`min-h-[58px] sm:min-h-[72px] p-1.5 rounded-2xl flex flex-col justify-between items-start transition-all border ${
                       isSelected
-                        ? 'border-rose-500 bg-rose-950/30 shadow-sm ring-1 ring-rose-500/50'
+                        ? 'border-rose-500 bg-rose-50 shadow-sm ring-1 ring-rose-500/50'
                         : isToday
-                        ? 'border-rose-500/40 bg-stone-800/80'
-                        : 'border-stone-800/40 bg-stone-800/30 hover:bg-stone-800/60'
+                        ? 'border-rose-500/40 bg-stone-100'
+                        : 'border-stone-200/70 bg-stone-50/80 hover:bg-stone-50'
                     } ${!isCurrentMonth ? 'opacity-30' : ''}`}
                   >
                     <span
@@ -439,8 +439,8 @@ export default function AgendaView({
                         isToday
                           ? 'bg-rose-500 text-white'
                           : isSelected
-                          ? 'bg-rose-950 text-rose-300'
-                          : 'text-stone-300'
+                          ? 'bg-rose-100 text-rose-700'
+                          : 'text-stone-700'
                       }`}
                     >
                       {format(day, 'd')}
@@ -448,7 +448,7 @@ export default function AgendaView({
 
                     {count > 0 && (
                       <div className="w-full flex items-center justify-between mt-1">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700">
                           {count}
                         </span>
                         <div className="flex gap-0.5">
@@ -469,13 +469,13 @@ export default function AgendaView({
           </div>
 
           {/* Selected Day Agenda Drawer */}
-          <div className="bg-stone-900 border border-stone-800 rounded-3xl p-5 shadow-sm flex flex-col">
-            <div className="border-b border-stone-800 pb-3 mb-3 flex items-center justify-between">
+          <div className="bg-white border border-stone-200 rounded-3xl p-5 shadow-sm flex flex-col">
+            <div className="border-b border-stone-200 pb-3 mb-3 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white capitalize">
+                <h3 className="text-base font-bold text-stone-900 capitalize">
                   {format(selectedDay, 'EEEE d MMMM yyyy', { locale: it })}
                 </h3>
-                <p className="text-stone-400 text-xs">
+                <p className="text-stone-500 text-xs">
                   {selectedDayEvents.length} appuntamenti per questa giornata
                 </p>
               </div>
@@ -488,14 +488,14 @@ export default function AgendaView({
                   <div className="mt-3 flex justify-center gap-2">
                     <button
                       onClick={() => onOpenNewPmu(selectedDayIso)}
-                      className="text-xs text-rose-400 hover:underline font-semibold"
+                      className="text-xs text-rose-600 hover:underline font-semibold"
                     >
                       + Trattamento PMU
                     </button>
                     <span className="text-stone-600">•</span>
                     <button
                       onClick={() => onOpenNewWedding(selectedDayIso)}
-                      className="text-xs text-pink-400 hover:underline font-semibold"
+                      className="text-xs text-pink-600 hover:underline font-semibold"
                     >
                       + Evento
                     </button>
@@ -509,13 +509,13 @@ export default function AgendaView({
         </div>
       ) : (
         /* Full List View */
-        <div className="bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
-            <div className="text-stone-400 text-xs font-semibold uppercase tracking-wider">
+        <div className="bg-white border border-stone-200 rounded-3xl p-4 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
+            <div className="text-stone-500 text-xs font-semibold uppercase tracking-wider">
               Visualizzati {filteredEvents.length} appuntamenti
             </div>
             {filteredEvents.length > ITEMS_PER_PAGE && (
-              <div className="text-stone-400 text-xs">
+              <div className="text-stone-500 text-xs">
                 Mostrati {Math.min((listPage - 1) * ITEMS_PER_PAGE + 1, filteredEvents.length)} - {Math.min(listPage * ITEMS_PER_PAGE, filteredEvents.length)} di {filteredEvents.length}
               </div>
             )}
@@ -528,25 +528,25 @@ export default function AgendaView({
           </div>
 
           {Math.ceil(filteredEvents.length / ITEMS_PER_PAGE) > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-stone-800 text-xs sm:text-sm">
+            <div className="flex items-center justify-between pt-4 border-t border-stone-200 text-xs sm:text-sm">
               <button
                 onClick={() => setListPage(p => Math.max(1, p - 1))}
                 disabled={listPage <= 1}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Precedente
               </button>
 
-              <span className="text-stone-400 font-medium">
-                Pagina <span className="text-white font-bold">{listPage}</span> di{' '}
-                <span className="text-white font-bold">{Math.ceil(filteredEvents.length / ITEMS_PER_PAGE)}</span>
+              <span className="text-stone-500 font-medium">
+                Pagina <span className="text-stone-900 font-bold">{listPage}</span> di{' '}
+                <span className="text-stone-900 font-bold">{Math.ceil(filteredEvents.length / ITEMS_PER_PAGE)}</span>
               </span>
 
               <button
                 onClick={() => setListPage(p => Math.min(Math.ceil(filteredEvents.length / ITEMS_PER_PAGE), p + 1))}
                 disabled={listPage >= Math.ceil(filteredEvents.length / ITEMS_PER_PAGE)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 Successiva
                 <ChevronRight className="w-4 h-4" />
@@ -585,7 +585,7 @@ function renderEventCard(
         if (ev.rawPmu) onSelectPmu(ev.rawPmu);
         if (ev.rawWedding) onSelectWedding(ev.rawWedding);
       }}
-      className={`p-3.5 rounded-2xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700/60 transition-all cursor-pointer group shadow-sm flex flex-col justify-between ${
+      className={`p-3.5 rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all cursor-pointer group shadow-sm flex flex-col justify-between ${
         isCancelled ? 'opacity-60' : ''
       }`}
     >
@@ -614,7 +614,7 @@ function renderEventCard(
                 )}
               </span>
             ) : isGeneric ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-500/30">
                 Generico • {ev.location_name}
               </span>
             ) : (
@@ -630,21 +630,21 @@ function renderEventCard(
             )}
 
             {isCancelled && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-950/70 text-red-300 border border-red-700/50">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
                 Annullato
               </span>
             )}
 
             {timeStr && (
-              <span className="text-stone-300 text-[11px] font-mono flex items-center gap-1 bg-stone-900/60 px-2 py-0.5 rounded-md border border-stone-700/50">
-                <Clock className="w-3 h-3 text-rose-400" />
+              <span className="text-stone-700 text-[11px] font-mono flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-stone-200">
+                <Clock className="w-3 h-3 text-rose-600" />
                 {timeStr}
                 {ev.end_time ? ` - ${ev.end_time}` : ''}
               </span>
             )}
 
             {ev.rawPmu?.linked_appointment_id && (
-              <span className="text-[10px] text-amber-400 font-medium flex items-center gap-1 bg-amber-950/40 border border-amber-800/40 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] text-amber-600 font-medium flex items-center gap-1 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
                 <LinkIcon className="w-2.5 h-2.5" />
                 {ev.rawPmu.is_touch_up ? 'Ritocco collegato' : 'Ha ritocco'}
               </span>
@@ -652,23 +652,23 @@ function renderEventCard(
           </div>
 
           <h4
-            className={`text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate ${
-              isCancelled ? 'line-through text-stone-400' : ''
+            className={`text-sm font-bold text-stone-900 group-hover:text-rose-600 transition-colors truncate ${
+              isCancelled ? 'line-through text-stone-500' : ''
             }`}
           >
             {ev.client_name}
           </h4>
-          <p className={`text-stone-300 text-xs truncate ${isCancelled ? 'line-through text-stone-500' : ''}`}>
+          <p className={`text-stone-700 text-xs truncate ${isCancelled ? 'line-through text-stone-500' : ''}`}>
             {ev.title}
           </p>
         </div>
 
         <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
-          <span className={`text-sm font-bold ${isCancelled ? 'text-stone-500 line-through' : 'text-emerald-400'}`}>
+          <span className={`text-sm font-bold ${isCancelled ? 'text-stone-500 line-through' : 'text-emerald-600'}`}>
             {ev.amount > 0 ? `${ev.amount}€` : '0€'}
           </span>
           {!isCancelled && ev.balance && ev.balance > 0 ? (
-            <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-600/50 px-2 py-0.5 rounded-md shadow-xs">
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-md shadow-xs">
               Da saldare: {ev.balance}€
             </span>
           ) : null}
@@ -676,9 +676,9 @@ function renderEventCard(
       </div>
 
       {ev.address && !ev.rawPmu && (
-        <div className="mb-2 flex items-center justify-between text-[11px] text-stone-400 bg-stone-900/50 px-2.5 py-1 rounded-lg border border-stone-700/40">
-          <span className="truncate flex items-center gap-1 text-stone-300">
-            <MapPin className="w-3 h-3 text-rose-400 flex-shrink-0" />
+        <div className="mb-2 flex items-center justify-between text-[11px] text-stone-500 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
+          <span className="truncate flex items-center gap-1 text-stone-700">
+            <MapPin className="w-3 h-3 text-rose-600 flex-shrink-0" />
             <span className="truncate">{ev.address}</span>
           </span>
           <a
@@ -686,17 +686,17 @@ function renderEventCard(
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="text-rose-400 hover:text-rose-300 ml-1.5 flex items-center gap-0.5 font-semibold flex-shrink-0"
+            className="text-rose-600 hover:text-rose-700 ml-1.5 flex items-center gap-0.5 font-semibold flex-shrink-0"
           >
             Maps <ExternalLink className="w-2.5 h-2.5" />
           </a>
         </div>
       )}
 
-      <div className="pt-2 border-t border-stone-700/40 flex items-center justify-between text-[11px] text-stone-400">
+      <div className="pt-2 border-t border-stone-200 flex items-center justify-between text-[11px] text-stone-500">
         <span>{dateStr}</span>
         {ev.rawPmu?.touch_up_date && (
-          <span className="text-rose-300 text-[10px] bg-rose-950/40 px-1.5 py-0.5 rounded">
+          <span className="text-rose-700 text-[10px] bg-rose-50 px-1.5 py-0.5 rounded">
             Ritocco: {ev.rawPmu.touch_up_date}
           </span>
         )}

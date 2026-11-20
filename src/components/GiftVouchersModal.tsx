@@ -172,14 +172,14 @@ export default function GiftVouchersModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/40 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
       onClick={e => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+      <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-stone-800 bg-stone-900/95 backdrop-blur-md flex items-center justify-between z-10 flex-shrink-0">
+        <div className="px-6 py-4 border-b border-stone-200 bg-white/95 backdrop-blur-md flex items-center justify-between z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
             {view === 'create' ? (
               <button
@@ -188,21 +188,21 @@ export default function GiftVouchersModal({
                   resetForm();
                   setView('list');
                 }}
-                className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-300 transition-colors"
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             ) : (
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-500/40 flex items-center justify-center text-amber-600">
                 <Gift className="w-5 h-5" />
               </div>
             )}
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
                 {view === 'create' ? 'Nuovo Buono' : 'Buoni Regalo'}
               </h2>
               {view === 'list' && (
-                <p className="text-stone-400 text-xs">
+                <p className="text-stone-500 text-xs">
                   {`${activeCount} attivi (${totalRemainingAmount.toFixed(0)}€) • ${usedCount} usati`}
                 </p>
               )}
@@ -217,7 +217,7 @@ export default function GiftVouchersModal({
                   resetForm();
                   setView('create');
                 }}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-xs shadow-md shadow-amber-950/40 flex items-center gap-1.5 active:scale-95 transition-all"
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-xs shadow-md shadow-amber-200/60 flex items-center gap-1.5 active:scale-95 transition-all"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 <span>Nuovo</span>
@@ -226,7 +226,7 @@ export default function GiftVouchersModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 transition-colors"
+              className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -238,15 +238,15 @@ export default function GiftVouchersModal({
           {view === 'create' && (
             <form onSubmit={handleSubmitCreate} className="space-y-4">
               {formError && (
-                <div className="p-3 rounded-xl bg-red-950/60 border border-red-500/50 text-red-200 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <div className="p-3 rounded-xl bg-red-50 border border-red-500/50 text-red-800 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
                   <span>{formError}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-amber-400" />
+                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-600" />
                   Acquirente *
                 </label>
                 <ClientAutocomplete
@@ -281,9 +281,9 @@ export default function GiftVouchersModal({
                 />
               </div>
 
-              <div className="p-3 bg-stone-800/40 rounded-2xl border border-stone-700/60">
-                <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-pink-400" />
+              <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200">
+                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-pink-600" />
                   Destinatario (Opzionale)
                 </label>
                 <ClientAutocomplete
@@ -313,15 +313,15 @@ export default function GiftVouchersModal({
                   lastNamePlaceholder="Cognome destinatario"
                   accent="pink"
                 />
-                <p className="text-[11px] text-stone-400 mt-1.5">
+                <p className="text-[11px] text-stone-500 mt-1.5">
                   Se vuoto, si collegherà automaticamente alla persona all&apos;uso.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <DollarSign className="w-3.5 h-3.5 text-amber-400" /> Importo (€) *
+                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <DollarSign className="w-3.5 h-3.5 text-amber-600" /> Importo (€) *
                   </label>
                   <input
                     type="number"
@@ -334,26 +334,26 @@ export default function GiftVouchersModal({
                       setAmount(e.target.value);
                       setFormError(null);
                     }}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-base font-bold text-amber-300"
+                    className="w-full bg-stone-100 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-base font-bold text-amber-700"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <CalendarIcon className="w-3.5 h-3.5 text-rose-400" /> Data *
+                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <CalendarIcon className="w-3.5 h-3.5 text-rose-600" /> Data *
                   </label>
                   <input
                     type="date"
                     required
                     value={purchaseDate}
                     onChange={e => setPurchaseDate(e.target.value)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                    className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">
                   Note
                 </label>
                 <textarea
@@ -361,7 +361,7 @@ export default function GiftVouchersModal({
                   placeholder="Regalo compleanno, bonifico..."
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
                 />
               </div>
 
@@ -372,13 +372,13 @@ export default function GiftVouchersModal({
                     resetForm();
                     setView('list');
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-stone-800 text-stone-300 hover:bg-stone-700 text-xs sm:text-sm font-semibold transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-stone-100 text-stone-700 hover:bg-stone-200 text-xs sm:text-sm font-semibold transition-colors"
                 >
                   Annulla
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-950/40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-200/60 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                 >
                   <Gift className="w-4 h-4" />
                   <span>Crea Buono</span>
@@ -397,18 +397,18 @@ export default function GiftVouchersModal({
                     placeholder="Cerca per acquirente, destinatario o note..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full bg-stone-800/80 border border-stone-700/60 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full bg-stone-100 border border-stone-200 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
-                <div className="flex items-center gap-1 bg-stone-800/70 p-1 rounded-xl border border-stone-700/60 w-fit">
+                <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 w-fit">
                   <button
                     type="button"
                     onClick={() => setFilterStatus('all')}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                       filterStatus === 'all'
-                        ? 'bg-amber-500 text-stone-950 shadow-sm'
-                        : 'text-stone-400 hover:text-white'
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'text-stone-500 hover:text-stone-900'
                     }`}
                   >
                     Tutti ({vouchers.length})
@@ -418,8 +418,8 @@ export default function GiftVouchersModal({
                     onClick={() => setFilterStatus('active')}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                       filterStatus === 'active'
-                        ? 'bg-amber-500 text-stone-950 shadow-sm'
-                        : 'text-stone-400 hover:text-white'
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'text-stone-500 hover:text-stone-900'
                     }`}
                   >
                     Attivi ({activeCount})
@@ -429,8 +429,8 @@ export default function GiftVouchersModal({
                     onClick={() => setFilterStatus('used')}
                     className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                       filterStatus === 'used'
-                        ? 'bg-amber-500 text-stone-950 shadow-sm'
-                        : 'text-stone-400 hover:text-white'
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'text-stone-500 hover:text-stone-900'
                     }`}
                   >
                     Esauriti ({usedCount})
@@ -440,9 +440,9 @@ export default function GiftVouchersModal({
 
               <div className="space-y-2.5 pt-1">
                 {filteredVouchers.length === 0 ? (
-                  <div className="p-8 text-center bg-stone-800/30 rounded-2xl border border-stone-800/80">
+                  <div className="p-8 text-center bg-stone-50/80 rounded-2xl border border-stone-200">
                     <Gift className="w-8 h-8 text-stone-600 mx-auto mb-2" />
-                    <p className="text-sm font-semibold text-stone-400">Nessun buono regalo trovato</p>
+                    <p className="text-sm font-semibold text-stone-500">Nessun buono regalo trovato</p>
                     <p className="text-xs text-stone-500 mt-1">
                       {vouchers.length === 0
                         ? 'Clicca sul pulsante "+ Nuovo" per emettere il primo buono regalo.'
@@ -462,37 +462,37 @@ export default function GiftVouchersModal({
                         key={voucher.id}
                         className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
                           isFullyUsed
-                            ? 'bg-stone-900/60 border-stone-800/80 opacity-75'
+                            ? 'bg-white border-stone-200 opacity-75'
                             : isPartial
-                            ? 'bg-amber-950/20 border-amber-600/40 hover:border-amber-500/70 shadow-sm'
-                            : 'bg-stone-800/50 border-stone-700/80 hover:border-amber-500/50 shadow-sm'
+                            ? 'bg-amber-50/70 border-amber-300 hover:border-amber-500/70 shadow-sm'
+                            : 'bg-stone-50 border-stone-300 hover:border-amber-500/50 shadow-sm'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="text-stone-400 text-xs flex items-center gap-1">
+                              <span className="text-stone-500 text-xs flex items-center gap-1">
                                 <CalendarIcon className="w-3.5 h-3.5 text-stone-500" />
                                 {voucher.purchase_date}
                               </span>
                             </div>
 
-                            <h4 className="text-sm font-bold text-white truncate flex items-center gap-1.5">
-                              <span className="text-stone-400 text-xs font-normal">Acquirente:</span>
+                            <h4 className="text-sm font-bold text-stone-900 truncate flex items-center gap-1.5">
+                              <span className="text-stone-500 text-xs font-normal">Acquirente:</span>
                               <span>{voucher.buyer_name}</span>
                             </h4>
 
-                            <p className="text-xs text-stone-300 mt-0.5 flex items-center gap-1.5 truncate">
-                              <span className="text-stone-400 text-[11px]">Destinatario:</span>
+                            <p className="text-xs text-stone-700 mt-0.5 flex items-center gap-1.5 truncate">
+                              <span className="text-stone-500 text-[11px]">Destinatario:</span>
                               {voucher.recipient_name ? (
-                                <span className="font-semibold text-pink-300">{voucher.recipient_name}</span>
+                                <span className="font-semibold text-pink-700">{voucher.recipient_name}</span>
                               ) : (
                                 <span className="text-stone-500 italic">Non assegnato</span>
                               )}
                             </p>
 
                             {voucher.notes && (
-                              <p className="text-xs text-stone-400 mt-1 italic line-clamp-2">
+                              <p className="text-xs text-stone-500 mt-1 italic line-clamp-2">
                                 &ldquo;{voucher.notes}&rdquo;
                               </p>
                             )}
@@ -500,25 +500,25 @@ export default function GiftVouchersModal({
 
                           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                             <div className="text-right">
-                              <span className="text-lg sm:text-xl font-black text-amber-300 tracking-tight">
+                              <span className="text-lg sm:text-xl font-black text-amber-700 tracking-tight">
                                 {remVal.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                               </span>
                               {remVal < initVal ? (
-                                <p className="text-[11px] text-stone-400">
+                                <p className="text-[11px] text-stone-500">
                                   su {initVal.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
                                 </p>
                               ) : (
-                                <p className="text-[10px] text-emerald-400 font-medium">Intero</p>
+                                <p className="text-[10px] text-emerald-600 font-medium">Intero</p>
                               )}
                             </div>
 
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${
                                 isFullyUsed
-                                  ? 'bg-stone-800 text-stone-400'
+                                  ? 'bg-stone-100 text-stone-500'
                                   : isPartial
-                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                                  : 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/50'
+                                  ? 'bg-amber-100 text-amber-700 border border-amber-500/30'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               }`}
                             >
                               {isFullyUsed ? (
@@ -528,7 +528,7 @@ export default function GiftVouchersModal({
                                 </>
                               ) : (
                                 <>
-                                  <Circle className="w-2.5 h-2.5 text-emerald-400 fill-emerald-400" />
+                                  <Circle className="w-2.5 h-2.5 text-emerald-600 fill-emerald-400" />
                                   <span>{isPartial ? 'In uso' : 'Attivo'}</span>
                                 </>
                               )}
@@ -536,10 +536,10 @@ export default function GiftVouchersModal({
                           </div>
                         </div>
 
-                        <div className="mt-2.5 pt-2 border-t border-stone-800/80 flex items-center justify-end text-xs text-stone-500">
+                        <div className="mt-2.5 pt-2 border-t border-stone-200 flex items-center justify-end text-xs text-stone-500">
                           {isConfirmingDelete ? (
                             <div className="flex items-center gap-2">
-                              <span className="text-red-400 text-[11px] font-semibold">Confermi?</span>
+                              <span className="text-red-600 text-[11px] font-semibold">Confermi?</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -553,7 +553,7 @@ export default function GiftVouchersModal({
                               <button
                                 type="button"
                                 onClick={() => setDeleteConfirmId(null)}
-                                className="text-stone-400 hover:text-white text-[10px]"
+                                className="text-stone-500 hover:text-stone-900 text-[10px]"
                               >
                                 Annulla
                               </button>
@@ -562,7 +562,7 @@ export default function GiftVouchersModal({
                             <button
                               type="button"
                               onClick={() => setDeleteConfirmId(voucher.id)}
-                              className="text-stone-500 hover:text-red-400 p-1 transition-colors"
+                              className="text-stone-500 hover:text-red-600 p-1 transition-colors"
                               title="Elimina Buono"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

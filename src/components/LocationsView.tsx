@@ -162,20 +162,20 @@ export default function LocationsView({
   return (
     <div className="space-y-6 pb-20 md:pb-6">
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-900/90 border border-stone-800 p-4 sm:p-5 rounded-3xl shadow-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-4 sm:p-5 rounded-3xl shadow-sm">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+          <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
             <Store className="w-6 h-6 text-rose-500" />
             Sedi & Listino Prezzi
           </h1>
-          <p className="text-stone-400 text-xs mt-0.5">
+          <p className="text-stone-500 text-xs mt-0.5">
             Gestisci le tue sedi di lavoro e imposta il listino trattamenti personalizzato per ciascuna
           </p>
         </div>
 
         <button
           onClick={() => setIsAddingLoc(true)}
-          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-200/70 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Nuova Sede</span>
@@ -184,15 +184,15 @@ export default function LocationsView({
 
       {/* Inline Warning */}
       {locationWarning && (
-        <div className="p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 flex items-center justify-between gap-3 text-amber-200 text-xs">
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-500/50 flex items-center justify-between gap-3 text-amber-800 text-xs">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
             <span>{locationWarning}</span>
           </div>
           <button
             type="button"
             onClick={() => setLocationWarning(null)}
-            className="text-amber-400 hover:text-amber-200"
+            className="text-amber-600 hover:text-amber-800"
           >
             <X className="w-4 h-4" />
           </button>
@@ -203,17 +203,17 @@ export default function LocationsView({
       {isAddingLoc && (
         <form
           onSubmit={handleAddLocation}
-          className="p-5 bg-stone-900 border border-rose-500/40 rounded-3xl space-y-4 shadow-lg animate-in fade-in"
+          className="p-5 bg-white border border-rose-500/40 rounded-3xl space-y-4 shadow-lg animate-in fade-in"
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-rose-400" />
+            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-rose-600" />
               Aggiungi Nuova Sede
             </h3>
             <button
               type="button"
               onClick={() => setIsAddingLoc(false)}
-              className="text-stone-400 hover:text-white p-1"
+              className="text-stone-500 hover:text-stone-900 p-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -221,7 +221,7 @@ export default function LocationsView({
 
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
             <div className="sm:col-span-5">
-              <label className="block text-[11px] font-semibold text-stone-400 uppercase mb-1">
+              <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-1">
                 Nome Sede *
               </label>
               <input
@@ -230,12 +230,12 @@ export default function LocationsView({
                 placeholder="es. Studio Milano, Lissone..."
                 value={newLocName}
                 onChange={e => setNewLocName(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
               />
             </div>
 
             <div className="sm:col-span-4">
-              <label className="block text-[11px] font-semibold text-stone-400 uppercase mb-1">
+              <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-1">
                 Indirizzo (Google Maps)
               </label>
               <input
@@ -243,13 +243,13 @@ export default function LocationsView({
                 placeholder="Via Garibaldi 10, Milano..."
                 value={newLocAddress}
                 onChange={e => setNewLocAddress(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
               />
             </div>
 
             <div className="sm:col-span-3 flex flex-col gap-2">
               <div>
-                <label className="block text-[11px] font-semibold text-stone-400 uppercase mb-1">
+                <label className="block text-[11px] font-semibold text-stone-500 uppercase mb-1">
                   Colore Sede
                 </label>
                 <div className="flex items-center gap-2 flex-wrap mb-2.5">
@@ -263,23 +263,23 @@ export default function LocationsView({
                         onClick={() => setNewLocColor(c)}
                         title={`${c}${isAlreadyUsed ? " (già in uso da un'altra sede)" : ''}`}
                         className={`w-6 h-6 rounded-full transition-all relative border border-white/20 ${
-                          isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
+                          isSelected ? 'ring-2 ring-stone-900 ring-offset-2 ring-offset-white scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
                         }`}
                         style={{ backgroundColor: c }}
                       >
                         {isAlreadyUsed && !isSelected && (
-                          <span className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-stone-950/70" />
+                          <span className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-stone-50/70" />
                         )}
                       </button>
                     );
                   })}
                 </div>
 
-                <label className="flex items-center justify-between gap-2 bg-stone-800/90 hover:bg-stone-800 border border-stone-700/80 rounded-xl px-2.5 py-1.5 cursor-pointer transition-all group">
+                <label className="flex items-center justify-between gap-2 bg-stone-100 hover:bg-stone-100 border border-stone-300 rounded-xl px-2.5 py-1.5 cursor-pointer transition-all group">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="relative flex items-center justify-center">
                       <span
-                        className="w-5 h-5 rounded-full shadow-inner border border-stone-600/50 flex-shrink-0"
+                        className="w-5 h-5 rounded-full shadow-inner border border-stone-300 flex-shrink-0"
                         style={{ backgroundColor: newLocColor }}
                       />
                       <input
@@ -289,12 +289,12 @@ export default function LocationsView({
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                       />
                     </div>
-                    <span className="text-[11px] font-medium text-stone-300 group-hover:text-white flex items-center gap-1 truncate">
-                      <Palette className="w-3 h-3 text-rose-400" />
+                    <span className="text-[11px] font-medium text-stone-700 group-hover:text-stone-900 flex items-center gap-1 truncate">
+                      <Palette className="w-3 h-3 text-rose-600" />
                       <span>Colore su misura...</span>
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-stone-400 bg-stone-900/60 px-1.5 py-0.5 rounded border border-stone-700/50">
+                  <span className="text-[10px] font-mono text-stone-500 bg-white px-1.5 py-0.5 rounded border border-stone-200">
                     {newLocColor}
                   </span>
                 </label>
@@ -321,9 +321,9 @@ export default function LocationsView({
           return (
             <div
               key={loc.id}
-              className="bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden shadow-sm transition-all"
+              className="bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm transition-all"
             >
-              <div className="p-4 sm:p-5 bg-stone-900/90 border-b border-stone-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="p-4 sm:p-5 bg-white border-b border-stone-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 {isEditingThisLoc ? (
                   <div className="flex-1 flex flex-col gap-3">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
@@ -333,14 +333,14 @@ export default function LocationsView({
                           value={editingLocName}
                           onChange={e => setEditingLocName(e.target.value)}
                           placeholder="Nome sede"
-                          className="bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-sm text-white font-bold min-w-[140px]"
+                          className="bg-stone-100 border border-stone-300 rounded-xl px-3 py-1.5 text-sm text-stone-900 font-bold min-w-[140px]"
                         />
                         <input
                           type="text"
                           value={editingLocAddress}
                           onChange={e => setEditingLocAddress(e.target.value)}
                           placeholder="Indirizzo (opzionale)"
-                          className="flex-1 bg-stone-800 border border-stone-700 rounded-xl px-3 py-1.5 text-xs text-white"
+                          className="flex-1 bg-stone-100 border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900"
                         />
                       </div>
                       <div className="flex items-center gap-2 justify-end">
@@ -353,15 +353,15 @@ export default function LocationsView({
                         </button>
                         <button
                           onClick={() => setEditingLocId(null)}
-                          className="px-2.5 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-xl text-xs"
+                          className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs"
                         >
                           Annulla
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-stone-800/80">
-                      <span className="text-[11px] font-semibold text-stone-400 uppercase">Colore:</span>
+                    <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-stone-200">
+                      <span className="text-[11px] font-semibold text-stone-500 uppercase">Colore:</span>
                       <div className="flex items-center gap-2 flex-wrap">
                         {PASTEL_LOCATION_PALETTE.map(c => {
                           const isSelected = editingLocColor.toUpperCase() === c.toUpperCase();
@@ -375,22 +375,22 @@ export default function LocationsView({
                               onClick={() => setEditingLocColor(c)}
                               title={`${c}${isAlreadyUsed ? " (già in uso da un'altra sede)" : ''}`}
                               className={`w-6 h-6 rounded-full transition-all relative border border-white/20 ${
-                                isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
+                                isSelected ? 'ring-2 ring-stone-900 ring-offset-2 ring-offset-white scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
                               }`}
                               style={{ backgroundColor: c }}
                             >
                               {isAlreadyUsed && !isSelected && (
-                                <span className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-stone-950/70" />
+                                <span className="absolute inset-0 m-auto w-1.5 h-1.5 rounded-full bg-stone-50/70" />
                               )}
                             </button>
                           );
                         })}
                       </div>
 
-                      <label className="flex items-center gap-1.5 bg-stone-800/90 hover:bg-stone-800 border border-stone-700/80 rounded-lg px-2 py-1 cursor-pointer transition-all group ml-auto sm:ml-0">
+                      <label className="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-100 border border-stone-300 rounded-lg px-2 py-1 cursor-pointer transition-all group ml-auto sm:ml-0">
                         <div className="relative flex items-center justify-center">
                           <span
-                            className="w-4 h-4 rounded-full shadow-inner border border-stone-600/50 flex-shrink-0"
+                            className="w-4 h-4 rounded-full shadow-inner border border-stone-300 flex-shrink-0"
                             style={{ backgroundColor: editingLocColor }}
                           />
                           <input
@@ -400,11 +400,11 @@ export default function LocationsView({
                             className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                           />
                         </div>
-                        <span className="text-[10px] font-medium text-stone-300 group-hover:text-white flex items-center gap-1">
-                          <Palette className="w-2.5 h-2.5 text-rose-400" />
+                        <span className="text-[10px] font-medium text-stone-700 group-hover:text-stone-900 flex items-center gap-1">
+                          <Palette className="w-2.5 h-2.5 text-rose-600" />
                           <span>Personalizzato</span>
                         </span>
-                        <span className="text-[10px] font-mono text-stone-400">{editingLocColor}</span>
+                        <span className="text-[10px] font-mono text-stone-500">{editingLocColor}</span>
                       </label>
                     </div>
                   </div>
@@ -417,20 +417,20 @@ export default function LocationsView({
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h2 className="text-base sm:text-lg font-bold text-white truncate">{loc.name}</h2>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-800 text-stone-400 border border-stone-700/60 flex-shrink-0">
+                          <h2 className="text-base sm:text-lg font-bold text-stone-900 truncate">{loc.name}</h2>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200 flex-shrink-0">
                             {locServices.length} {locServices.length === 1 ? 'trattamento' : 'trattamenti'}
                           </span>
                         </div>
                         {loc.address ? (
-                          <div className="flex items-center gap-1.5 text-xs text-stone-400 mt-0.5 truncate">
-                            <MapPin className="w-3 h-3 text-rose-400 flex-shrink-0" />
+                          <div className="flex items-center gap-1.5 text-xs text-stone-500 mt-0.5 truncate">
+                            <MapPin className="w-3 h-3 text-rose-600 flex-shrink-0" />
                             <span className="truncate">{loc.address}</span>
                             <a
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-rose-400 hover:text-rose-300 ml-1 font-semibold flex items-center gap-0.5"
+                              className="text-rose-600 hover:text-rose-700 ml-1 font-semibold flex items-center gap-0.5"
                             >
                               Maps <ExternalLink className="w-2.5 h-2.5" />
                             </a>
@@ -449,14 +449,14 @@ export default function LocationsView({
                           setEditingLocAddress(loc.address || '');
                           setEditingLocColor(loc.color || '#ec4899');
                         }}
-                        className="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-colors"
+                        className="p-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 transition-colors"
                         title="Modifica sede"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => requestDeleteLocation(loc)}
-                        className="p-2 rounded-xl bg-stone-800 hover:bg-red-950/40 text-stone-400 hover:text-red-400 transition-colors"
+                        className="p-2 rounded-xl bg-stone-100 hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors"
                         title="Elimina sede"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -467,10 +467,10 @@ export default function LocationsView({
               </div>
 
               {/* Price List Section */}
-              <div className="p-4 sm:p-5 space-y-3 bg-stone-900/40">
+              <div className="p-4 sm:p-5 space-y-3 bg-stone-50/70">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-rose-600" />
                     Listino Trattamenti per {loc.name}
                   </span>
 
@@ -481,7 +481,7 @@ export default function LocationsView({
                         setNewServiceName('');
                         setNewServicePrice('');
                       }}
-                      className="px-2.5 py-1 rounded-xl bg-stone-800 hover:bg-stone-700 text-rose-400 hover:text-rose-300 border border-stone-700/60 text-xs font-semibold flex items-center gap-1 transition-all active:scale-95"
+                      className="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-rose-600 hover:text-rose-700 border border-stone-200 text-xs font-semibold flex items-center gap-1 transition-all active:scale-95"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Aggiungi Trattamento</span>
@@ -490,13 +490,13 @@ export default function LocationsView({
                 </div>
 
                 {isAddingService && (
-                  <div className="p-3.5 rounded-2xl bg-stone-800/80 border border-rose-500/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 animate-in fade-in">
+                  <div className="p-3.5 rounded-2xl bg-stone-100 border border-rose-500/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 animate-in fade-in">
                     <input
                       type="text"
                       placeholder="Nome trattamento (es. Sopracciglia Pixel, Eye-liner)..."
                       value={newServiceName}
                       onChange={e => setNewServiceName(e.target.value)}
-                      className="flex-1 bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                      className="flex-1 bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
                     />
                     <div className="flex items-center gap-2">
                       <div className="relative w-28">
@@ -505,9 +505,9 @@ export default function LocationsView({
                           placeholder="Prezzo (€)"
                           value={newServicePrice}
                           onChange={e => setNewServicePrice(e.target.value)}
-                          className="w-full bg-stone-900 border border-stone-700 rounded-xl pl-3 pr-6 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full bg-white border border-stone-300 rounded-xl pl-3 pr-6 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         />
-                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-400">
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600">
                           €
                         </span>
                       </div>
@@ -519,7 +519,7 @@ export default function LocationsView({
                       </button>
                       <button
                         onClick={() => setAddingServiceLocId(null)}
-                        className="px-2.5 py-2 bg-stone-700 hover:bg-stone-600 text-stone-300 rounded-xl text-xs"
+                        className="px-2.5 py-2 bg-stone-200 hover:bg-stone-200 text-stone-700 rounded-xl text-xs"
                       >
                         Annulla
                       </button>
@@ -528,12 +528,12 @@ export default function LocationsView({
                 )}
 
                 {locServices.length === 0 ? (
-                  <div className="py-6 text-center text-stone-500 text-xs border border-dashed border-stone-800 rounded-2xl bg-stone-900/20">
+                  <div className="py-6 text-center text-stone-500 text-xs border border-dashed border-stone-200 rounded-2xl bg-stone-50">
                     Nessun trattamento nel listino per questa sede.
                     <div className="mt-1.5">
                       <button
                         onClick={() => setAddingServiceLocId(loc.id)}
-                        className="text-rose-400 hover:underline font-semibold"
+                        className="text-rose-600 hover:underline font-semibold"
                       >
                         + Aggiungi il primo trattamento
                       </button>
@@ -548,13 +548,13 @@ export default function LocationsView({
                         return (
                           <div
                             key={srv.id}
-                            className="p-3 bg-stone-800 border border-stone-700 rounded-2xl space-y-2"
+                            className="p-3 bg-stone-100 border border-stone-300 rounded-2xl space-y-2"
                           >
                             <input
                               type="text"
                               value={editingServiceName}
                               onChange={e => setEditingServiceName(e.target.value)}
-                              className="w-full bg-stone-900 border border-stone-700 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                              className="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-900"
                             />
                             <div className="flex items-center gap-2">
                               <div className="relative flex-1">
@@ -562,9 +562,9 @@ export default function LocationsView({
                                   type="number"
                                   value={editingServicePrice}
                                   onChange={e => setEditingServicePrice(e.target.value)}
-                                  className="w-full bg-stone-900 border border-stone-700 rounded-xl pl-2.5 pr-6 py-1.5 text-xs text-white"
+                                  className="w-full bg-white border border-stone-300 rounded-xl pl-2.5 pr-6 py-1.5 text-xs text-stone-900"
                                 />
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-emerald-400 font-bold">
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-emerald-600 font-bold">
                                   €
                                 </span>
                               </div>
@@ -576,7 +576,7 @@ export default function LocationsView({
                               </button>
                               <button
                                 onClick={() => setEditingServiceId(null)}
-                                className="px-2 py-1.5 bg-stone-700 text-stone-300 rounded-xl text-xs"
+                                className="px-2 py-1.5 bg-stone-200 text-stone-700 rounded-xl text-xs"
                               >
                                 X
                               </button>
@@ -588,11 +588,11 @@ export default function LocationsView({
                       return (
                         <div
                           key={srv.id}
-                          className="px-3.5 py-2.5 bg-stone-800/60 hover:bg-stone-800 border border-stone-700/50 rounded-2xl flex items-center justify-between gap-2 group transition-all shadow-xs"
+                          className="px-3.5 py-2.5 bg-stone-50 hover:bg-stone-100 border border-stone-200 rounded-2xl flex items-center justify-between gap-2 group transition-all shadow-xs"
                         >
                           <div className="min-w-0 flex-1">
-                            <span className="text-xs font-semibold text-white truncate block">{srv.name}</span>
-                            <span className="text-xs font-bold text-emerald-400">{srv.price} €</span>
+                            <span className="text-xs font-semibold text-stone-900 truncate block">{srv.name}</span>
+                            <span className="text-xs font-bold text-emerald-600">{srv.price} €</span>
                           </div>
 
                           <div className="flex items-center gap-1 flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -602,7 +602,7 @@ export default function LocationsView({
                                 setEditingServiceName(srv.name);
                                 setEditingServicePrice(String(srv.price));
                               }}
-                              className="p-1 rounded-lg text-stone-400 hover:text-white hover:bg-stone-700 transition-colors"
+                              className="p-1 rounded-lg text-stone-500 hover:text-stone-900 hover:bg-stone-200 transition-colors"
                               title="Modifica prezzo"
                             >
                               <Edit2 className="w-3 h-3" />
@@ -611,7 +611,7 @@ export default function LocationsView({
                               onClick={() =>
                                 setDeleteTarget({ type: 'service', srv, locName: loc.name })
                               }
-                              className="p-1 rounded-lg text-stone-500 hover:text-red-400 hover:bg-stone-700 transition-colors"
+                              className="p-1 rounded-lg text-stone-500 hover:text-red-600 hover:bg-stone-200 transition-colors"
                               title="Rimuovi trattamento"
                             >
                               <Trash2 className="w-3 h-3" />

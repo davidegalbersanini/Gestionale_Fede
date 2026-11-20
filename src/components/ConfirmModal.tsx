@@ -42,38 +42,38 @@ export default function ConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-fade-in"
       onClick={e => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-stone-100">
+      <div className="bg-white border border-stone-200 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-stone-900">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <div
               className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 border ${
                 isDanger
-                  ? 'bg-red-500/20 border-red-500/30 text-red-400'
+                  ? 'bg-red-50 border-red-200 text-red-600'
                   : isWarning
-                  ? 'bg-amber-500/20 border-amber-500/30 text-amber-400'
-                  : 'bg-rose-500/20 border-rose-500/30 text-rose-400'
+                  ? 'bg-amber-50 border-amber-200 text-amber-600'
+                  : 'bg-rose-50 border-rose-200 text-rose-600'
               }`}
             >
               {isDanger ? <Trash2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
             </div>
-            <h3 className="text-base font-bold text-white leading-snug">{title}</h3>
+            <h3 className="text-base font-bold text-stone-900 leading-snug">{title}</h3>
           </div>
           <button
             type="button"
             onClick={onCancel}
-            className="text-stone-400 hover:text-white p-1 rounded-lg hover:bg-stone-800 transition-colors"
+            className="text-stone-400 hover:text-stone-800 p-1 rounded-lg hover:bg-stone-100 transition-colors"
             aria-label="Chiudi"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="text-xs text-stone-300 mb-5 leading-relaxed whitespace-pre-line">
+        <p className="text-xs text-stone-600 mb-5 leading-relaxed whitespace-pre-line">
           {message}
         </p>
 
@@ -81,7 +81,7 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold transition-colors"
+            className="flex-1 py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors"
           >
             {cancelLabel}
           </button>

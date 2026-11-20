@@ -248,26 +248,26 @@ export default function AppointmentModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-stone-900/35 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
       onClick={e => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
+      <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-rose-400 fill-rose-500/30" />
+            <span className="w-8 h-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-rose-600 fill-rose-500/30" />
             </span>
-            <h2 className="text-lg font-bold text-white">
+            <h2 className="text-lg font-bold text-stone-900">
               {initialAppointment ? 'Modifica PMU' : 'Nuovo PMU'}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 hover:text-white"
+            className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900"
           >
             <X className="w-5 h-5" />
           </button>
@@ -309,7 +309,7 @@ export default function AppointmentModal({
 
           {/* Sede di lavoro */}
           <div>
-            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">
               Sede
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -320,8 +320,8 @@ export default function AppointmentModal({
                   onClick={() => setLocationId(loc.id)}
                   className={`px-3 py-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-2 transition-all ${
                     locationId === loc.id
-                      ? 'bg-rose-600/20 border-rose-500 text-rose-300 shadow-sm'
-                      : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
+                      ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-sm'
+                      : 'bg-stone-100 border-stone-300 text-stone-500 hover:text-stone-900'
                   }`}
                 >
                   <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: loc.color }} />
@@ -334,11 +334,11 @@ export default function AppointmentModal({
           {/* Trattamento / Servizio PMU */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider">
                 Trattamento *
               </label>
               {locServices.length > 0 && (
-                <span className="text-[10px] text-stone-400">
+                <span className="text-[10px] text-stone-500">
                   {locServices.length} dal listino
                 </span>
               )}
@@ -348,7 +348,7 @@ export default function AppointmentModal({
               required
               value={treatment}
               onChange={e => setTreatment(e.target.value)}
-              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm mb-2"
+              className="w-full bg-stone-100 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm mb-2"
             />
 
             <div className="flex flex-wrap gap-1.5">
@@ -364,10 +364,10 @@ export default function AppointmentModal({
                           setTotalPrice(String(srv.price));
                         }
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700/90 text-stone-300 hover:text-white text-xs border border-stone-700/60 active:scale-95 transition-all flex items-center gap-1.5"
+                      className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 hover:text-stone-900 text-xs border border-stone-200 active:scale-95 transition-all flex items-center gap-1.5"
                     >
                       <span>{srv.name}</span>
-                      <span className="text-[11px] font-bold text-emerald-400">{srv.price}€</span>
+                      <span className="text-[11px] font-bold text-emerald-600">{srv.price}€</span>
                     </button>
                   ))
                 : PMU_TREATMENTS.map(t => (
@@ -375,7 +375,7 @@ export default function AppointmentModal({
                       type="button"
                       key={t}
                       onClick={() => setTreatment(t)}
-                      className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs border border-stone-700/60 active:scale-95 transition-all"
+                      className="px-2.5 py-1 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs border border-stone-200 active:scale-95 transition-all"
                     >
                       {t}
                     </button>
@@ -384,10 +384,10 @@ export default function AppointmentModal({
           </div>
 
           {/* Data e Orari Trattamento */}
-          <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50 space-y-3">
+          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">
                   Data *
                 </label>
                 <input
@@ -395,12 +395,12 @@ export default function AppointmentModal({
                   required
                   value={appointmentDate}
                   onChange={e => setAppointmentDate(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-rose-400" />
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-rose-600" />
                   Inizio
                 </label>
                 <input
@@ -413,19 +413,19 @@ export default function AppointmentModal({
                       setAppointmentEndTime(addHoursToTime(newStart, 2));
                     }
                   }}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-stone-400" />
+                <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-stone-500" />
                   Fine
                 </label>
                 <input
                   type="time"
                   value={appointmentEndTime}
                   onChange={e => setAppointmentEndTime(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
                 />
               </div>
             </div>
@@ -434,15 +434,15 @@ export default function AppointmentModal({
           {/* Stato appuntamento (in modifica) */}
           {initialAppointment && (
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">
                 Stato Appuntamento
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {(
                   [
-                    { id: 'programmato', label: 'Programmato', activeClass: 'bg-sky-600/25 border-sky-500 text-sky-300' },
-                    { id: 'completato', label: 'Completato', activeClass: 'bg-emerald-600/25 border-emerald-500 text-emerald-300' },
-                    { id: 'annullato', label: 'Annullato', activeClass: 'bg-red-950/60 border-red-500 text-red-300' },
+                    { id: 'programmato', label: 'Programmato', activeClass: 'bg-sky-50 border-sky-500 text-sky-700' },
+                    { id: 'completato', label: 'Completato', activeClass: 'bg-emerald-50 border-emerald-500 text-emerald-700' },
+                    { id: 'annullato', label: 'Annullato', activeClass: 'bg-red-50 border-red-500 text-red-700' },
                   ] as const
                 ).map(opt => (
                   <button
@@ -452,7 +452,7 @@ export default function AppointmentModal({
                     className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
                       status === opt.id
                         ? opt.activeClass
-                        : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
+                        : 'bg-stone-100 border-stone-300 text-stone-500 hover:text-stone-900'
                     }`}
                   >
                     {opt.label}
@@ -463,10 +463,10 @@ export default function AppointmentModal({
           )}
 
           {/* Aspetti Economici */}
-          <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50 space-y-3.5">
+          <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-rose-700 uppercase tracking-wider mb-1.5">
                   Totale (€)
                 </label>
                 <input
@@ -484,14 +484,14 @@ export default function AppointmentModal({
                       setPayment(maxPay > 0 ? String(maxPay) : '');
                     }
                   }}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white font-bold placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 font-bold placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                   <span>Ricevuto (€)</span>
-                  <span className="text-[10px] text-stone-400 font-normal">
+                  <span className="text-[10px] text-stone-500 font-normal">
                     Max: {maxAcceptablePayment.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}€
                   </span>
                 </label>
@@ -521,7 +521,7 @@ export default function AppointmentModal({
                       setPayment(rawVal);
                     }
                   }}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2.5 text-white font-bold placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 font-bold placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 />
               </div>
             </div>
@@ -543,16 +543,16 @@ export default function AppointmentModal({
             />
 
             {/* Da saldare */}
-            <div className="pt-2.5 border-t border-stone-700/60 flex items-center justify-between">
-              <span className="text-xs font-semibold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="pt-2.5 border-t border-stone-200 flex items-center justify-between">
+              <span className="text-xs font-semibold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
                 Da saldare:
               </span>
               {calculatedBalance <= 0 ? (
-                <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-xl border border-emerald-800/60 flex items-center gap-1">
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" /> Saldato
                 </span>
               ) : (
-                <span className="text-sm font-black text-amber-300 bg-amber-950/50 px-3 py-1 rounded-xl border border-amber-600/50 shadow-sm">
+                <span className="text-sm font-black text-amber-700 bg-amber-50 px-3 py-1 rounded-xl border border-amber-300 shadow-sm">
                   {calculatedBalance.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 </span>
               )}
@@ -560,16 +560,16 @@ export default function AppointmentModal({
           </div>
 
           {/* Data e Orari Ritocco */}
-          <div className="p-3.5 bg-stone-800/60 rounded-2xl border border-stone-700/60 space-y-3">
+          <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold text-rose-300 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-rose-700 uppercase tracking-wider">
                 Ritocco (Opzionale)
               </label>
               {touchUpDate && (
                 <button
                   type="button"
                   onClick={() => setTouchUpDate('')}
-                  className="text-[11px] text-stone-400 hover:text-red-400"
+                  className="text-[11px] text-stone-500 hover:text-red-600"
                 >
                   Rimuovi
                 </button>
@@ -578,17 +578,17 @@ export default function AppointmentModal({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[11px] text-stone-400 mb-1">Data</label>
+                <label className="block text-[11px] text-stone-500 mb-1">Data</label>
                 <input
                   type="date"
                   value={touchUpDate}
                   onChange={e => setTouchUpDate(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-rose-400" />
+                <label className="block text-[11px] text-stone-500 mb-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-rose-600" />
                   Inizio
                 </label>
                 <input
@@ -602,12 +602,12 @@ export default function AppointmentModal({
                       setTouchUpEndTime(addHoursToTime(newStart, 1.5));
                     }
                   }}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-sm disabled:opacity-40"
                 />
               </div>
               <div>
-                <label className="block text-[11px] text-stone-400 mb-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-stone-400" />
+                <label className="block text-[11px] text-stone-500 mb-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-stone-500" />
                   Fine
                 </label>
                 <input
@@ -615,18 +615,18 @@ export default function AppointmentModal({
                   disabled={!touchUpDate}
                   value={touchUpEndTime}
                   onChange={e => setTouchUpEndTime(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3 py-2 text-white text-sm disabled:opacity-40"
+                  className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-sm disabled:opacity-40"
                 />
               </div>
             </div>
 
             {touchUpDate && !initialAppointment?.linked_appointment_id && (
-              <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer pt-1">
+              <label className="flex items-center gap-2 text-xs text-stone-700 cursor-pointer pt-1">
                 <input
                   type="checkbox"
                   checked={createTouchUpFollowup}
                   onChange={e => setCreateTouchUpFollowup(e.target.checked)}
-                  className="rounded border-stone-700 bg-stone-900 text-rose-500"
+                  className="rounded border-stone-300 bg-white text-rose-500"
                 />
                 <span>Crea ritocco in agenda con questi orari</span>
               </label>
@@ -634,26 +634,26 @@ export default function AppointmentModal({
           </div>
 
           {/* Google Calendar Checkbox */}
-          <div className="p-3 bg-blue-950/20 border border-blue-900/40 rounded-2xl">
+          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl">
             <label className="flex items-center justify-between cursor-pointer">
               <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <span className="w-7 h-7 rounded-lg bg-blue-100 border border-blue-500/30 flex items-center justify-center text-blue-600">
                   <CalendarIcon className="w-3.5 h-3.5" />
                 </span>
-                <span className="text-xs font-semibold text-white">Sincronizza Google Calendar</span>
+                <span className="text-xs font-semibold text-stone-900">Sincronizza Google Calendar</span>
               </div>
               <input
                 type="checkbox"
                 checked={syncGoogleCalendar}
                 onChange={e => setSyncGoogleCalendar(e.target.checked)}
-                className="w-4 h-4 rounded border-blue-700 bg-stone-900 text-blue-500 focus:ring-0 cursor-pointer"
+                className="w-4 h-4 rounded border-blue-300 bg-white text-blue-500 focus:ring-0 cursor-pointer"
               />
             </label>
           </div>
 
           {/* Note */}
           <div>
-            <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1">
               Note
             </label>
             <textarea
@@ -661,7 +661,7 @@ export default function AppointmentModal({
               placeholder="Dettagli pelle, pigmenti usati..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              className="w-full bg-stone-800 border border-stone-700 rounded-xl px-3.5 py-2 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+              className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3.5 py-2 text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
             />
           </div>
 
@@ -674,14 +674,14 @@ export default function AppointmentModal({
                   onDelete(initialAppointment.id);
                   onClose();
                 }}
-                className="px-4 py-2.5 rounded-xl bg-red-950/60 text-red-300 border border-red-800/60 hover:bg-red-900/60 text-xs font-medium transition-colors"
+                className="px-4 py-2.5 rounded-xl bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-xs font-medium transition-colors"
               >
                 Elimina
               </button>
             )}
             <button
               type="submit"
-              className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-900/30 transition-all active:scale-[0.98]"
+              className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-200/60 transition-all active:scale-[0.98]"
             >
               {initialAppointment ? 'Salva' : 'Aggiungi'}
             </button>

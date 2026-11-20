@@ -51,6 +51,7 @@ export interface Appointment {
   notes?: string;
   sync_google_calendar?: boolean;
   google_calendar_event_id?: string;
+  google_calendar_trial_event_id?: string;
   used_gift_voucher?: boolean;
   used_gift_voucher_id?: string;
   used_gift_voucher_amount?: number;
@@ -74,6 +75,7 @@ export interface WeddingService {
   notes?: string;
   sync_google_calendar?: boolean;
   google_calendar_event_id?: string;
+  google_calendar_trial_event_id?: string;
   used_gift_voucher?: boolean;
   used_gift_voucher_id?: string;
   used_gift_voucher_amount?: number;
@@ -134,3 +136,7 @@ export interface UnifiedEvent {
   rawPmu?: Appointment;
   rawWedding?: WeddingService;
 }
+
+export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
+
+export type ToastVariant = 'success' | 'error' | 'info';

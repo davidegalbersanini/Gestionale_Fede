@@ -2,42 +2,68 @@
 
 import React, { useState, useMemo } from 'react';
 import { Expense } from '@/types';
-import { Receipt, Plus, Search, Trash2, Calendar, Tag, DollarSign, X } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
+import { Receipt, Plus, Search, Trash2, Pencil, X } from 'lucide-react';
 
 interface ExpensesViewProps {
   expenses: Expense[];
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+  onUpdateExpense: (expense: Expense) => void;
   onDeleteExpense: (id: string) => void;
 }
+
+const EXPENSE_CATEGORIES = [
+  'Materiale',
+  'Anestetico',
+  'Corsi di Formazione',
+  'Marketing / Sito',
+  'Attrezzatura',
+  'Varie',
+];
 
 export default function ExpensesView({
   expenses,
   onAddExpense,
+  onUpdateExpense,
   onDeleteExpense,
 }: ExpensesViewProps) {
   const currentYearStr = String(new Date().getFullYear());
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [isAddingExpense, setIsAddingExpense] = useState(false);
 
-  // New expense form state
+  // Modal state (shared for create & edit)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = useState('Materiale');
   const [item, setItem] = useState('');
   const [amount, setAmount] = useState('');
   const [notes, setNotes] = useState('');
 
-  const categories = [
-    'Materiale',
-    'Anestetico',
-    'Corsi di Formazione',
-    'Marketing / Sito',
-    'Attrezzatura',
-    'Varie'
-  ];
+  // Delete confirm state
+  const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
 
-  // Distinct years available
+  const openCreateModal = () => {
+    setEditingExpense(null);
+    setDate(new Date().toISOString().slice(0, 10));
+    setCategory('Materiale');
+    setItem('');
+    setAmount('');
+    setNotes('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (exp: Expense) => {
+    setEditingExpense(exp);
+    setDate(exp.date ? exp.date.slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setCategory(EXPENSE_CATEGORIES.includes(exp.category) ? exp.category : exp.category || 'Materiale');
+    setItem(exp.item || '');
+    setAmount(String(exp.amount || ''));
+    setNotes(exp.notes || '');
+    setIsModalOpen(true);
+  };
+
   const availableYears = useMemo(() => {
     const years = new Set<string>();
     expenses.forEach(e => {
@@ -46,29 +72,30 @@ export default function ExpensesView({
     return Array.from(years).sort().reverse();
   }, [expenses]);
 
-  // Filtered expenses
   const filteredExpenses = useMemo(() => {
-    return expenses.filter(e => {
-      if (selectedYear !== 'all' && !e.date.startsWith(selectedYear)) return false;
-      if (selectedCategory !== 'all' && !e.category.toLowerCase().includes(selectedCategory.toLowerCase())) return false;
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        return (
-          e.item.toLowerCase().includes(q) ||
-          e.category.toLowerCase().includes(q) ||
-          (e.notes && e.notes.toLowerCase().includes(q))
-        );
-      }
-      return true;
-    }).sort((a, b) => b.date.localeCompare(a.date));
+    return expenses
+      .filter(e => {
+        if (selectedYear !== 'all' && !e.date.startsWith(selectedYear)) return false;
+        if (selectedCategory !== 'all' && !e.category.toLowerCase().includes(selectedCategory.toLowerCase())) {
+          return false;
+        }
+        if (search.trim()) {
+          const q = search.toLowerCase();
+          return (
+            e.item.toLowerCase().includes(q) ||
+            e.category.toLowerCase().includes(q) ||
+            (e.notes && e.notes.toLowerCase().includes(q))
+          );
+        }
+        return true;
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [expenses, selectedYear, selectedCategory, search]);
 
-  // Stats
   const totalAmount = useMemo(() => {
     return filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   }, [filteredExpenses]);
 
-  // Breakdown by category
   const categoryBreakdown = useMemo(() => {
     const map: Record<string, number> = {};
     filteredExpenses.forEach(e => {
@@ -78,27 +105,44 @@ export default function ExpensesView({
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [filteredExpenses]);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || parseFloat(amount) <= 0) return;
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
 
-    onAddExpense({
-      date,
-      category,
-      item: item.trim(),
-      amount: parseFloat(amount),
-      notes: notes.trim(),
-    });
+    if (editingExpense) {
+      onUpdateExpense({
+        ...editingExpense,
+        date,
+        category,
+        item: item.trim(),
+        amount: parsedAmount,
+        notes: notes.trim(),
+      });
+    } else {
+      onAddExpense({
+        date,
+        category,
+        item: item.trim(),
+        amount: parsedAmount,
+        notes: notes.trim(),
+      });
+    }
 
-    setIsAddingExpense(false);
+    setIsModalOpen(false);
+    setEditingExpense(null);
     setItem('');
     setAmount('');
     setNotes('');
   };
 
+  const categoryOptions = EXPENSE_CATEGORIES.includes(category)
+    ? EXPENSE_CATEGORIES
+    : [category, ...EXPENSE_CATEGORIES];
+
   return (
     <div className="space-y-4">
-      {/* 1. Header with Nuova Spesa button */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-900/90 border border-stone-800 p-4 rounded-3xl">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
@@ -111,7 +155,7 @@ export default function ExpensesView({
         </div>
 
         <button
-          onClick={() => setIsAddingExpense(true)}
+          onClick={openCreateModal}
           className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-950/50 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
@@ -119,10 +163,9 @@ export default function ExpensesView({
         </button>
       </div>
 
-      {/* 2. Filters & Categories placed SECOND, right below + Nuova Spesa as requested */}
+      {/* Filters & Categories */}
       <div className="space-y-2.5 bg-stone-900/60 p-3.5 rounded-2xl border border-stone-800">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Search */}
           <div className="relative flex-1 min-w-[180px]">
             <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -134,7 +177,6 @@ export default function ExpensesView({
             />
           </div>
 
-          {/* Year Filter */}
           <div className="flex items-center gap-1 overflow-x-auto">
             <button
               onClick={() => setSelectedYear('all')}
@@ -158,7 +200,6 @@ export default function ExpensesView({
           </div>
         </div>
 
-        {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setSelectedCategory('all')}
@@ -170,7 +211,7 @@ export default function ExpensesView({
           >
             Tutte le categorie
           </button>
-          {categories.map(cat => (
+          {EXPENSE_CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
@@ -186,7 +227,7 @@ export default function ExpensesView({
         </div>
       </div>
 
-      {/* 3. KPI Cards for expenses */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-stone-900 border border-stone-800 p-4 rounded-2xl">
           <p className="text-stone-400 text-xs font-semibold uppercase tracking-wider">
@@ -198,7 +239,6 @@ export default function ExpensesView({
           <p className="text-[11px] text-stone-500 mt-0.5">{filteredExpenses.length} voci di spesa</p>
         </div>
 
-        {/* Top 2 Categories preview */}
         {categoryBreakdown.slice(0, 2).map(([cat, amt]) => (
           <div key={cat} className="bg-stone-900 border border-stone-800 p-4 rounded-2xl">
             <p className="text-stone-400 text-xs font-semibold uppercase tracking-wider truncate">
@@ -214,7 +254,7 @@ export default function ExpensesView({
         ))}
       </div>
 
-      {/* 4. Expenses List */}
+      {/* Expenses List */}
       <div className="bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-5">
         <div className="text-stone-400 text-xs font-semibold uppercase tracking-wider pb-3 border-b border-stone-800 flex justify-between items-center">
           <span>Elenco Spese ({filteredExpenses.length})</span>
@@ -240,17 +280,22 @@ export default function ExpensesView({
                   {e.notes && <p className="text-stone-400 text-xs truncate mt-0.5">{e.notes}</p>}
                 </div>
 
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="text-base font-black text-rose-400">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                  <span className="text-base font-black text-rose-400 mr-1">
                     -{e.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                   <button
-                    onClick={() => {
-                      if (confirm(`Eliminare la spesa "${e.item}" di ${e.amount}€?`)) {
-                        onDeleteExpense(e.id);
-                      }
-                    }}
-                    className="p-1.5 rounded-lg text-stone-500 hover:text-red-400 hover:bg-stone-800 opacity-60 group-hover:opacity-100 transition-opacity"
+                    type="button"
+                    onClick={() => openEditModal(e)}
+                    className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 opacity-75 group-hover:opacity-100 transition-opacity"
+                    title="Modifica spesa"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExpenseToDelete(e)}
+                    className="p-1.5 rounded-lg text-stone-500 hover:text-red-400 hover:bg-stone-800 opacity-75 group-hover:opacity-100 transition-opacity"
                     title="Elimina spesa"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -262,18 +307,25 @@ export default function ExpensesView({
         </div>
       </div>
 
-      {/* Add Expense Modal */}
-      {isAddingExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      {/* Add / Edit Expense Modal */}
+      {isModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsModalOpen(false);
+          }}
+        >
           <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
-              <h3 className="text-base font-bold text-white">Nuova Spesa Studio</h3>
-              <button onClick={() => setIsAddingExpense(false)} className="text-stone-400 hover:text-white">
+              <h3 className="text-base font-bold text-white">
+                {editingExpense ? 'Modifica Spesa Studio' : 'Nuova Spesa Studio'}
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-stone-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-stone-400 uppercase mb-1">
                   Descrizione Spesa *
@@ -296,6 +348,7 @@ export default function ExpensesView({
                   <input
                     type="number"
                     step="any"
+                    min="0.01"
                     required
                     placeholder="0.00"
                     value={amount}
@@ -326,7 +379,7 @@ export default function ExpensesView({
                   onChange={e => setCategory(e.target.value)}
                   className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white text-sm"
                 >
-                  {categories.map(c => (
+                  {categoryOptions.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
@@ -348,7 +401,7 @@ export default function ExpensesView({
               <div className="pt-2 flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsAddingExpense(false)}
+                  onClick={() => setIsModalOpen(false)}
                   className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-sm font-semibold"
                 >
                   Annulla
@@ -357,13 +410,27 @@ export default function ExpensesView({
                   type="submit"
                   className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-950/40"
                 >
-                  Aggiungi Spesa
+                  {editingExpense ? 'Salva Modifiche' : 'Aggiungi Spesa'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={Boolean(expenseToDelete)}
+        title="Elimina Spesa"
+        message={`Eliminare la spesa "${expenseToDelete?.item || ''}" di ${expenseToDelete?.amount || 0}€?`}
+        confirmLabel="Elimina"
+        onConfirm={() => {
+          if (expenseToDelete) {
+            onDeleteExpense(expenseToDelete.id);
+          }
+          setExpenseToDelete(null);
+        }}
+        onCancel={() => setExpenseToDelete(null)}
+      />
     </div>
   );
 }

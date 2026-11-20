@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Appointment, Client, Location, GiftVoucher, ServicePrice } from '@/types';
-import { syncCalendarAutomatically } from '@/lib/calendar';
-import { X, Calendar as CalendarIcon, Clock, DollarSign, MapPin, Tag, Sparkles, ExternalLink, Gift, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Appointment, AppointmentStatus, Client, Location, GiftVoucher, ServicePrice } from '@/types';
+import ClientAutocomplete from '@/components/ClientAutocomplete';
+import GiftVoucherSection from '@/components/GiftVoucherSection';
+import { X, Calendar as CalendarIcon, Clock, Sparkles, Check } from 'lucide-react';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -17,6 +18,30 @@ interface AppointmentModalProps {
   vouchers?: GiftVoucher[];
   defaultDate?: string;
   defaultClient?: Client | null;
+}
+
+const PMU_TREATMENTS = [
+  'Ritocco',
+  'Prima seduta Micro',
+  'Prima seduta Sfumatura',
+  'Labbra Full Lip',
+  'Labbra Contorno & Sfumatura',
+  'Combo laminazione',
+  'Tatuaggio Fine Line',
+  'Infracigliare / Eyeliner',
+  'Consulenza PMU',
+];
+
+function addHoursToTime(timeStr: string, hours: number = 2): string {
+  try {
+    const [h, m] = timeStr.split(':').map(Number);
+    const totalM = (h || 0) * 60 + (m || 0) + Math.round(hours * 60);
+    const finalH = Math.floor(totalM / 60) % 24;
+    const finalM = totalM % 60;
+    return `${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`;
+  } catch {
+    return '12:00';
+  }
 }
 
 export default function AppointmentModal({
@@ -35,7 +60,6 @@ export default function AppointmentModal({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
-  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [locationId, setLocationId] = useState(locations[0]?.id || '');
   const [treatment, setTreatment] = useState('Ritocco');
   const [appointmentDate, setAppointmentDate] = useState(defaultDate || new Date().toISOString().slice(0, 10));
@@ -52,40 +76,31 @@ export default function AppointmentModal({
   const [selectedVoucherId, setSelectedVoucherId] = useState<string>('');
   const [voucherDeduction, setVoucherDeduction] = useState<string>('');
   const [syncGoogleCalendar, setSyncGoogleCalendar] = useState(true);
+  const [status, setStatus] = useState<AppointmentStatus>('programmato');
 
-  // Helper to add minutes/hours to HH:mm string
-  const addHoursToTime = (timeStr: string, hours: number = 2): string => {
-    try {
-      const [h, m] = timeStr.split(':').map(Number);
-      const totalM = (h || 0) * 60 + (m || 0) + Math.round(hours * 60);
-      const finalH = Math.floor(totalM / 60) % 24;
-      const finalM = totalM % 60;
-      return `${String(finalH).padStart(2, '0')}:${String(finalM).padStart(2, '0')}`;
-    } catch {
-      return '12:00';
-    }
-  };
-
-  // Treatment presets (strictly PMU)
-  const pmuTreatments = [
-    'Ritocco',
-    'Prima seduta Micro',
-    'Prima seduta Sfumatura',
-    'Labbra Full Lip',
-    'Labbra Contorno & Sfumatura',
-    'Combo laminazione',
-    'Tatuaggio Fine Line',
-    'Infracigliare / Eyeliner',
-    'Consulenza PMU'
-  ];
+  const clientsRef = useRef(clients);
+  clientsRef.current = clients;
+  const locationsRef = useRef(locations);
+  locationsRef.current = locations;
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    const currentClients = clientsRef.current;
+    const currentLocations = locationsRef.current;
+
     if (initialAppointment) {
       const parts = (initialAppointment.client_name || '').trim().split(' ');
-      const existingClient = clients.find(c => c.id === initialAppointment.client_id || c.full_name === initialAppointment.client_name);
+      const existingClient = currentClients.find(
+        c => c.id === initialAppointment.client_id || c.full_name === initialAppointment.client_name
+      );
       if (existingClient) {
         setFirstName(existingClient.first_name || parts[0] || '');
-        setLastName(existingClient.last_name && existingClient.last_name !== '-' ? existingClient.last_name : parts.slice(1).join(' '));
+        setLastName(
+          existingClient.last_name && existingClient.last_name !== '-'
+            ? existingClient.last_name
+            : parts.slice(1).join(' ')
+        );
       } else {
         setFirstName(parts[0] || '');
         setLastName(parts.slice(1).join(' '));
@@ -98,31 +113,42 @@ export default function AppointmentModal({
       setAppointmentDate(d || defaultDate || new Date().toISOString().slice(0, 10));
       setAppointmentTime(startT);
       setAppointmentEndTime(initialAppointment.end_time || addHoursToTime(startT, 2));
-      
-      const existingTotal = initialAppointment.total_price !== undefined
-        ? initialAppointment.total_price
-        : (initialAppointment.payment || 0) + (initialAppointment.balance || 0);
+
+      const existingTotal =
+        initialAppointment.total_price !== undefined
+          ? initialAppointment.total_price
+          : (initialAppointment.payment || 0) + (initialAppointment.balance || 0);
       setTotalPrice(existingTotal > 0 ? String(existingTotal) : '');
       setPayment(initialAppointment.payment > 0 ? String(initialAppointment.payment) : '');
       setTouchUpDate(initialAppointment.touch_up_date || '');
       setTouchUpTime(initialAppointment.touch_up_time || '10:00');
       setTouchUpEndTime(initialAppointment.touch_up_end_time || '11:30');
+      setCreateTouchUpFollowup(false);
       setNotes(initialAppointment.notes || '');
       setUsedGiftVoucher(Boolean(initialAppointment.used_gift_voucher));
       setSelectedVoucherId(initialAppointment.used_gift_voucher_id || '');
-      setVoucherDeduction(initialAppointment.used_gift_voucher_amount ? String(initialAppointment.used_gift_voucher_amount) : '');
+      setVoucherDeduction(
+        initialAppointment.used_gift_voucher_amount
+          ? String(initialAppointment.used_gift_voucher_amount)
+          : ''
+      );
       setSyncGoogleCalendar(initialAppointment.sync_google_calendar !== false);
+      setStatus(initialAppointment.status || 'programmato');
     } else {
       if (defaultClient) {
         setFirstName(defaultClient.first_name || defaultClient.full_name.split(' ')[0] || '');
-        setLastName(defaultClient.last_name && defaultClient.last_name !== '-' ? defaultClient.last_name : defaultClient.full_name.split(' ').slice(1).join(' '));
+        setLastName(
+          defaultClient.last_name && defaultClient.last_name !== '-'
+            ? defaultClient.last_name
+            : defaultClient.full_name.split(' ').slice(1).join(' ')
+        );
         setSelectedClientId(defaultClient.id);
       } else {
         setFirstName('');
         setLastName('');
         setSelectedClientId(undefined);
       }
-      setLocationId(locations[0]?.id || '');
+      setLocationId(currentLocations[0]?.id || '');
       setTreatment('Ritocco');
       setAppointmentDate(defaultDate || new Date().toISOString().slice(0, 10));
       setAppointmentTime('10:00');
@@ -137,48 +163,42 @@ export default function AppointmentModal({
       setUsedGiftVoucher(false);
       setSelectedVoucherId('');
       setVoucherDeduction('');
-      setSyncGoogleCalendar(true); // Default checked as requested
+      setSyncGoogleCalendar(true);
+      setStatus('programmato');
     }
-  }, [initialAppointment, locations, defaultDate, defaultClient, clients]);
+  }, [isOpen, initialAppointment, defaultDate, defaultClient]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const clientSearchQuery = `${firstName} ${lastName}`.trim().toLowerCase();
-  const filteredClients = clientSearchQuery
-    ? clients
-        .filter(c =>
-          c.full_name.toLowerCase().includes(clientSearchQuery) ||
-          c.first_name.toLowerCase().includes(firstName.trim().toLowerCase()) ||
-          (lastName.trim() && c.last_name.toLowerCase().includes(lastName.trim().toLowerCase()))
-        )
-        .slice(0, 5)
-    : [];
+  const computedDisplayName = `${firstName} ${lastName}`.trim();
 
-  const selectedLoc = locations.find(l => l.id === locationId);
-
-  // Available vouchers with remaining amount > 0, plus the currently linked voucher if editing
-  const availableVouchers = vouchers.filter(v => {
-    if (v.id === initialAppointment?.used_gift_voucher_id) return true;
-    return (v.remaining_amount ?? v.amount ?? 0) > 0 && !v.is_used;
-  });
-
-  // Recommended vouchers matching current client name/id
-  const matchingVouchers = availableVouchers.filter(v => {
-    if (!clientSearchQuery) return false;
-    const nameMatch = v.recipient_name?.toLowerCase().includes(clientSearchQuery) ||
-                      v.buyer_name?.toLowerCase().includes(clientSearchQuery);
-    const idMatch = selectedClientId && (v.recipient_id === selectedClientId || v.buyer_id === selectedClientId);
-    return nameMatch || idMatch;
-  });
-
-  // Economic calculations:
+  // Economic calculations
   const totalNum = parseFloat(totalPrice) || 0;
-  const voucherDeductNum = usedGiftVoucher ? (parseFloat(voucherDeduction) || 0) : 0;
-  // Maximum cash/card payment acceptable (cannot exceed total minus voucher)
+  const voucherDeductNum = usedGiftVoucher ? parseFloat(voucherDeduction) || 0 : 0;
   const maxAcceptablePayment = Math.max(0, totalNum - voucherDeductNum);
   const paymentNum = Math.min(parseFloat(payment) || 0, maxAcceptablePayment);
-  // Real-time remaining balance to be collected (cannot go below 0)
   const calculatedBalance = Math.max(0, totalNum - voucherDeductNum - paymentNum);
+
+  const capPaymentForDeduction = (nextDedStr: string) => {
+    setVoucherDeduction(nextDedStr);
+    const validDed = parseFloat(nextDedStr) || 0;
+    const maxPay = Math.max(0, totalNum - validDed);
+    if ((parseFloat(payment) || 0) > maxPay) {
+      setPayment(maxPay > 0 ? String(maxPay) : '');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,13 +206,17 @@ export default function AppointmentModal({
 
     const computedFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
     const fullDateTime = appointmentTime ? `${appointmentDate}T${appointmentTime}:00` : appointmentDate;
-    const fullEndDateTime = appointmentEndTime ? `${appointmentDate}T${appointmentEndTime}:00` : undefined;
+    const computedStatus: AppointmentStatus = initialAppointment
+      ? status
+      : fullDateTime < new Date().toISOString()
+      ? 'completato'
+      : 'programmato';
 
     const appData: Omit<Appointment, 'id'> = {
       client_id: selectedClientId,
       client_name: computedFullName,
       location_id: locationId,
-      category: 'pmu',
+      category: initialAppointment?.category || 'pmu',
       treatment: treatment.trim(),
       appointment_date: fullDateTime,
       end_time: appointmentEndTime || undefined,
@@ -203,40 +227,32 @@ export default function AppointmentModal({
       touch_up_time: touchUpDate && touchUpTime ? touchUpTime : undefined,
       touch_up_end_time: touchUpDate && touchUpEndTime ? touchUpEndTime : undefined,
       notes: notes.trim(),
-      used_gift_voucher: usedGiftVoucher,
+      used_gift_voucher: usedGiftVoucher && Boolean(selectedVoucherId),
       used_gift_voucher_id: usedGiftVoucher && selectedVoucherId ? selectedVoucherId : undefined,
-      used_gift_voucher_amount: usedGiftVoucher && voucherDeductNum > 0 ? voucherDeductNum : undefined,
+      used_gift_voucher_amount:
+        usedGiftVoucher && selectedVoucherId && voucherDeductNum > 0 ? voucherDeductNum : undefined,
       sync_google_calendar: syncGoogleCalendar,
-      status: fullDateTime < new Date().toISOString() ? 'completato' : 'programmato',
+      status: computedStatus,
     };
 
-    // Google Calendar Sync with location address if present
-    if (syncGoogleCalendar) {
-      const locationString = selectedLoc?.address
-        ? `${selectedLoc.name} (${selectedLoc.address})`
-        : selectedLoc?.name || '';
+    const shouldCreateFollowup =
+      Boolean(touchUpDate) &&
+      !initialAppointment?.linked_appointment_id &&
+      createTouchUpFollowup;
 
-      syncCalendarAutomatically({
-        eventId: initialAppointment?.google_calendar_event_id,
-        title: `PMU: ${computedFullName} - ${treatment.trim()}`,
-        startDate: fullDateTime,
-        endDate: fullEndDateTime,
-        location: locationString,
-        colorHex: selectedLoc?.color,
-        details: `Tipo: Trattamento PMU\nTrattamento: ${treatment}\nOrario: ${appointmentTime} - ${appointmentEndTime}\nTotale Trattamento: ${totalNum}€\nDenaro Ricevuto: ${paymentNum}€\nDa Saldare: ${calculatedBalance}€\nNote: ${notes}`,
-      }).then(res => {
-        if (res.eventId && appData) {
-          appData.google_calendar_event_id = res.eventId;
-        }
-      });
-    }
-
-    onSave(appData, touchUpDate ? createTouchUpFollowup : false);
+    onSave(appData, shouldCreateFollowup);
     onClose();
   };
 
+  const locServices = servicePrices.filter(sp => sp.location_id === locationId);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
         {/* Header */}
         <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
@@ -249,6 +265,7 @@ export default function AppointmentModal({
             </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 flex items-center justify-center text-stone-400 hover:text-white"
           >
@@ -259,74 +276,38 @@ export default function AppointmentModal({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Cliente: Nome & Cognome separati con Autocomplete */}
-          <div className="relative">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                  Nome *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="es. Laura"
-                  value={firstName}
-                  onChange={e => {
-                    setFirstName(e.target.value);
-                    setSelectedClientId(undefined);
-                    setShowClientSuggestions(true);
-                  }}
-                  onFocus={() => setShowClientSuggestions(true)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-                />
-              </div>
+          <ClientAutocomplete
+            clients={clients}
+            firstName={firstName}
+            lastName={lastName}
+            onFirstNameChange={val => {
+              setFirstName(val);
+              setSelectedClientId(undefined);
+            }}
+            onLastNameChange={val => {
+              setLastName(val);
+              setSelectedClientId(undefined);
+            }}
+            onSelectClient={c => {
+              setFirstName(c.first_name || c.full_name.split(' ')[0] || '');
+              setLastName(
+                c.last_name && c.last_name !== '-'
+                  ? c.last_name
+                  : c.full_name.split(' ').slice(1).join(' ')
+              );
+              setSelectedClientId(c.id);
+            }}
+            firstNameRequired
+            firstNameLabel="Nome *"
+            lastNameLabel={
+              <>
+                Cognome <span className="text-stone-500 font-normal lowercase">(opzionale)</span>
+              </>
+            }
+            accent="rose"
+          />
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
-                  Cognome <span className="text-stone-500 font-normal lowercase">(opzionale)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="es. Rossi"
-                  value={lastName}
-                  onChange={e => {
-                    setLastName(e.target.value);
-                    setSelectedClientId(undefined);
-                    setShowClientSuggestions(true);
-                  }}
-                  onFocus={() => setShowClientSuggestions(true)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
-                />
-              </div>
-            </div>
-
-            {showClientSuggestions && filteredClients.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden z-20">
-                {filteredClients.map(c => (
-                  <button
-                    type="button"
-                    key={c.id}
-                    onClick={() => {
-                      setFirstName(c.first_name || c.full_name.split(' ')[0] || '');
-                      setLastName(c.last_name && c.last_name !== '-' ? c.last_name : c.full_name.split(' ').slice(1).join(' '));
-                      setSelectedClientId(c.id);
-                      setShowClientSuggestions(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-rose-950/40 text-stone-200 text-sm flex items-center justify-between border-b border-stone-700/50 last:border-0"
-                  >
-                    <div>
-                      <span className="font-bold text-white">{c.first_name || c.full_name}</span>
-                      {c.last_name && c.last_name !== '-' && (
-                        <span className="text-stone-300 ml-1.5">{c.last_name}</span>
-                      )}
-                    </div>
-                    {c.phone && <span className="text-stone-400 text-xs">{c.phone}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Sede di lavoro con indirizzo Google Maps */}
+          {/* Sede di lavoro */}
           <div>
             <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
               Sede
@@ -356,9 +337,9 @@ export default function AppointmentModal({
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider">
                 Trattamento *
               </label>
-              {servicePrices.filter(sp => sp.location_id === locationId).length > 0 && (
+              {locServices.length > 0 && (
                 <span className="text-[10px] text-stone-400">
-                  {servicePrices.filter(sp => sp.location_id === locationId).length} dal listino
+                  {locServices.length} dal listino
                 </span>
               )}
             </div>
@@ -370,18 +351,14 @@ export default function AppointmentModal({
               className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm mb-2"
             />
 
-            {/* Quick chips: First from this location's price list, or fallback presets */}
             <div className="flex flex-wrap gap-1.5">
-              {(() => {
-                const locServices = servicePrices.filter(sp => sp.location_id === locationId);
-                if (locServices.length > 0) {
-                  return locServices.map(srv => (
+              {locServices.length > 0
+                ? locServices.map(srv => (
                     <button
                       type="button"
                       key={srv.id}
                       onClick={() => {
                         setTreatment(srv.name);
-                        // Auto-fill total only if empty or 0 as requested
                         const curTotal = parseFloat(totalPrice) || 0;
                         if (curTotal === 0 && srv.price > 0) {
                           setTotalPrice(String(srv.price));
@@ -392,21 +369,17 @@ export default function AppointmentModal({
                       <span>{srv.name}</span>
                       <span className="text-[11px] font-bold text-emerald-400">{srv.price}€</span>
                     </button>
-                  ));
-                }
-
-                // Fallback default treatments if no services configured for this location yet
-                return pmuTreatments.map(t => (
-                  <button
-                    type="button"
-                    key={t}
-                    onClick={() => setTreatment(t)}
-                    className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs border border-stone-700/60 active:scale-95 transition-all"
-                  >
-                    {t}
-                  </button>
-                ));
-              })()}
+                  ))
+                : PMU_TREATMENTS.map(t => (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => setTreatment(t)}
+                      className="px-2.5 py-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs border border-stone-700/60 active:scale-95 transition-all"
+                    >
+                      {t}
+                    </button>
+                  ))}
             </div>
           </div>
 
@@ -458,7 +431,38 @@ export default function AppointmentModal({
             </div>
           </div>
 
-          {/* Aspetti Economici: Totale Trattamento (input), Denaro Ricevuto (input), Da saldare (calcolato) */}
+          {/* Stato appuntamento (in modifica) */}
+          {initialAppointment && (
+            <div>
+              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
+                Stato Appuntamento
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { id: 'programmato', label: 'Programmato', activeClass: 'bg-sky-600/25 border-sky-500 text-sky-300' },
+                    { id: 'completato', label: 'Completato', activeClass: 'bg-emerald-600/25 border-emerald-500 text-emerald-300' },
+                    { id: 'annullato', label: 'Annullato', activeClass: 'bg-red-950/60 border-red-500 text-red-300' },
+                  ] as const
+                ).map(opt => (
+                  <button
+                    type="button"
+                    key={opt.id}
+                    onClick={() => setStatus(opt.id)}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
+                      status === opt.id
+                        ? opt.activeClass
+                        : 'bg-stone-800 border-stone-700 text-stone-400 hover:text-white'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Aspetti Economici */}
           <div className="p-4 bg-stone-800/40 rounded-2xl border border-stone-700/50 space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -474,7 +478,6 @@ export default function AppointmentModal({
                   onChange={e => {
                     const val = e.target.value;
                     setTotalPrice(val);
-                    // If current payment exceeds the new total (net of voucher), cap payment
                     const newTotal = parseFloat(val) || 0;
                     const maxPay = Math.max(0, newTotal - voucherDeductNum);
                     if ((parseFloat(payment) || 0) > maxPay) {
@@ -510,7 +513,6 @@ export default function AppointmentModal({
                       setPayment('');
                       return;
                     }
-                    // Prevent entering more money than what is owed
                     if (numVal > maxAcceptablePayment) {
                       setPayment(String(maxAcceptablePayment));
                     } else if (numVal < 0) {
@@ -524,190 +526,23 @@ export default function AppointmentModal({
               </div>
             </div>
 
-            {/* Buono Regalo Checkbox */}
-            <div className="pt-2 border-t border-stone-700/60 space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={usedGiftVoucher}
-                  onChange={e => {
-                    const checked = e.target.checked;
-                    setUsedGiftVoucher(checked);
-                    let newVoucherDeduct = 0;
-                    if (checked && !selectedVoucherId && availableVouchers.length > 0) {
-                      const bestMatch = matchingVouchers[0] || availableVouchers[0];
-                      if (bestMatch) {
-                        setSelectedVoucherId(bestMatch.id);
-                        const rem = bestMatch.remaining_amount ?? bestMatch.amount;
-                        newVoucherDeduct = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                        setVoucherDeduction(String(newVoucherDeduct));
-                      }
-                    } else if (checked && selectedVoucherId) {
-                      const curV = availableVouchers.find(v => v.id === selectedVoucherId);
-                      const rem = curV ? (curV.remaining_amount ?? curV.amount) : 0;
-                      newVoucherDeduct = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                      setVoucherDeduction(String(newVoucherDeduct));
-                    } else {
-                      newVoucherDeduct = 0;
-                    }
+            <GiftVoucherSection
+              vouchers={vouchers}
+              usedGiftVoucher={usedGiftVoucher}
+              selectedVoucherId={selectedVoucherId}
+              voucherDeduction={voucherDeduction}
+              totalNum={totalNum}
+              clientSearchQuery={clientSearchQuery}
+              selectedClientId={selectedClientId}
+              clientDisplayName={computedDisplayName}
+              previouslyUsedVoucherId={initialAppointment?.used_gift_voucher_id}
+              previouslyUsedAmount={initialAppointment?.used_gift_voucher_amount}
+              onChangeUsed={setUsedGiftVoucher}
+              onChangeVoucherId={setSelectedVoucherId}
+              onChangeDeduction={capPaymentForDeduction}
+            />
 
-                    // Cap payment so it doesn't exceed (total - voucher)
-                    const maxPay = Math.max(0, totalNum - newVoucherDeduct);
-                    if ((parseFloat(payment) || 0) > maxPay) {
-                      setPayment(maxPay > 0 ? String(maxPay) : '');
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-stone-600 bg-stone-900 text-amber-500 focus:ring-0 cursor-pointer"
-                />
-                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                  <Gift className="w-3.5 h-3.5 text-amber-400" />
-                  Usa Buono Regalo
-                </span>
-              </label>
-
-              {usedGiftVoucher && (
-                <div className="pl-6 space-y-2 pt-1">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-stone-300 mb-1">
-                      Seleziona Buono
-                    </label>
-                    {availableVouchers.length > 0 ? (
-                      <select
-                        value={selectedVoucherId}
-                        onChange={e => {
-                          const vId = e.target.value;
-                          setSelectedVoucherId(vId);
-                          const chosen = availableVouchers.find(v => v.id === vId);
-                          let newVoucherDeduct = 0;
-                          if (chosen) {
-                            const rem = chosen.remaining_amount ?? chosen.amount;
-                            newVoucherDeduct = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                            setVoucherDeduction(String(newVoucherDeduct));
-                          } else {
-                            setVoucherDeduction('');
-                          }
-
-                          // Cap payment so it doesn't exceed (total - voucher)
-                          const maxPay = Math.max(0, totalNum - newVoucherDeduct);
-                          if ((parseFloat(payment) || 0) > maxPay) {
-                            setPayment(maxPay > 0 ? String(maxPay) : '');
-                          }
-                        }}
-                        className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
-                      >
-                        <option value="">-- Seleziona Buono --</option>
-                        {matchingVouchers.length > 0 && (
-                          <optgroup label="Suggeriti per cliente">
-                            {matchingVouchers.map(v => (
-                              <option key={v.id} value={v.id}>
-                                #{v.id.slice(-4)} {v.buyer_name} {v.recipient_name ? `→ ${v.recipient_name}` : ''} ({v.remaining_amount ?? v.amount}€)
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                        <optgroup label="Tutti i Buoni">
-                          {availableVouchers.map(v => (
-                            <option key={v.id} value={v.id}>
-                              #{v.id.slice(-4)} {v.buyer_name} {v.recipient_name ? `→ ${v.recipient_name}` : ''} ({v.remaining_amount ?? v.amount}€)
-                            </option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    ) : (
-                      <p className="text-xs text-amber-300/80 italic">
-                        Nessun buono con credito residuo.
-                      </p>
-                    )}
-                  </div>
-
-                  {selectedVoucherId && (
-                    <div>
-                      <label className="block text-[11px] font-semibold text-stone-300 mb-1 flex items-center justify-between">
-                        <span>Importo da scalare (€)</span>
-                        {(() => {
-                          const curV = availableVouchers.find(v => v.id === selectedVoucherId);
-                          if (!curV) return null;
-                          const rem = curV.remaining_amount ?? curV.amount;
-                          const maxApplicable = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                          return (
-                            <span className="text-[10px] text-stone-400 font-normal">
-                              Max: {maxApplicable}€
-                            </span>
-                          );
-                        })()}
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        max={(() => {
-                          const curV = availableVouchers.find(v => v.id === selectedVoucherId);
-                          if (!curV) return undefined;
-                          const rem = curV.remaining_amount ?? curV.amount;
-                          return totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                        })()}
-                        placeholder="0.00"
-                        value={voucherDeduction}
-                        onChange={e => {
-                          const raw = e.target.value;
-                          let validDed = 0;
-                          if (raw === '') {
-                            setVoucherDeduction('');
-                            validDed = 0;
-                          } else {
-                            const num = parseFloat(raw);
-                            if (isNaN(num)) {
-                              setVoucherDeduction('');
-                              validDed = 0;
-                            } else {
-                              const curV = availableVouchers.find(v => v.id === selectedVoucherId);
-                              const rem = curV ? (curV.remaining_amount ?? curV.amount) : Infinity;
-                              const maxApplicable = totalNum > 0 ? Math.min(rem, totalNum) : rem;
-                              if (num > maxApplicable) {
-                                validDed = maxApplicable;
-                                setVoucherDeduction(String(maxApplicable));
-                              } else if (num < 0) {
-                                validDed = 0;
-                                setVoucherDeduction('0');
-                              } else {
-                                validDed = num;
-                                setVoucherDeduction(raw);
-                              }
-                            }
-                          }
-
-                          // Cap payment so it doesn't exceed (total - voucher)
-                          const maxPay = Math.max(0, totalNum - validDed);
-                          if ((parseFloat(payment) || 0) > maxPay) {
-                            setPayment(maxPay > 0 ? String(maxPay) : '');
-                          }
-                        }}
-                        className="w-full bg-stone-900 border border-stone-700 rounded-xl px-3 py-2 text-white text-xs focus:ring-2 focus:ring-amber-500"
-                      />
-                      {(() => {
-                        const curV = availableVouchers.find(v => v.id === selectedVoucherId);
-                        if (!curV) return null;
-                        const rem = curV.remaining_amount ?? curV.amount;
-                        const ded = parseFloat(voucherDeduction) || 0;
-                        const left = Math.max(0, rem - ded);
-                        return (
-                          <p className="text-[10px] text-stone-400 mt-1">
-                            Residuo attuale: <strong className="text-amber-400">{rem}€</strong> • Dopo: <strong className="text-emerald-400">{left}€</strong>
-                            {!curV.recipient_name && (
-                              <span className="block text-indigo-300 mt-0.5">
-                                Assegna automaticamente a: <strong>{`${firstName} ${lastName}`.trim() || 'cliente'}</strong>
-                              </span>
-                            )}
-                          </p>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Read-only Display: Da saldare (o Completamente saldato) */}
+            {/* Da saldare */}
             <div className="pt-2.5 border-t border-stone-700/60 flex items-center justify-between">
               <span className="text-xs font-semibold text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
                 Da saldare:
@@ -733,9 +568,7 @@ export default function AppointmentModal({
               {touchUpDate && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setTouchUpDate('');
-                  }}
+                  onClick={() => setTouchUpDate('')}
                   className="text-[11px] text-stone-400 hover:text-red-400"
                 >
                   Rimuovi
@@ -787,7 +620,7 @@ export default function AppointmentModal({
               </div>
             </div>
 
-            {touchUpDate && (
+            {touchUpDate && !initialAppointment?.linked_appointment_id && (
               <label className="flex items-center gap-2 text-xs text-stone-300 cursor-pointer pt-1">
                 <input
                   type="checkbox"

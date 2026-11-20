@@ -3,22 +3,19 @@
 import React, { useState, useMemo } from 'react';
 import { Appointment, WeddingService, Location, UnifiedEvent } from '@/types';
 import { PASTEL_EVENT_COLORS } from '@/lib/locationColors';
+import { extractDateKey } from '@/lib/finance';
 import {
   Calendar as CalendarIcon,
-  Plus,
   Heart,
   Sparkles,
   MapPin,
   Clock,
   Search,
-  Filter,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  CheckCircle2,
-  AlertCircle,
   Link as LinkIcon,
-  Gift
+  Gift,
 } from 'lucide-react';
 import {
   format,
@@ -31,7 +28,6 @@ import {
   isSameDay,
   addMonths,
   subMonths,
-  parseISO
 } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -47,7 +43,7 @@ interface AgendaViewProps {
   onSelectWedding: (w: WeddingService) => void;
 }
 
-const ITEMS_PER_PAGE = 48; // Divisibile per 1, 2, 3 (e 4) colonne per evitare spazi vuoti in fondo alla griglia
+const ITEMS_PER_PAGE = 48;
 
 export default function AgendaView({
   appointments,
@@ -62,24 +58,27 @@ export default function AgendaView({
 }: AgendaViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  // Filter mode: 'all' | 'pmu' | 'events'
   const [eventTypeFilter, setEventTypeFilter] = useState<'all' | 'pmu' | 'events'>('all');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
   const [listPage, setListPage] = useState(1);
 
-  // Location map for fast lookup
   const locMap = useMemo(() => {
     const map = new Map<string, Location>();
     locations.forEach(l => map.set(l.id, l));
     return map;
   }, [locations]);
 
+  const activeLocations = useMemo(
+    () => locations.filter(l => l.active !== false),
+    [locations]
+  );
+
   // Merge appointments and weddings into unified events
   const unifiedEvents: UnifiedEvent[] = useMemo(() => {
     const events: UnifiedEvent[] = [];
 
-    // Appointments (PMU & Generici)
     appointments.forEach(app => {
       const loc = locMap.get(app.location_id);
       events.push({
@@ -99,9 +98,7 @@ export default function AgendaView({
       });
     });
 
-    // Weddings & Events
     weddings.forEach(w => {
-      // 1. Event Day
       const eventLabel = w.event_type || 'Matrimonio';
       events.push({
         id: `${w.id}-day`,
@@ -118,7 +115,6 @@ export default function AgendaView({
         rawWedding: w,
       });
 
-      // 2. Trial day if exists
       if (w.trial_date) {
         events.push({
           id: `${w.id}-trial`,
@@ -137,14 +133,12 @@ export default function AgendaView({
       }
     });
 
-    // Sort descending by date
     return events.sort((a, b) => b.date.localeCompare(a.date));
   }, [appointments, weddings, locMap]);
 
   // Filtered events
   const filteredEvents = useMemo(() => {
     return unifiedEvents.filter(ev => {
-      // Filter between PMU vs Eventi
       if (eventTypeFilter === 'pmu' && ev.type !== 'pmu') {
         return false;
       }
@@ -152,7 +146,12 @@ export default function AgendaView({
         return false;
       }
 
-      // Search query
+      if (selectedLocationId !== 'all') {
+        if (!ev.rawPmu || ev.rawPmu.location_id !== selectedLocationId) {
+          return false;
+        }
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -165,7 +164,23 @@ export default function AgendaView({
 
       return true;
     });
-  }, [unifiedEvents, eventTypeFilter, searchQuery]);
+  }, [unifiedEvents, eventTypeFilter, selectedLocationId, searchQuery]);
+
+  // Pre-index events by YYYY-MM-DD for O(1) lookup in calendar cells & drawer
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, UnifiedEvent[]>();
+    filteredEvents.forEach(ev => {
+      const key = extractDateKey(ev.date);
+      if (!key) return;
+      const list = map.get(key);
+      if (list) {
+        list.push(ev);
+      } else {
+        map.set(key, [ev]);
+      }
+    });
+    return map;
+  }, [filteredEvents]);
 
   // Days for monthly grid
   const monthStart = startOfMonth(currentDate);
@@ -174,24 +189,13 @@ export default function AgendaView({
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-  // Selected Day formatted ISO
   const selectedDayIso = format(selectedDay, 'yyyy-MM-dd');
-
-  // Events of selected day
-  const selectedDayEvents = useMemo(() => {
-    return filteredEvents.filter(ev => {
-      try {
-        const d = parseISO(ev.date);
-        return isSameDay(d, selectedDay);
-      } catch {
-        return false;
-      }
-    });
-  }, [filteredEvents, selectedDay]);
+  const selectedDayEvents = eventsByDate.get(selectedDayIso) || [];
+  const todayRef = new Date();
 
   return (
     <div className="space-y-4">
-      {/* Top Action Bar with Two Dedicated Buttons */}
+      {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-900/90 border border-stone-800 p-4 rounded-3xl shadow-sm">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
@@ -203,7 +207,6 @@ export default function AgendaView({
           </p>
         </div>
 
-        {/* The Action Buttons: PMU, Evento, Buoni */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {onOpenGiftVouchers && (
             <button
@@ -239,88 +242,138 @@ export default function AgendaView({
         </div>
       </div>
 
-      {/* Filters & Search & Multi-Select Chips */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-stone-900/60 p-3 rounded-2xl border border-stone-800">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Cerca cliente, trattamento, luogo..."
-            value={searchQuery}
-            onChange={e => {
-              setSearchQuery(e.target.value);
-              setListPage(1);
-            }}
-            className="w-full bg-stone-800/80 border border-stone-700/60 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
-          />
+      {/* Filters & Search */}
+      <div className="space-y-2.5 bg-stone-900/60 p-3 rounded-2xl border border-stone-800">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cerca cliente, trattamento, luogo..."
+              value={searchQuery}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setListPage(1);
+              }}
+              className="w-full bg-stone-800/80 border border-stone-700/60 rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm text-white placeholder-stone-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            <button
+              onClick={() => {
+                setEventTypeFilter('all');
+                setListPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                eventTypeFilter === 'all'
+                  ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
+                  : 'bg-stone-800 text-stone-400 hover:text-white'
+              }`}
+            >
+              Tutti
+            </button>
+
+            <button
+              onClick={() => {
+                setEventTypeFilter('pmu');
+                setListPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                eventTypeFilter === 'pmu'
+                  ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
+                  : 'bg-stone-800 text-stone-400 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>PMU</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setEventTypeFilter('events');
+                setSelectedLocationId('all');
+                setListPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                eventTypeFilter === 'events'
+                  ? 'bg-pink-600 text-white shadow-sm ring-1 ring-pink-400'
+                  : 'bg-stone-800 text-stone-400 hover:text-white'
+              }`}
+            >
+              <Heart className="w-3 h-3 fill-current" />
+              <span>Eventi</span>
+            </button>
+          </div>
+
+          <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700/60">
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                viewMode === 'calendar' ? 'bg-stone-700 text-white shadow-sm' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              Mese
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                viewMode === 'list' ? 'bg-stone-700 text-white shadow-sm' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              Elenco
+            </button>
+          </div>
         </div>
 
-        {/* PMU vs Eventi Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          <button
-            onClick={() => { setEventTypeFilter('all'); setListPage(1); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              eventTypeFilter === 'all'
-                ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
-                : 'bg-stone-800 text-stone-400 hover:text-white'
-            }`}
-          >
-            Tutti
-          </button>
-
-          <button
-            onClick={() => { setEventTypeFilter('pmu'); setListPage(1); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              eventTypeFilter === 'pmu'
-                ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
-                : 'bg-stone-800 text-stone-400 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>PMU</span>
-          </button>
-
-          <button
-            onClick={() => { setEventTypeFilter('events'); setListPage(1); }}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-              eventTypeFilter === 'events'
-                ? 'bg-pink-600 text-white shadow-sm ring-1 ring-pink-400'
-                : 'bg-stone-800 text-stone-400 hover:text-white'
-            }`}
-          >
-            <Heart className="w-3 h-3 fill-current" />
-            <span>Eventi</span>
-          </button>
-        </div>
-
-        {/* View mode toggle */}
-        <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700/60">
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              viewMode === 'calendar' ? 'bg-stone-700 text-white shadow-sm' : 'text-stone-400 hover:text-white'
-            }`}
-          >
-            Mese
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              viewMode === 'list' ? 'bg-stone-700 text-white shadow-sm' : 'text-stone-400 hover:text-white'
-            }`}
-          >
-            Elenco
-          </button>
-        </div>
+        {/* Location Filter Chips */}
+        {eventTypeFilter !== 'events' && activeLocations.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none pt-1 border-t border-stone-800/70">
+            <button
+              onClick={() => {
+                setSelectedLocationId('all');
+                setListPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${
+                selectedLocationId === 'all'
+                  ? 'bg-stone-700 text-white border border-stone-600'
+                  : 'bg-stone-800/60 text-stone-400 hover:text-white border border-transparent'
+              }`}
+            >
+              Tutte le sedi
+            </button>
+            {activeLocations.map(loc => {
+              const isSelected = selectedLocationId === loc.id;
+              return (
+                <button
+                  key={loc.id}
+                  onClick={() => {
+                    setSelectedLocationId(loc.id);
+                    setListPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border ${
+                    isSelected
+                      ? 'bg-stone-800 text-white border-rose-500/60 shadow-xs'
+                      : 'bg-stone-800/50 text-stone-400 hover:text-white border-stone-800'
+                  }`}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: loc.color || '#ec4899' }}
+                  />
+                  <span>{loc.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
       {viewMode === 'calendar' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Calendar Grid (Col 1-2) */}
+          {/* Calendar Grid */}
           <div className="lg:col-span-2 bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-5 shadow-sm">
-            {/* Month Header */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base sm:text-lg font-bold text-white capitalize">
                 {format(currentDate, 'MMMM yyyy', { locale: it })}
@@ -351,7 +404,6 @@ export default function AgendaView({
               </div>
             </div>
 
-            {/* Days of week header */}
             <div className="grid grid-cols-7 gap-1 text-center mb-2">
               {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
                 <div key={d} className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider py-1">
@@ -360,16 +412,14 @@ export default function AgendaView({
               ))}
             </div>
 
-            {/* Calendar Cells */}
             <div className="grid grid-cols-7 gap-1">
               {calendarDays.map(day => {
                 const dayIso = format(day, 'yyyy-MM-dd');
                 const isSelected = isSameDay(day, selectedDay);
                 const isCurrentMonth = isSameMonth(day, currentDate);
-                const isToday = isSameDay(day, new Date());
+                const isToday = isSameDay(day, todayRef);
 
-                // Find events on this day
-                const dayEvents = filteredEvents.filter(ev => ev.date.startsWith(dayIso));
+                const dayEvents = eventsByDate.get(dayIso) || [];
                 const count = dayEvents.length;
 
                 return (
@@ -396,7 +446,6 @@ export default function AgendaView({
                       {format(day, 'd')}
                     </span>
 
-                    {/* Event indicators */}
                     {count > 0 && (
                       <div className="w-full flex items-center justify-between mt-1">
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300">
@@ -419,7 +468,7 @@ export default function AgendaView({
             </div>
           </div>
 
-          {/* Selected Day Agenda Drawer (Col 3) */}
+          {/* Selected Day Agenda Drawer */}
           <div className="bg-stone-900 border border-stone-800 rounded-3xl p-5 shadow-sm flex flex-col">
             <div className="border-b border-stone-800 pb-3 mb-3 flex items-center justify-between">
               <div>
@@ -459,7 +508,7 @@ export default function AgendaView({
           </div>
         </div>
       ) : (
-        /* Full List View with ITEMS_PER_PAGE items per page */
+        /* Full List View */
         <div className="bg-stone-900 border border-stone-800 rounded-3xl p-4 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-stone-800 pb-3">
             <div className="text-stone-400 text-xs font-semibold uppercase tracking-wider">
@@ -478,7 +527,6 @@ export default function AgendaView({
               .map(ev => renderEventCard(ev, onSelectPmu, onSelectWedding))}
           </div>
 
-          {/* Pagination Controls */}
           {Math.ceil(filteredEvents.length / ITEMS_PER_PAGE) > 1 && (
             <div className="flex items-center justify-between pt-4 border-t border-stone-800 text-xs sm:text-sm">
               <button
@@ -511,15 +559,14 @@ export default function AgendaView({
   );
 }
 
-// Helper card rendering
 function renderEventCard(
   ev: UnifiedEvent,
   onSelectPmu: (app: Appointment) => void,
   onSelectWedding: (w: WeddingService) => void
 ) {
   const isWedding = ev.type === 'wedding_day' || ev.type === 'wedding_trial';
+  const isCancelled = ev.status === 'annullato';
 
-  // Check explicit time: if date ends in T00:00 or has no T, don't show fake time!
   let timeStr = '';
   if (ev.date.includes('T')) {
     const rawTime = ev.date.split('T')[1].slice(0, 5);
@@ -538,7 +585,9 @@ function renderEventCard(
         if (ev.rawPmu) onSelectPmu(ev.rawPmu);
         if (ev.rawWedding) onSelectWedding(ev.rawWedding);
       }}
-      className="p-3.5 rounded-2xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700/60 transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
+      className={`p-3.5 rounded-2xl bg-stone-800/60 hover:bg-stone-800 border border-stone-700/60 transition-all cursor-pointer group shadow-sm flex flex-col justify-between ${
+        isCancelled ? 'opacity-60' : ''
+      }`}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
@@ -580,11 +629,17 @@ function renderEventCard(
               </span>
             )}
 
-            {/* Time badge: only if explicit real time exists! */}
+            {isCancelled && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-950/70 text-red-300 border border-red-700/50">
+                Annullato
+              </span>
+            )}
+
             {timeStr && (
               <span className="text-stone-300 text-[11px] font-mono flex items-center gap-1 bg-stone-900/60 px-2 py-0.5 rounded-md border border-stone-700/50">
                 <Clock className="w-3 h-3 text-rose-400" />
-                {timeStr}{ev.end_time ? ` - ${ev.end_time}` : ''}
+                {timeStr}
+                {ev.end_time ? ` - ${ev.end_time}` : ''}
               </span>
             )}
 
@@ -596,18 +651,23 @@ function renderEventCard(
             )}
           </div>
 
-          <h4 className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate">
+          <h4
+            className={`text-sm font-bold text-white group-hover:text-rose-400 transition-colors truncate ${
+              isCancelled ? 'line-through text-stone-400' : ''
+            }`}
+          >
             {ev.client_name}
           </h4>
-          <p className="text-stone-300 text-xs truncate">{ev.title}</p>
+          <p className={`text-stone-300 text-xs truncate ${isCancelled ? 'line-through text-stone-500' : ''}`}>
+            {ev.title}
+          </p>
         </div>
 
-        {/* Amount & Balance Badge */}
         <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
-          <span className="text-sm font-bold text-emerald-400">
+          <span className={`text-sm font-bold ${isCancelled ? 'text-stone-500 line-through' : 'text-emerald-400'}`}>
             {ev.amount > 0 ? `${ev.amount}€` : '0€'}
           </span>
-          {ev.balance && ev.balance > 0 ? (
+          {!isCancelled && ev.balance && ev.balance > 0 ? (
             <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 border border-amber-600/50 px-2 py-0.5 rounded-md shadow-xs">
               Da saldare: {ev.balance}€
             </span>
@@ -615,7 +675,6 @@ function renderEventCard(
         </div>
       </div>
 
-      {/* Address / Google Maps link if available (only for non-saved addresses/weddings) */}
       {ev.address && !ev.rawPmu && (
         <div className="mb-2 flex items-center justify-between text-[11px] text-stone-400 bg-stone-900/50 px-2.5 py-1 rounded-lg border border-stone-700/40">
           <span className="truncate flex items-center gap-1 text-stone-300">
@@ -634,7 +693,6 @@ function renderEventCard(
         </div>
       )}
 
-      {/* Footer Info */}
       <div className="pt-2 border-t border-stone-700/40 flex items-center justify-between text-[11px] text-stone-400">
         <span>{dateStr}</span>
         {ev.rawPmu?.touch_up_date && (

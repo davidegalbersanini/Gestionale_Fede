@@ -1,9 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Appointment, WeddingService, Client, Location, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Appointment,
+  WeddingService,
+  Client,
+  Location,
+  Expense,
+  AppSettings,
+  GiftVoucher,
+  ServicePrice,
+  SyncStatus,
+  ToastVariant,
+} from '@/types';
 import { DataService } from '@/lib/storage';
+import { setCloudErrorHandler, setAuthExpiredHandler } from '@/lib/supabase';
 import { syncCalendarAutomatically, deleteCalendarEventSilently } from '@/lib/calendar';
+import { PASTEL_EVENT_COLORS } from '@/lib/locationColors';
+import { reconcileVoucherUsage } from '@/lib/finance';
 import PinLock from '@/components/PinLock';
 import Navbar, { ActiveTab } from '@/components/Navbar';
 import AgendaView from '@/components/AgendaView';
@@ -15,11 +29,14 @@ import AppointmentModal from '@/components/AppointmentModal';
 import WeddingModal from '@/components/WeddingModal';
 import SettingsModal from '@/components/SettingsModal';
 import GiftVouchersModal from '@/components/GiftVouchersModal';
-import { AlertTriangle, Trash2, Link as LinkIcon, X } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
+import { AlertTriangle, Trash2, Link as LinkIcon } from 'lucide-react';
 
 export default function Home() {
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('agenda');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
 
   // State
   const [locations, setLocations] = useState<Location[]>([]);
@@ -50,16 +67,60 @@ export default function Home() {
   const [editingWedding, setEditingWedding] = useState<WeddingService | null>(null);
 
   const [isGiftVouchersOpen, setIsGiftVouchersOpen] = useState(false);
-
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Linked delete confirmation modal
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback(
+    (message: string, variant: ToastVariant = 'success', duration: number = 4000) => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+      setToast({ message, variant });
+      toastTimerRef.current = setTimeout(() => {
+        setToast(null);
+        toastTimerRef.current = null;
+      }, duration);
+    },
+    []
+  );
+
+  // Linked / simple delete confirmation targets
   const [linkedDeleteTarget, setLinkedDeleteTarget] = useState<{
     target: Appointment;
     linked: Appointment;
   } | null>(null);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<Appointment | null>(null);
+
+  const performCloudSync = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSyncStatus('offline');
+      return;
+    }
+
+    setSyncStatus('syncing');
+    try {
+      const synced = await DataService.syncFromCloud();
+      if (!synced) {
+        setSyncStatus(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error');
+        return;
+      }
+      if (synced.locations) setLocations(synced.locations);
+      if (synced.clients) setClients(synced.clients);
+      if (synced.appointments) setAppointments(synced.appointments);
+      if (synced.weddings) setWeddings(synced.weddings);
+      if (synced.expenses) setExpenses(synced.expenses);
+      if (synced.vouchers) setVouchers(synced.vouchers);
+      if (synced.servicePrices) setServicePrices(synced.servicePrices);
+      if (synced.settings) setSettings(synced.settings);
+      setSyncStatus('synced');
+    } catch (err) {
+      console.warn('Sync with Supabase was deferred:', err);
+      setSyncStatus('error');
+    }
+  }, []);
 
   // Check URL params for Google connection callback
   useEffect(() => {
@@ -67,20 +128,43 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const gcal = params.get('gcal');
       if (gcal === 'connected') {
-        setToastMessage('Account Google collegato con successo! Sincronizzazione calendario e salvataggio Drive attivi.');
+        showToast(
+          'Account Google collegato con successo! Sincronizzazione calendario e salvataggio Drive attivi.',
+          'success',
+          5000
+        );
         window.history.replaceState({}, '', window.location.pathname);
-        setTimeout(() => setToastMessage(null), 5000);
       } else if (gcal === 'error' || gcal === 'failed') {
-        setToastMessage('Connessione con l\'Account Google non completata o annullata.');
+        showToast("Connessione con l'Account Google non completata o annullata.", 'error', 5000);
         window.history.replaceState({}, '', window.location.pathname);
-        setTimeout(() => setToastMessage(null), 5000);
       }
     }
+  }, [showToast]);
+
+  // Check server session cookie on mount
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/pin', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (!active) return;
+        setIsAuthenticated(Boolean(data?.authenticated));
+        setAuthChecked(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setIsAuthenticated(false);
+        setAuthChecked(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  // Load data on mount
+  // Load data & sync with cloud ONLY after authenticated
   useEffect(() => {
-    // 1. Immediate local cache load
+    if (!isAuthenticated) return;
+
     setLocations(DataService.getLocations());
     setClients(DataService.getClients());
     setAppointments(DataService.getAppointments());
@@ -90,100 +174,144 @@ export default function Home() {
     setServicePrices(DataService.getServicePrices());
     setSettings(DataService.getSettings());
 
-    // 2. Background sync with Supabase Cloud
-    DataService.syncFromCloud().then(synced => {
-      if (synced) {
-        if (synced.locations) setLocations(synced.locations);
-        if (synced.clients) setClients(synced.clients);
-        if (synced.appointments) setAppointments(synced.appointments);
-        if (synced.weddings) setWeddings(synced.weddings);
-        if (synced.expenses) setExpenses(synced.expenses);
-        if (synced.vouchers) setVouchers(synced.vouchers);
-        if (synced.servicePrices) setServicePrices(synced.servicePrices);
-      }
-    }).catch(err => {
-      console.warn('Sync with Supabase was deferred:', err);
+    setCloudErrorHandler(msg => {
+      setSyncStatus('error');
+      showToast(msg, 'error', 5500);
     });
-  }, []);
+
+    setAuthExpiredHandler(() => {
+      setIsAuthenticated(false);
+      showToast('Sessione scaduta. Inserisci il PIN per continuare.', 'info', 4000);
+    });
+
+    performCloudSync();
+
+    const handleOnline = () => {
+      performCloudSync();
+    };
+    const handleOffline = () => {
+      setSyncStatus('offline');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      setCloudErrorHandler(null);
+      setAuthExpiredHandler(null);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, [isAuthenticated, performCloudSync, showToast]);
 
   // Save / Update PMU Appointment
   const handleSavePmu = (appData: Omit<Appointment, 'id'>, createTouchUpFollowup?: boolean) => {
-    // If a gift voucher was used, update voucher's remaining amount and link beneficiary if needed
-    if (appData.used_gift_voucher && appData.used_gift_voucher_id && (appData.used_gift_voucher_amount ?? 0) > 0) {
-      const allVouchers = DataService.getGiftVouchers();
-      const targetVoucher = allVouchers.find(v => v.id === appData.used_gift_voucher_id);
-      if (targetVoucher) {
-        const deduct = appData.used_gift_voucher_amount || 0;
-        const currentRem = targetVoucher.remaining_amount ?? targetVoucher.amount;
-        const newRem = Math.max(0, currentRem - deduct);
-        targetVoucher.remaining_amount = newRem;
-        if (newRem <= 0) {
-          targetVoucher.is_used = true;
-          targetVoucher.used_date = new Date().toISOString().slice(0, 10);
-        }
-        // Auto-assign recipient if none was assigned
-        if (!targetVoucher.recipient_name && appData.client_name) {
-          targetVoucher.recipient_name = appData.client_name;
-          targetVoucher.recipient_id = appData.client_id;
-        }
-        DataService.updateGiftVoucher(targetVoucher);
+    const prevPmu = editingPmu;
+    let savedApp: Appointment;
+
+    if (prevPmu && prevPmu.id) {
+      savedApp = DataService.updateAppointment({ ...prevPmu, ...appData });
+    } else {
+      savedApp = DataService.addAppointment(appData);
+    }
+
+    // Reconcile gift voucher deduction/restoration cleanly
+    const prevUsage =
+      prevPmu?.used_gift_voucher && prevPmu.used_gift_voucher_id
+        ? { voucherId: prevPmu.used_gift_voucher_id, amount: prevPmu.used_gift_voucher_amount || 0 }
+        : null;
+    const nextUsage =
+      savedApp.used_gift_voucher && savedApp.used_gift_voucher_id
+        ? { voucherId: savedApp.used_gift_voucher_id, amount: savedApp.used_gift_voucher_amount || 0 }
+        : null;
+
+    if (prevUsage || nextUsage) {
+      const { changedVouchers } = reconcileVoucherUsage(
+        DataService.getGiftVouchers(),
+        prevUsage,
+        nextUsage,
+        { id: savedApp.client_id, name: savedApp.client_name }
+      );
+      if (changedVouchers.length > 0) {
+        changedVouchers.forEach(v => DataService.updateGiftVoucher(v));
         setVouchers(DataService.getGiftVouchers());
       }
     }
 
-    if (editingPmu && editingPmu.id) {
-      const updated: Appointment = { ...editingPmu, ...appData };
-      DataService.updateAppointment(updated);
-    } else {
-      const createdPrimary = DataService.addAppointment(appData);
+    const loc = locations.find(l => l.id === savedApp.location_id);
+    const locationString = loc?.address ? `${loc.name} (${loc.address})` : loc?.name || '';
+    const datePrefix = savedApp.appointment_date.slice(0, 10);
+    const startTimePart = savedApp.appointment_date.includes('T')
+      ? savedApp.appointment_date.split('T')[1].slice(0, 5)
+      : '10:00';
+    const fullEndDateTime = savedApp.end_time ? `${datePrefix}T${savedApp.end_time}:00` : undefined;
 
-      // Automatic Touch-up follow up booking if requested
-      if (createTouchUpFollowup && appData.touch_up_date) {
-        const touchUpTime = appData.touch_up_time || '10:00';
-        const touchUpEndTime = appData.touch_up_end_time || '11:30';
-        const touchUpStartIso = `${appData.touch_up_date}T${touchUpTime}:00`;
-        const touchUpEndIso = `${appData.touch_up_date}T${touchUpEndTime}:00`;
-
-        const createdTouchUp = DataService.addAppointment({
-          client_id: createdPrimary.client_id,
-          client_name: createdPrimary.client_name,
-          location_id: createdPrimary.location_id,
-          category: createdPrimary.category,
-          treatment: `Ritocco (${createdPrimary.treatment})`,
-          appointment_date: touchUpStartIso,
-          end_time: touchUpEndTime,
-          payment: 0,
-          balance: 0,
-          touch_up_date: null,
-          notes: `Promemoria ritocco programmato da prima seduta del ${createdPrimary.appointment_date.slice(0, 10)}`,
-          sync_google_calendar: createdPrimary.sync_google_calendar,
-          status: 'programmato',
-          linked_appointment_id: createdPrimary.id,
-          is_touch_up: true,
-        });
-
-        // Link primary to the touch-up appointment
-        createdPrimary.linked_appointment_id = createdTouchUp.id;
-        DataService.updateAppointment(createdPrimary);
-
-        // Sync touch-up to Google Calendar if enabled
-        if (createdPrimary.sync_google_calendar) {
-          const loc = locations.find(l => l.id === createdPrimary.location_id);
-          const locationString = loc?.address ? `${loc.name} (${loc.address})` : loc?.name || '';
-
-          syncCalendarAutomatically({
-            title: `PMU Ritocco: ${createdPrimary.client_name} - Ritocco (${createdPrimary.treatment})`,
-            startDate: touchUpStartIso,
-            endDate: touchUpEndIso,
-            location: locationString,
-            details: `Ritocco programmato per ${createdPrimary.client_name}\nCollegato alla prima seduta del ${createdPrimary.appointment_date.slice(0, 10)}`,
-          }).then(res => {
-            if (res.eventId) {
-              createdTouchUp.google_calendar_event_id = res.eventId;
-              DataService.updateAppointment(createdTouchUp);
-            }
-          });
+    // Google Calendar Sync for primary appointment
+    if (savedApp.sync_google_calendar) {
+      syncCalendarAutomatically({
+        eventId: savedApp.google_calendar_event_id,
+        title: `PMU: ${savedApp.client_name} - ${savedApp.treatment}`,
+        startDate: savedApp.appointment_date,
+        endDate: fullEndDateTime,
+        location: locationString,
+        colorHex: loc?.color,
+        details: `Tipo: Trattamento PMU\nTrattamento: ${savedApp.treatment}\nOrario: ${startTimePart}${
+          savedApp.end_time ? ` - ${savedApp.end_time}` : ''
+        }\nTotale Trattamento: ${savedApp.total_price ?? savedApp.payment + savedApp.balance}€\nDenaro Ricevuto: ${
+          savedApp.payment
+        }€\nDa Saldare: ${savedApp.balance}€\nNote: ${savedApp.notes || ''}`,
+      }).then(res => {
+        if (res.eventId && res.eventId !== savedApp.google_calendar_event_id) {
+          DataService.patchAppointment(savedApp.id, { google_calendar_event_id: res.eventId });
+          setAppointments(DataService.getAppointments());
         }
+      });
+    } else if (prevPmu?.google_calendar_event_id) {
+      deleteCalendarEventSilently(prevPmu.google_calendar_event_id);
+      DataService.patchAppointment(savedApp.id, { google_calendar_event_id: undefined });
+    }
+
+    // Automatic Touch-up follow-up booking if requested and not already linked
+    if (createTouchUpFollowup && savedApp.touch_up_date && !savedApp.linked_appointment_id) {
+      const touchUpTime = savedApp.touch_up_time || '10:00';
+      const touchUpEndTime = savedApp.touch_up_end_time || '11:30';
+      const touchUpStartIso = `${savedApp.touch_up_date}T${touchUpTime}:00`;
+      const touchUpEndIso = `${savedApp.touch_up_date}T${touchUpEndTime}:00`;
+
+      const createdTouchUp = DataService.addAppointment({
+        client_id: savedApp.client_id,
+        client_name: savedApp.client_name,
+        location_id: savedApp.location_id,
+        category: savedApp.category,
+        treatment: `Ritocco (${savedApp.treatment})`,
+        appointment_date: touchUpStartIso,
+        end_time: touchUpEndTime,
+        payment: 0,
+        balance: 0,
+        touch_up_date: null,
+        notes: `Promemoria ritocco programmato da prima seduta del ${datePrefix}`,
+        sync_google_calendar: savedApp.sync_google_calendar,
+        status: 'programmato',
+        linked_appointment_id: savedApp.id,
+        is_touch_up: true,
+      });
+
+      DataService.patchAppointment(savedApp.id, { linked_appointment_id: createdTouchUp.id });
+
+      if (savedApp.sync_google_calendar) {
+        syncCalendarAutomatically({
+          title: `PMU Ritocco: ${savedApp.client_name} - Ritocco (${savedApp.treatment})`,
+          startDate: touchUpStartIso,
+          endDate: touchUpEndIso,
+          location: locationString,
+          colorHex: loc?.color,
+          details: `Ritocco programmato per ${savedApp.client_name}\nCollegato alla prima seduta del ${datePrefix}`,
+        }).then(res => {
+          if (res.eventId) {
+            DataService.patchAppointment(createdTouchUp.id, { google_calendar_event_id: res.eventId });
+            setAppointments(DataService.getAppointments());
+          }
+        });
       }
     }
 
@@ -214,67 +342,156 @@ export default function Home() {
     const target = currentApps.find(a => a.id === targetId);
 
     if (target) {
-      if (target.google_calendar_event_id) {
-        deleteCalendarEventSilently(target.google_calendar_event_id);
-      }
-      DataService.deleteAppointment(target.id);
+      const appsToDelete: Appointment[] = [target];
+      const linked = target.linked_appointment_id
+        ? currentApps.find(a => a.id === target.linked_appointment_id)
+        : undefined;
 
-      if (deleteLinked && target.linked_appointment_id) {
-        const linked = currentApps.find(a => a.id === target.linked_appointment_id);
-        if (linked) {
-          if (linked.google_calendar_event_id) {
-            deleteCalendarEventSilently(linked.google_calendar_event_id);
+      if (deleteLinked && linked) {
+        appsToDelete.push(linked);
+      } else if (!deleteLinked && linked) {
+        DataService.patchAppointment(linked.id, { linked_appointment_id: undefined });
+      }
+
+      // Restore any voucher balance deducted by deleted appointments
+      let vouchersUpdated = false;
+      appsToDelete.forEach(app => {
+        if (app.used_gift_voucher && app.used_gift_voucher_id && (app.used_gift_voucher_amount || 0) > 0) {
+          const { changedVouchers } = reconcileVoucherUsage(
+            DataService.getGiftVouchers(),
+            { voucherId: app.used_gift_voucher_id, amount: app.used_gift_voucher_amount },
+            null
+          );
+          if (changedVouchers.length > 0) {
+            changedVouchers.forEach(v => DataService.updateGiftVoucher(v));
+            vouchersUpdated = true;
           }
-          DataService.deleteAppointment(linked.id);
         }
-      } else if (!deleteLinked && target.linked_appointment_id) {
-        // Unlink the other appointment
-        const linked = currentApps.find(a => a.id === target.linked_appointment_id);
-        if (linked) {
-          linked.linked_appointment_id = undefined;
-          DataService.updateAppointment(linked);
+        if (app.google_calendar_event_id) {
+          deleteCalendarEventSilently(app.google_calendar_event_id);
         }
+        DataService.deleteAppointment(app.id);
+      });
+
+      if (vouchersUpdated) {
+        setVouchers(DataService.getGiftVouchers());
       }
     }
 
     setAppointments(DataService.getAppointments());
     setLinkedDeleteTarget(null);
     setDeleteConfirmTarget(null);
-    setToastMessage(deleteLinked ? 'Entrambi gli appuntamenti sono stati eliminati.' : 'Appuntamento eliminato.');
-    setTimeout(() => setToastMessage(null), 3500);
+    showToast(
+      deleteLinked ? 'Entrambi gli appuntamenti sono stati eliminati.' : 'Appuntamento eliminato.',
+      'success',
+      3500
+    );
   };
 
   // Save / Update Wedding / Event
   const handleSaveWedding = (weddingData: Omit<WeddingService, 'id'>) => {
-    // If a gift voucher was used, update voucher's remaining amount and link beneficiary if needed
-    if (weddingData.used_gift_voucher && weddingData.used_gift_voucher_id && (weddingData.used_gift_voucher_amount ?? 0) > 0) {
-      const allVouchers = DataService.getGiftVouchers();
-      const targetVoucher = allVouchers.find(v => v.id === weddingData.used_gift_voucher_id);
-      if (targetVoucher) {
-        const deduct = weddingData.used_gift_voucher_amount || 0;
-        const currentRem = targetVoucher.remaining_amount ?? targetVoucher.amount;
-        const newRem = Math.max(0, currentRem - deduct);
-        targetVoucher.remaining_amount = newRem;
-        if (newRem <= 0) {
-          targetVoucher.is_used = true;
-          targetVoucher.used_date = new Date().toISOString().slice(0, 10);
-        }
-        // Auto-assign recipient if none was assigned
-        if (!targetVoucher.recipient_name && weddingData.bride_name) {
-          targetVoucher.recipient_name = weddingData.bride_name;
-          targetVoucher.recipient_id = weddingData.client_id;
-        }
-        DataService.updateGiftVoucher(targetVoucher);
+    const prevWedding = editingWedding;
+    let savedWedding: WeddingService;
+
+    if (prevWedding && prevWedding.id) {
+      savedWedding = DataService.updateWedding({ ...prevWedding, ...weddingData });
+    } else {
+      savedWedding = DataService.addWedding(weddingData);
+    }
+
+    // Reconcile gift voucher deduction/restoration cleanly
+    const prevUsage =
+      prevWedding?.used_gift_voucher && prevWedding.used_gift_voucher_id
+        ? { voucherId: prevWedding.used_gift_voucher_id, amount: prevWedding.used_gift_voucher_amount || 0 }
+        : null;
+    const nextUsage =
+      savedWedding.used_gift_voucher && savedWedding.used_gift_voucher_id
+        ? { voucherId: savedWedding.used_gift_voucher_id, amount: savedWedding.used_gift_voucher_amount || 0 }
+        : null;
+
+    if (prevUsage || nextUsage) {
+      const { changedVouchers } = reconcileVoucherUsage(
+        DataService.getGiftVouchers(),
+        prevUsage,
+        nextUsage,
+        { id: savedWedding.client_id, name: savedWedding.bride_name }
+      );
+      if (changedVouchers.length > 0) {
+        changedVouchers.forEach(v => DataService.updateGiftVoucher(v));
         setVouchers(DataService.getGiftVouchers());
       }
     }
 
-    if (editingWedding && editingWedding.id) {
-      const updated: WeddingService = { ...editingWedding, ...weddingData };
-      DataService.updateWedding(updated);
-    } else {
-      DataService.addWedding(weddingData);
+    const eventType = savedWedding.event_type || 'Matrimonio';
+    const weddingDateOnly = savedWedding.wedding_date.slice(0, 10);
+    const weddingTimePart = savedWedding.wedding_date.includes('T')
+      ? savedWedding.wedding_date.split('T')[1].slice(0, 5)
+      : '08:30';
+    const weddingEndTime = savedWedding.end_time || '11:30';
+    const fullWeddingEndDateTime = `${weddingDateOnly}T${weddingEndTime}:00`;
+
+    // Google Calendar Sync
+    if (savedWedding.sync_google_calendar) {
+      syncCalendarAutomatically({
+        eventId: savedWedding.google_calendar_event_id,
+        title: `✨ ${eventType.toUpperCase()}: ${savedWedding.bride_name}`,
+        startDate: savedWedding.wedding_date,
+        endDate: fullWeddingEndDateTime,
+        location: savedWedding.address || '',
+        colorHex: PASTEL_EVENT_COLORS.EVENT_DAY,
+        details: `Tipo: ${eventType}\nCliente: ${savedWedding.bride_name}\nPersone da truccare: ${
+          savedWedding.people_count
+        }\nIndirizzo/Luogo: ${savedWedding.address || 'Non specificato'}\nOrario: ${weddingTimePart} - ${weddingEndTime}\nTotale Servizio: ${
+          savedWedding.total_price
+        }€\nAcconto/Ricevuto: ${savedWedding.trial_deposit}€\nDa saldare: ${savedWedding.wedding_balance}€\nNote: ${
+          savedWedding.notes || ''
+        }`,
+      }).then(res => {
+        if (res.eventId && res.eventId !== savedWedding.google_calendar_event_id) {
+          DataService.patchWedding(savedWedding.id, { google_calendar_event_id: res.eventId });
+          setWeddings(DataService.getWeddings());
+        }
+      });
+
+      if (savedWedding.trial_date) {
+        const trialDateOnly = savedWedding.trial_date.slice(0, 10);
+        const trialTimePart = savedWedding.trial_date.includes('T')
+          ? savedWedding.trial_date.split('T')[1].slice(0, 5)
+          : '15:00';
+        const trialEndTime = savedWedding.trial_end_time || '16:30';
+        const fullTrialEndDateTime = `${trialDateOnly}T${trialEndTime}:00`;
+
+        syncCalendarAutomatically({
+          eventId: savedWedding.google_calendar_trial_event_id,
+          title: `💄 Prova Trucco: ${savedWedding.bride_name} (${eventType})`,
+          startDate: savedWedding.trial_date,
+          endDate: fullTrialEndDateTime,
+          location: savedWedding.address || '',
+          colorHex: PASTEL_EVENT_COLORS.EVENT_TRIAL,
+          details: `Prova trucco per evento del ${weddingDateOnly}\nOrario: ${trialTimePart} - ${trialEndTime}\nAcconto prova: ${savedWedding.trial_deposit}€\nNote: ${savedWedding.notes || ''}`,
+        }).then(res => {
+          if (res.eventId && res.eventId !== savedWedding.google_calendar_trial_event_id) {
+            DataService.patchWedding(savedWedding.id, { google_calendar_trial_event_id: res.eventId });
+            setWeddings(DataService.getWeddings());
+          }
+        });
+      } else if (prevWedding?.google_calendar_trial_event_id) {
+        deleteCalendarEventSilently(prevWedding.google_calendar_trial_event_id);
+        DataService.patchWedding(savedWedding.id, { google_calendar_trial_event_id: undefined });
+      }
+    } else if (prevWedding?.google_calendar_event_id || prevWedding?.google_calendar_trial_event_id) {
+      if (prevWedding.google_calendar_event_id) {
+        deleteCalendarEventSilently(prevWedding.google_calendar_event_id);
+      }
+      if (prevWedding.google_calendar_trial_event_id) {
+        deleteCalendarEventSilently(prevWedding.google_calendar_trial_event_id);
+      }
+      DataService.patchWedding(savedWedding.id, {
+        google_calendar_event_id: undefined,
+        google_calendar_trial_event_id: undefined,
+      });
     }
+
     setWeddings(DataService.getWeddings());
     setClients(DataService.getClients());
     setEditingWedding(null);
@@ -282,12 +499,35 @@ export default function Home() {
   };
 
   const handleDeleteWedding = (id: string) => {
-    DataService.deleteWedding(id);
+    const target = DataService.getWeddings().find(w => w.id === id);
+    if (target) {
+      if (target.used_gift_voucher && target.used_gift_voucher_id && (target.used_gift_voucher_amount || 0) > 0) {
+        const { changedVouchers } = reconcileVoucherUsage(
+          DataService.getGiftVouchers(),
+          { voucherId: target.used_gift_voucher_id, amount: target.used_gift_voucher_amount },
+          null
+        );
+        if (changedVouchers.length > 0) {
+          changedVouchers.forEach(v => DataService.updateGiftVoucher(v));
+          setVouchers(DataService.getGiftVouchers());
+        }
+      }
+      if (target.google_calendar_event_id) {
+        deleteCalendarEventSilently(target.google_calendar_event_id);
+      }
+      if (target.google_calendar_trial_event_id) {
+        deleteCalendarEventSilently(target.google_calendar_trial_event_id);
+      }
+      DataService.deleteWedding(id);
+    }
     setWeddings(DataService.getWeddings());
+    showToast('Evento eliminato.', 'success', 3500);
   };
 
   // Save Client from Rubrica
-  const handleSaveClient = (clientData: Partial<Client> & { full_name: string; first_name?: string; last_name?: string }) => {
+  const handleSaveClient = (
+    clientData: Partial<Client> & { full_name: string; first_name?: string; last_name?: string }
+  ) => {
     DataService.addOrUpdateClient(clientData);
     setClients(DataService.getClients());
     setAppointments(DataService.getAppointments());
@@ -298,14 +538,19 @@ export default function Home() {
   const handleDeleteClient = (id: string) => {
     DataService.deleteClient(id);
     setClients(DataService.getClients());
-    setToastMessage('Contatto rimosso dalla rubrica.');
-    setTimeout(() => setToastMessage(null), 3000);
+    showToast('Contatto rimosso dalla rubrica.', 'success', 3000);
   };
 
-  // Add Expense
+  // Expenses Handlers
   const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
     DataService.addExpense(expenseData);
     setExpenses(DataService.getExpenses());
+  };
+
+  const handleUpdateExpense = (expense: Expense) => {
+    DataService.updateExpense(expense);
+    setExpenses(DataService.getExpenses());
+    showToast('Spesa aggiornata.', 'success', 3000);
   };
 
   const handleDeleteExpense = (id: string) => {
@@ -317,28 +562,14 @@ export default function Home() {
   const handleSaveGiftVoucher = (voucherData: Omit<GiftVoucher, 'id'>) => {
     const created = DataService.addGiftVoucher(voucherData);
     setVouchers(DataService.getGiftVouchers());
-    setClients(DataService.getClients()); // Buyer might have been added to clients
-    setToastMessage(`Buono Regalo di ${created.amount}€ emesso con successo! Ricavi aggiornati.`);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
-
-  const handleToggleGiftVoucherUsed = (voucher: GiftVoucher) => {
-    const updated: GiftVoucher = {
-      ...voucher,
-      is_used: !voucher.is_used,
-      used_date: !voucher.is_used ? new Date().toISOString().slice(0, 10) : null,
-    };
-    DataService.updateGiftVoucher(updated);
-    setVouchers(DataService.getGiftVouchers());
-    setToastMessage(updated.is_used ? 'Buono contrassegnato come UTILIZZATO.' : 'Buono reimpostato come DA USARE.');
-    setTimeout(() => setToastMessage(null), 3000);
+    setClients(DataService.getClients());
+    showToast(`Buono Regalo di ${created.amount}€ emesso con successo! Ricavi aggiornati.`, 'success', 4000);
   };
 
   const handleDeleteGiftVoucher = (id: string) => {
     DataService.deleteGiftVoucher(id);
     setVouchers(DataService.getGiftVouchers());
-    setToastMessage('Buono Regalo eliminato.');
-    setTimeout(() => setToastMessage(null), 3000);
+    showToast('Buono Regalo eliminato.', 'success', 3000);
   };
 
   // Update Settings
@@ -347,14 +578,24 @@ export default function Home() {
     DataService.saveSettings(newSettings);
   };
 
-  if (!isAuthenticated) {
+  if (!authChecked) {
     return (
-      <PinLock
-        correctPin={settings.pin_hash || '1234'}
-        onSuccess={() => setIsAuthenticated(true)}
-      />
+      <div className="min-h-screen bg-stone-950 flex items-center justify-center text-stone-400 text-xs">
+        Verifica sessione...
+      </div>
     );
   }
+
+  if (!isAuthenticated) {
+    return <PinLock onSuccess={() => setIsAuthenticated(true)} />;
+  }
+
+  const toastClasses =
+    toast?.variant === 'error'
+      ? 'bg-red-600 border-red-400 text-white'
+      : toast?.variant === 'info'
+      ? 'bg-amber-600 border-amber-400 text-white'
+      : 'bg-emerald-600 border-emerald-400 text-white';
 
   return (
     <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col pb-20 md:pb-8">
@@ -363,14 +604,18 @@ export default function Home() {
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        syncStatus={syncStatus}
+        onResync={performCloudSync}
       />
 
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between text-xs sm:text-sm font-medium animate-fade-in border border-emerald-400">
-          <span>{toastMessage}</span>
+      {toast && (
+        <div
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between text-xs sm:text-sm font-medium animate-fade-in border ${toastClasses}`}
+        >
+          <span>{toast.message}</span>
           <button
-            onClick={() => setToastMessage(null)}
+            onClick={() => setToast(null)}
             className="ml-3 font-bold hover:opacity-80"
           >
             ✕
@@ -390,13 +635,13 @@ export default function Home() {
               setSelectedClientForVoucher(null);
               setIsGiftVouchersOpen(true);
             }}
-            onOpenNewPmu={(dayIso) => {
+            onOpenNewPmu={dayIso => {
               if (dayIso) setSelectedCalendarDate(dayIso);
               setEditingPmu(null);
               setSelectedClientForPmu(null);
               setIsPmuModalOpen(true);
             }}
-            onOpenNewWedding={(dayIso) => {
+            onOpenNewWedding={dayIso => {
               if (dayIso) setSelectedCalendarDate(dayIso);
               setEditingWedding(null);
               setSelectedClientForWedding(null);
@@ -455,6 +700,7 @@ export default function Home() {
             onDeleteLocationProp={id => {
               DataService.deleteLocation(id);
               setLocations(DataService.getLocations());
+              setServicePrices(DataService.getServicePrices());
             }}
             onSaveServicePrice={item => {
               DataService.addOrUpdateServicePrice(item);
@@ -471,6 +717,7 @@ export default function Home() {
           <ExpensesView
             expenses={expenses}
             onAddExpense={handleAddExpense}
+            onUpdateExpense={handleUpdateExpense}
             onDeleteExpense={handleDeleteExpense}
           />
         )}
@@ -484,10 +731,7 @@ export default function Home() {
             vouchers={vouchers}
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
-            onShowToast={msg => {
-              setToastMessage(msg);
-              setTimeout(() => setToastMessage(null), 5000);
-            }}
+            onShowToast={(msg, variant) => showToast(msg, variant || 'success', 5000)}
           />
         )}
       </main>
@@ -550,7 +794,12 @@ export default function Home() {
 
       {/* Linked Delete Confirmation Dialog */}
       {linkedDeleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={e => {
+            if (e.target === e.currentTarget) setLinkedDeleteTarget(null);
+          }}
+        >
           <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-md w-full p-6 shadow-2xl text-stone-100">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
@@ -563,7 +812,9 @@ export default function Home() {
             </div>
 
             <p className="text-xs text-stone-300 mb-4 leading-relaxed">
-              Stai per eliminare l&apos;appuntamento di <strong className="text-white">{linkedDeleteTarget.target.client_name}</strong> ({linkedDeleteTarget.target.treatment}) del {linkedDeleteTarget.target.appointment_date.slice(0, 10)}.
+              Stai per eliminare l&apos;appuntamento di{' '}
+              <strong className="text-white">{linkedDeleteTarget.target.client_name}</strong> (
+              {linkedDeleteTarget.target.treatment}) del {linkedDeleteTarget.target.appointment_date.slice(0, 10)}.
             </p>
 
             <div className="bg-stone-800/80 p-3.5 rounded-2xl border border-stone-700/60 mb-5">
@@ -572,7 +823,10 @@ export default function Home() {
               </span>
               <p className="text-xs font-semibold text-white">{linkedDeleteTarget.linked.treatment}</p>
               <p className="text-[11px] text-stone-400">
-                Data: {linkedDeleteTarget.linked.appointment_date.slice(0, 10)} {linkedDeleteTarget.linked.appointment_date.includes('T') ? `alle ${linkedDeleteTarget.linked.appointment_date.split('T')[1].slice(0, 5)}` : ''}
+                Data: {linkedDeleteTarget.linked.appointment_date.slice(0, 10)}{' '}
+                {linkedDeleteTarget.linked.appointment_date.includes('T')
+                  ? `alle ${linkedDeleteTarget.linked.appointment_date.split('T')[1].slice(0, 5)}`
+                  : ''}
               </p>
             </div>
 
@@ -610,32 +864,22 @@ export default function Home() {
       )}
 
       {/* Simple Delete Confirmation Dialog */}
-      {deleteConfirmTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-stone-100">
-            <h3 className="text-base font-bold text-white mb-2">Conferma Eliminazione</h3>
-            <p className="text-xs text-stone-300 mb-5 leading-relaxed">
-              Sei sicura di voler eliminare l&apos;appuntamento di <strong className="text-white">{deleteConfirmTarget.client_name}</strong> ({deleteConfirmTarget.treatment}) del {deleteConfirmTarget.appointment_date.slice(0, 10)}?
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmTarget(null)}
-                className="flex-1 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-semibold"
-              >
-                Annulla
-              </button>
-              <button
-                type="button"
-                onClick={() => executeDeletePmu(deleteConfirmTarget.id, false)}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold"
-              >
-                Elimina
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={Boolean(deleteConfirmTarget)}
+        title="Conferma Eliminazione"
+        message={
+          deleteConfirmTarget
+            ? `Sei sicura di voler eliminare l'appuntamento di ${deleteConfirmTarget.client_name} (${deleteConfirmTarget.treatment}) del ${deleteConfirmTarget.appointment_date.slice(0, 10)}?`
+            : ''
+        }
+        confirmLabel="Elimina"
+        onConfirm={() => {
+          if (deleteConfirmTarget) {
+            executeDeletePmu(deleteConfirmTarget.id, false);
+          }
+        }}
+        onCancel={() => setDeleteConfirmTarget(null)}
+      />
     </div>
   );
 }

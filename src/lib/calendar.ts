@@ -14,24 +14,39 @@ export interface GoogleCalendarEventParams {
   colorHex?: string;
 }
 
+function formatGCalWallClock(dateStr: string, addMinutes: number = 0): string {
+  const match = (dateStr || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!match) {
+    const parsed = new Date(dateStr);
+    const ms = isNaN(parsed.getTime()) ? Date.now() : parsed.getTime();
+    return new Date(ms + addMinutes * 60_000).toISOString().replace(/-|:|\.\d\d\d/g, '');
+  }
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  const hour = parseInt(match[4] || '0', 10);
+  const minute = parseInt(match[5] || '0', 10);
+  const second = parseInt(match[6] || '0', 10);
+  const d = new Date(Date.UTC(year, month - 1, day, hour, minute + addMinutes, second));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
+}
+
 export function createGoogleCalendarUrl(params: GoogleCalendarEventParams): string {
   const { title, startDate, endDate, details, location } = params;
 
-  const start = new Date(startDate);
-  // Default to 1 hour duration if endDate is not specified
-  const end = endDate ? new Date(endDate) : new Date(start.getTime() + 60 * 60 * 1000);
+  const startFormatted = formatGCalWallClock(startDate);
+  const endFormatted = endDate
+    ? formatGCalWallClock(endDate)
+    : formatGCalWallClock(startDate, 60);
 
-  // Format YYYYMMDDTHHmmssZ
-  const formatGCalDate = (d: Date) => {
-    return d.toISOString().replace(/-|:|\.\d\d\d/g, "");
-  };
-
-  const datesParam = `${formatGCalDate(start)}/${formatGCalDate(end)}`;
+  const datesParam = `${startFormatted}/${endFormatted}`;
 
   const query = new URLSearchParams({
     action: "TEMPLATE",
     text: title,
     dates: datesParam,
+    ctz: "Europe/Rome",
     details: details || "",
     location: location || "",
   });

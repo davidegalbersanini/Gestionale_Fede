@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GiftVoucher, Client } from '@/types';
+import { getVoucherInitialAmount, getVoucherRemainingAmount } from '@/lib/finance';
+import ClientAutocomplete from '@/components/ClientAutocomplete';
 import {
   Gift,
   Plus,
@@ -9,14 +11,13 @@ import {
   Search,
   CheckCircle2,
   Circle,
-  Clock,
   Trash2,
   Calendar as CalendarIcon,
   DollarSign,
   User,
   UserCheck,
   ArrowLeft,
-  Sparkles
+  AlertCircle,
 } from 'lucide-react';
 
 interface GiftVouchersModalProps {
@@ -46,32 +47,19 @@ export default function GiftVouchersModal({
   const [buyerFirstName, setBuyerFirstName] = useState('');
   const [buyerLastName, setBuyerLastName] = useState('');
   const [selectedBuyerId, setSelectedBuyerId] = useState<string | undefined>();
-  const [showBuyerSuggestions, setShowBuyerSuggestions] = useState(false);
 
   // Form state - Recipient
   const [recipientFirstName, setRecipientFirstName] = useState('');
   const [recipientLastName, setRecipientLastName] = useState('');
   const [selectedRecipientId, setSelectedRecipientId] = useState<string | undefined>();
-  const [showRecipientSuggestions, setShowRecipientSuggestions] = useState(false);
 
   const [amount, setAmount] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Delete confirm state
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // When defaultBuyerClient changes or modal opens with a pre-selected client
-  useEffect(() => {
-    if (defaultBuyerClient) {
-      setBuyerFirstName(defaultBuyerClient.first_name || defaultBuyerClient.full_name.split(' ')[0] || '');
-      setBuyerLastName(defaultBuyerClient.last_name && defaultBuyerClient.last_name !== '-' ? defaultBuyerClient.last_name : defaultBuyerClient.full_name.split(' ').slice(1).join(' '));
-      setSelectedBuyerId(defaultBuyerClient.id);
-      setView('create');
-    }
-  }, [defaultBuyerClient, isOpen]);
-
-  // Reset form when going back to list
   const resetForm = () => {
     setBuyerFirstName('');
     setBuyerLastName('');
@@ -82,38 +70,49 @@ export default function GiftVouchersModal({
     setAmount('');
     setPurchaseDate(new Date().toISOString().slice(0, 10));
     setNotes('');
-    setShowBuyerSuggestions(false);
-    setShowRecipientSuggestions(false);
+    setFormError(null);
   };
+
+  useEffect(() => {
+    if (!isOpen) {
+      resetForm();
+      setView('list');
+      setDeleteConfirmId(null);
+      return;
+    }
+
+    if (defaultBuyerClient) {
+      setBuyerFirstName(defaultBuyerClient.first_name || defaultBuyerClient.full_name.split(' ')[0] || '');
+      setBuyerLastName(
+        defaultBuyerClient.last_name && defaultBuyerClient.last_name !== '-'
+          ? defaultBuyerClient.last_name
+          : defaultBuyerClient.full_name.split(' ').slice(1).join(' ')
+      );
+      setSelectedBuyerId(defaultBuyerClient.id);
+      setFormError(null);
+      setView('create');
+    } else {
+      resetForm();
+      setView('list');
+    }
+  }, [defaultBuyerClient, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const buyerQuery = `${buyerFirstName} ${buyerLastName}`.trim().toLowerCase();
-  const filteredBuyerClients = buyerQuery
-    ? clients
-        .filter(c =>
-          c.full_name.toLowerCase().includes(buyerQuery) ||
-          c.first_name.toLowerCase().includes(buyerFirstName.trim().toLowerCase()) ||
-          (buyerLastName.trim() && c.last_name.toLowerCase().includes(buyerLastName.trim().toLowerCase()))
-        )
-        .slice(0, 5)
-    : [];
-
-  const recipientQuery = `${recipientFirstName} ${recipientLastName}`.trim().toLowerCase();
-  const filteredRecipientClients = recipientQuery
-    ? clients
-        .filter(c =>
-          c.full_name.toLowerCase().includes(recipientQuery) ||
-          c.first_name.toLowerCase().includes(recipientFirstName.trim().toLowerCase()) ||
-          (recipientLastName.trim() && c.last_name.toLowerCase().includes(recipientLastName.trim().toLowerCase()))
-        )
-        .slice(0, 5)
-    : [];
-
-  // Filtered vouchers
   const filteredVouchers = vouchers.filter(v => {
-    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
-    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
+    const initVal = getVoucherInitialAmount(v);
+    const remVal = getVoucherRemainingAmount(v);
     const isUsed = remVal <= 0;
 
     if (filterStatus === 'active' && isUsed) return false;
@@ -130,37 +129,26 @@ export default function GiftVouchersModal({
     return true;
   });
 
-  const activeVouchers = vouchers.filter(v => {
-    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
-    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
-    return remVal > 0;
-  });
-  const usedVouchers = vouchers.filter(v => {
-    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
-    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
-    return remVal <= 0;
-  });
+  const activeVouchers = vouchers.filter(v => getVoucherRemainingAmount(v) > 0);
+  const usedVouchers = vouchers.filter(v => getVoucherRemainingAmount(v) <= 0);
 
   const activeCount = activeVouchers.length;
   const usedCount = usedVouchers.length;
-  const totalRemainingAmount = activeVouchers.reduce((sum, v) => {
-    const initVal = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
-    const remVal = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initVal);
-    return sum + remVal;
-  }, 0);
+  const totalRemainingAmount = activeVouchers.reduce((sum, v) => sum + getVoucherRemainingAmount(v), 0);
 
   const handleSubmitCreate = (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      alert('Inserisci un importo valido in euro.');
+      setFormError('Inserisci un importo valido in euro maggiore di 0.');
       return;
     }
     if (!buyerFirstName.trim()) {
-      alert('Inserisci il nome dell\'acquirente del buono.');
+      setFormError("Inserisci il nome dell'acquirente del buono.");
       return;
     }
 
+    setFormError(null);
     const computedBuyerName = `${buyerFirstName.trim()} ${buyerLastName.trim()}`.trim();
     const computedRecipientName = `${recipientFirstName.trim()} ${recipientLastName.trim()}`.trim();
 
@@ -172,7 +160,7 @@ export default function GiftVouchersModal({
       initial_amount: parsedAmount,
       remaining_amount: parsedAmount,
       amount: parsedAmount,
-      category: 'pmu', // Sotto il cofano assegnato a PMU
+      category: 'pmu',
       purchase_date: purchaseDate,
       is_used: false,
       notes: notes.trim() || undefined,
@@ -183,9 +171,13 @@ export default function GiftVouchersModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
-        
         {/* Header */}
         <div className="px-6 py-4 border-b border-stone-800 bg-stone-900/95 backdrop-blur-md flex items-center justify-between z-10 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -221,7 +213,10 @@ export default function GiftVouchersModal({
             {view === 'list' && (
               <button
                 type="button"
-                onClick={() => setView('create')}
+                onClick={() => {
+                  resetForm();
+                  setView('create');
+                }}
                 className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold text-xs shadow-md shadow-amber-950/40 flex items-center gap-1.5 active:scale-95 transition-all"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
@@ -240,144 +235,89 @@ export default function GiftVouchersModal({
 
         {/* Modal Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
-          
-          {/* VIEW: CREATE NEW VOUCHER */}
           {view === 'create' && (
             <form onSubmit={handleSubmitCreate} className="space-y-4">
+              {formError && (
+                <div className="p-3 rounded-xl bg-red-950/60 border border-red-500/50 text-red-200 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  <span>{formError}</span>
+                </div>
+              )}
 
-              {/* Acquirente (Buyer): Nome & Cognome separati con autocomplete - OBBLIGATORIO */}
-              <div className="relative">
+              <div>
                 <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-amber-400" />
                   Acquirente *
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Nome acquirente *"
-                      value={buyerFirstName}
-                      onChange={e => {
-                        setBuyerFirstName(e.target.value);
-                        setSelectedBuyerId(undefined);
-                        setShowBuyerSuggestions(true);
-                      }}
-                      onFocus={() => setShowBuyerSuggestions(true)}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Cognome (opzionale)"
-                      value={buyerLastName}
-                      onChange={e => {
-                        setBuyerLastName(e.target.value);
-                        setSelectedBuyerId(undefined);
-                        setShowBuyerSuggestions(true);
-                      }}
-                      onFocus={() => setShowBuyerSuggestions(true)}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {showBuyerSuggestions && filteredBuyerClients.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden">
-                    {filteredBuyerClients.map(c => (
-                      <button
-                        type="button"
-                        key={c.id}
-                        onClick={() => {
-                          setBuyerFirstName(c.first_name || c.full_name.split(' ')[0] || '');
-                          setBuyerLastName(c.last_name && c.last_name !== '-' ? c.last_name : c.full_name.split(' ').slice(1).join(' '));
-                          setSelectedBuyerId(c.id);
-                          setShowBuyerSuggestions(false);
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-stone-700 text-stone-200 text-sm flex items-center justify-between border-b border-stone-700/50 last:border-0"
-                      >
-                        <div>
-                          <span className="font-bold text-white">{c.first_name || c.full_name}</span>
-                          {c.last_name && c.last_name !== '-' && (
-                            <span className="text-stone-300 ml-1.5">{c.last_name}</span>
-                          )}
-                        </div>
-                        {c.phone && <span className="text-stone-400 text-xs">{c.phone}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <ClientAutocomplete
+                  clients={clients}
+                  firstName={buyerFirstName}
+                  lastName={buyerLastName}
+                  onFirstNameChange={val => {
+                    setBuyerFirstName(val);
+                    setSelectedBuyerId(undefined);
+                    setFormError(null);
+                  }}
+                  onLastNameChange={val => {
+                    setBuyerLastName(val);
+                    setSelectedBuyerId(undefined);
+                  }}
+                  onSelectClient={c => {
+                    setBuyerFirstName(c.first_name || c.full_name.split(' ')[0] || '');
+                    setBuyerLastName(
+                      c.last_name && c.last_name !== '-'
+                        ? c.last_name
+                        : c.full_name.split(' ').slice(1).join(' ')
+                    );
+                    setSelectedBuyerId(c.id);
+                    setFormError(null);
+                  }}
+                  firstNameRequired
+                  firstNameLabel={null}
+                  lastNameLabel={null}
+                  firstNamePlaceholder="Nome acquirente *"
+                  lastNamePlaceholder="Cognome (opzionale)"
+                  accent="amber"
+                />
               </div>
 
-              {/* Destinatario / Beneficiario: Nome & Cognome separati - OPZIONALE */}
-              <div className="relative p-3 bg-stone-800/40 rounded-2xl border border-stone-700/60">
+              <div className="p-3 bg-stone-800/40 rounded-2xl border border-stone-700/60">
                 <label className="block text-xs font-semibold text-stone-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <UserCheck className="w-3.5 h-3.5 text-pink-400" />
                   Destinatario (Opzionale)
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Nome destinatario"
-                      value={recipientFirstName}
-                      onChange={e => {
-                        setRecipientFirstName(e.target.value);
-                        setSelectedRecipientId(undefined);
-                        setShowRecipientSuggestions(true);
-                      }}
-                      onFocus={() => setShowRecipientSuggestions(true)}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="Cognome destinatario"
-                      value={recipientLastName}
-                      onChange={e => {
-                        setRecipientLastName(e.target.value);
-                        setSelectedRecipientId(undefined);
-                        setShowRecipientSuggestions(true);
-                      }}
-                      onFocus={() => setShowRecipientSuggestions(true)}
-                      className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm"
-                    />
-                  </div>
-                </div>
-
-                {showRecipientSuggestions && filteredRecipientClients.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-stone-800 border border-stone-700 rounded-xl shadow-xl overflow-hidden">
-                    {filteredRecipientClients.map(c => (
-                      <button
-                        type="button"
-                        key={c.id}
-                        onClick={() => {
-                          setRecipientFirstName(c.first_name || c.full_name.split(' ')[0] || '');
-                          setRecipientLastName(c.last_name && c.last_name !== '-' ? c.last_name : c.full_name.split(' ').slice(1).join(' '));
-                          setSelectedRecipientId(c.id);
-                          setShowRecipientSuggestions(false);
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-stone-700 text-stone-200 text-sm flex items-center justify-between border-b border-stone-700/50 last:border-0"
-                      >
-                        <div>
-                          <span className="font-bold text-white">{c.first_name || c.full_name}</span>
-                          {c.last_name && c.last_name !== '-' && (
-                            <span className="text-stone-300 ml-1.5">{c.last_name}</span>
-                          )}
-                        </div>
-                        {c.phone && <span className="text-stone-400 text-xs">{c.phone}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <p className="text-[11px] text-stone-400 mt-1">
+                <ClientAutocomplete
+                  clients={clients}
+                  firstName={recipientFirstName}
+                  lastName={recipientLastName}
+                  onFirstNameChange={val => {
+                    setRecipientFirstName(val);
+                    setSelectedRecipientId(undefined);
+                  }}
+                  onLastNameChange={val => {
+                    setRecipientLastName(val);
+                    setSelectedRecipientId(undefined);
+                  }}
+                  onSelectClient={c => {
+                    setRecipientFirstName(c.first_name || c.full_name.split(' ')[0] || '');
+                    setRecipientLastName(
+                      c.last_name && c.last_name !== '-'
+                        ? c.last_name
+                        : c.full_name.split(' ').slice(1).join(' ')
+                    );
+                    setSelectedRecipientId(c.id);
+                  }}
+                  firstNameLabel={null}
+                  lastNameLabel={null}
+                  firstNamePlaceholder="Nome destinatario"
+                  lastNamePlaceholder="Cognome destinatario"
+                  accent="pink"
+                />
+                <p className="text-[11px] text-stone-400 mt-1.5">
                   Se vuoto, si collegherà automaticamente alla persona all&apos;uso.
                 </p>
               </div>
 
-              {/* Importo in Euro & Data Acquisto */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
@@ -386,10 +326,14 @@ export default function GiftVouchersModal({
                   <input
                     type="number"
                     step="any"
+                    min="0.01"
                     required
                     placeholder="es. 100"
                     value={amount}
-                    onChange={e => setAmount(e.target.value)}
+                    onChange={e => {
+                      setAmount(e.target.value);
+                      setFormError(null);
+                    }}
                     className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2.5 text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 text-base font-bold text-amber-300"
                   />
                 </div>
@@ -408,7 +352,6 @@ export default function GiftVouchersModal({
                 </div>
               </div>
 
-              {/* Note */}
               <div>
                 <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1.5">
                   Note
@@ -422,7 +365,6 @@ export default function GiftVouchersModal({
                 />
               </div>
 
-              {/* Actions */}
               <div className="pt-2 flex gap-3">
                 <button
                   type="button"
@@ -445,12 +387,9 @@ export default function GiftVouchersModal({
             </form>
           )}
 
-          {/* VIEW: LIST OF VOUCHERS */}
           {view === 'list' && (
             <>
-              {/* Filter Tabs & Search */}
               <div className="space-y-2.5">
-                {/* Search */}
                 <div className="relative">
                   <Search className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
@@ -462,7 +401,6 @@ export default function GiftVouchersModal({
                   />
                 </div>
 
-                {/* Filter Status: Tutti / Attivi / Esauriti */}
                 <div className="flex items-center gap-1 bg-stone-800/70 p-1 rounded-xl border border-stone-700/60 w-fit">
                   <button
                     type="button"
@@ -500,7 +438,6 @@ export default function GiftVouchersModal({
                 </div>
               </div>
 
-              {/* Vouchers List */}
               <div className="space-y-2.5 pt-1">
                 {filteredVouchers.length === 0 ? (
                   <div className="p-8 text-center bg-stone-800/30 rounded-2xl border border-stone-800/80">
@@ -514,8 +451,8 @@ export default function GiftVouchersModal({
                   </div>
                 ) : (
                   filteredVouchers.map(voucher => {
-                    const initVal = voucher.initial_amount !== undefined ? voucher.initial_amount : (voucher.amount || 0);
-                    const remVal = voucher.remaining_amount !== undefined ? voucher.remaining_amount : (voucher.is_used ? 0 : initVal);
+                    const initVal = getVoucherInitialAmount(voucher);
+                    const remVal = getVoucherRemainingAmount(voucher);
                     const isFullyUsed = remVal <= 0;
                     const isPartial = remVal > 0 && remVal < initVal;
                     const isConfirmingDelete = deleteConfirmId === voucher.id;
@@ -532,24 +469,19 @@ export default function GiftVouchersModal({
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          
-                          {/* Left: Info */}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
-                              {/* Purchase Date */}
                               <span className="text-stone-400 text-xs flex items-center gap-1">
                                 <CalendarIcon className="w-3.5 h-3.5 text-stone-500" />
                                 {voucher.purchase_date}
                               </span>
                             </div>
 
-                            {/* Buyer Name */}
                             <h4 className="text-sm font-bold text-white truncate flex items-center gap-1.5">
                               <span className="text-stone-400 text-xs font-normal">Acquirente:</span>
                               <span>{voucher.buyer_name}</span>
                             </h4>
 
-                            {/* Recipient Name */}
                             <p className="text-xs text-stone-300 mt-0.5 flex items-center gap-1.5 truncate">
                               <span className="text-stone-400 text-[11px]">Destinatario:</span>
                               {voucher.recipient_name ? (
@@ -559,7 +491,6 @@ export default function GiftVouchersModal({
                               )}
                             </p>
 
-                            {/* Notes */}
                             {voucher.notes && (
                               <p className="text-xs text-stone-400 mt-1 italic line-clamp-2">
                                 &ldquo;{voucher.notes}&rdquo;
@@ -567,9 +498,7 @@ export default function GiftVouchersModal({
                             )}
                           </div>
 
-                          {/* Right: Amounts & Status */}
                           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                            {/* Amounts display */}
                             <div className="text-right">
                               <span className="text-lg sm:text-xl font-black text-amber-300 tracking-tight">
                                 {remVal.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
@@ -579,9 +508,7 @@ export default function GiftVouchersModal({
                                   su {initVal.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
                                 </p>
                               ) : (
-                                <p className="text-[10px] text-emerald-400 font-medium">
-                                  Intero
-                                </p>
+                                <p className="text-[10px] text-emerald-400 font-medium">Intero</p>
                               )}
                             </div>
 
@@ -609,7 +536,6 @@ export default function GiftVouchersModal({
                           </div>
                         </div>
 
-                        {/* Bottom Actions Bar */}
                         <div className="mt-2.5 pt-2 border-t border-stone-800/80 flex items-center justify-end text-xs text-stone-500">
                           {isConfirmingDelete ? (
                             <div className="flex items-center gap-2">
@@ -650,9 +576,7 @@ export default function GiftVouchersModal({
               </div>
             </>
           )}
-
         </div>
-
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppSettings } from '@/types';
+import { DataService } from '@/lib/storage';
 import { checkGoogleCalendarStatus, startGoogleCalendarConnect, disconnectGoogleCalendar } from '@/lib/calendar';
 import {
   Settings as SettingsIcon,
@@ -12,6 +13,8 @@ import {
   Check,
   Cloud,
   RefreshCw,
+  Download,
+  AlertCircle,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -29,8 +32,10 @@ export default function SettingsModal({
   onUpdateSettings,
   onLockApp,
 }: SettingsModalProps) {
-  const [pin, setPin] = useState(settings.pin_hash || '1234');
+  const [newPin, setNewPin] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
   const [yearlyTarget, setYearlyTarget] = useState(String(settings.yearly_target || 35000));
+  const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   // Google Calendar state
@@ -39,9 +44,24 @@ export default function SettingsModal({
 
   useEffect(() => {
     if (isOpen) {
+      setNewPin('');
+      setYearlyTarget(String(settings.yearly_target || 35000));
+      setPinError(null);
+      setIsSaved(false);
       checkGoogleCalendarStatus().then(setGcalStatus);
     }
-  }, [isOpen]);
+  }, [isOpen, settings]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleConnectGoogle = async () => {
     setIsGcalLoading(true);
@@ -55,27 +75,72 @@ export default function SettingsModal({
     setIsGcalLoading(false);
   };
 
+  const handleDownloadBackup = () => {
+    const json = DataService.exportFullBackup();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gestionale-fede-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   if (!isOpen) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updated: AppSettings = {
-      ...settings,
-      pin_hash: pin.trim() || '1234',
-      yearly_target: parseFloat(yearlyTarget) || 35000,
-    };
-    onUpdateSettings(updated);
-    setIsSaved(true);
-    setTimeout(() => {
-      setIsSaved(false);
-      onClose();
-    }, 600);
+    setPinError(null);
+
+    if (newPin.length > 0 && !/^\d{4}$/.test(newPin)) {
+      setPinError('Il nuovo PIN deve essere composto esattamente da 4 cifre numeriche.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (newPin.length === 4) {
+        const res = await fetch('/api/auth/pin', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newPin }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          setPinError(data.error || 'Impossibile aggiornare il PIN sul server.');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      const updated: AppSettings = {
+        ...settings,
+        pin_hash: '',
+        yearly_target: parseFloat(yearlyTarget) || 35000,
+      };
+      onUpdateSettings(updated);
+      setIsSaved(true);
+      setTimeout(() => {
+        setIsSaved(false);
+        onClose();
+      }, 600);
+    } catch {
+      setPinError('Errore di rete durante il salvataggio del PIN.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-        {/* Header */}
         <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
             <SettingsIcon className="w-5 h-5 text-rose-500" />
@@ -89,7 +154,6 @@ export default function SettingsModal({
           </button>
         </div>
 
-        {/* Content */}
         <form onSubmit={handleSave} className="p-6 space-y-6">
           {/* PIN Lock Section */}
           <div className="space-y-3">
@@ -98,19 +162,30 @@ export default function SettingsModal({
             </h3>
             <div>
               <label className="block text-xs text-stone-400 mb-1">
-                PIN di sblocco a 4 cifre
+                Cambia PIN a 4 cifre (lascia vuoto per mantenere quello attuale)
               </label>
               <input
                 type="password"
-                maxLength={6}
-                value={pin}
-                onChange={e => setPin(e.target.value)}
-                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white text-base tracking-widest font-mono"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="••••"
+                value={newPin}
+                onChange={e => {
+                  setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4));
+                  setPinError(null);
+                }}
+                className="w-full bg-stone-800 border border-stone-700 rounded-xl px-4 py-2 text-white text-base tracking-widest font-mono placeholder-stone-600"
               />
+              {pinError && (
+                <p className="mt-1.5 text-xs text-red-400 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{pinError}</span>
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Target Annuo (Solo annuale come richiesto) */}
+          {/* Target Annuo */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
               <Target className="w-4 h-4" /> Target Fatturato Annuale
@@ -179,14 +254,26 @@ export default function SettingsModal({
             )}
           </div>
 
-          {/* Actions */}
+          {/* Backup & Lock Actions */}
           <div className="pt-2 flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  localStorage.removeItem('fede_auth_session');
+              onClick={handleDownloadBackup}
+              className="w-full py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700/80 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              Scarica Backup Completo (JSON)
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await fetch('/api/auth/pin', { method: 'DELETE' });
+                } catch {
+                  // ignore
                 }
+                DataService.clearLocalCache();
                 onLockApp();
                 onClose();
               }}
@@ -197,12 +284,16 @@ export default function SettingsModal({
             </button>
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
-            className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2"
+            disabled={isSaving}
+            className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold text-sm shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2"
           >
-            {isSaved ? (
+            {isSaving ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" /> Salvataggio...
+              </>
+            ) : isSaved ? (
               <>
                 <Check className="w-4 h-4" /> Impostazioni Salvate!
               </>

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
-import { Calendar, Users, Store, Receipt, TrendingUp, Settings, Sparkles } from 'lucide-react';
+import { SyncStatus } from '@/types';
+import { Calendar, Users, Store, Receipt, TrendingUp, Settings, Cloud, CloudOff, RefreshCw, AlertTriangle } from 'lucide-react';
 
 export type ActiveTab = 'agenda' | 'clients' | 'locations' | 'expenses' | 'dashboard';
 
@@ -10,9 +10,80 @@ interface NavbarProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenSettings: () => void;
+  syncStatus?: SyncStatus;
+  onResync?: () => void;
 }
 
-export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: NavbarProps) {
+function SyncBadge({
+  syncStatus = 'idle',
+  onResync,
+  compact = false,
+}: {
+  syncStatus?: SyncStatus;
+  onResync?: () => void;
+  compact?: boolean;
+}) {
+  const config: Record<
+    SyncStatus,
+    { label: string; title: string; className: string; icon: React.ReactNode }
+  > = {
+    idle: {
+      label: 'Cloud',
+      title: 'Sincronizza con il cloud',
+      className: 'bg-stone-900 border-stone-800 text-stone-400 hover:text-white',
+      icon: <Cloud className="w-3.5 h-3.5" />,
+    },
+    syncing: {
+      label: 'Sync...',
+      title: 'Sincronizzazione in corso...',
+      className: 'bg-sky-950/60 border-sky-700/50 text-sky-300',
+      icon: <RefreshCw className="w-3.5 h-3.5 animate-spin" />,
+    },
+    synced: {
+      label: 'Sync OK',
+      title: 'Dati sincronizzati con Supabase. Clicca per aggiornare.',
+      className: 'bg-emerald-950/50 border-emerald-700/50 text-emerald-400 hover:bg-emerald-950/80',
+      icon: <Cloud className="w-3.5 h-3.5" />,
+    },
+    offline: {
+      label: 'Offline',
+      title: 'Modalità offline (dati salvati localmente). Clicca per riprovare.',
+      className: 'bg-amber-950/50 border-amber-700/50 text-amber-400 hover:bg-amber-950/80',
+      icon: <CloudOff className="w-3.5 h-3.5" />,
+    },
+    error: {
+      label: 'Errore Sync',
+      title: 'Errore sincronizzazione cloud. Clicca per riprovare.',
+      className: 'bg-red-950/60 border-red-700/60 text-red-400 hover:bg-red-950/90',
+      icon: <AlertTriangle className="w-3.5 h-3.5" />,
+    },
+  };
+
+  const cur = config[syncStatus];
+
+  return (
+    <button
+      type="button"
+      onClick={onResync}
+      disabled={syncStatus === 'syncing' || !onResync}
+      title={cur.title}
+      className={`border transition-colors flex items-center justify-center gap-1.5 ${
+        compact ? 'w-8 h-8 rounded-xl' : 'h-10 px-3 rounded-2xl text-xs font-semibold'
+      } ${cur.className}`}
+    >
+      {cur.icon}
+      {!compact && <span className="hidden lg:inline">{cur.label}</span>}
+    </button>
+  );
+}
+
+export default function Navbar({
+  activeTab,
+  onSelectTab,
+  onOpenSettings,
+  syncStatus = 'idle',
+  onResync,
+}: NavbarProps) {
   const tabs = [
     { id: 'agenda' as ActiveTab, label: 'Agenda', icon: Calendar },
     { id: 'clients' as ActiveTab, label: 'Rubrica', icon: Users },
@@ -60,18 +131,21 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
             })}
           </nav>
 
-          {/* Right Action */}
-          <button
-            onClick={onOpenSettings}
-            className="w-10 h-10 rounded-2xl bg-stone-900 hover:bg-stone-800 border border-stone-800 flex items-center justify-center text-stone-400 hover:text-white transition-colors"
-            title="Impostazioni"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          {/* Right Actions */}
+          <div className="flex items-center gap-2">
+            <SyncBadge syncStatus={syncStatus} onResync={onResync} />
+            <button
+              onClick={onOpenSettings}
+              className="w-10 h-10 rounded-2xl bg-stone-900 hover:bg-stone-800 border border-stone-800 flex items-center justify-center text-stone-400 hover:text-white transition-colors"
+              title="Impostazioni"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Mobile Top Header (Small brand + settings) */}
+      {/* Mobile Top Header (Small brand + sync + settings) */}
       <div className="md:hidden sticky top-0 z-40 bg-stone-950/90 backdrop-blur-xl border-b border-stone-800/80 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="h-8 px-1.5 rounded-xl bg-white/95 border border-stone-200/80 flex items-center justify-center shadow-sm">
@@ -79,12 +153,16 @@ export default function Navbar({ activeTab, onSelectTab, onOpenSettings }: Navba
           </div>
           <span className="text-sm font-black text-white tracking-tight">Gestionale Fede</span>
         </div>
-        <button
-          onClick={onOpenSettings}
-          className="w-8 h-8 rounded-xl bg-stone-900 border border-stone-800 flex items-center justify-center text-stone-400 hover:text-white"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <SyncBadge syncStatus={syncStatus} onResync={onResync} compact />
+          <button
+            onClick={onOpenSettings}
+            className="w-8 h-8 rounded-xl bg-stone-900 border border-stone-800 flex items-center justify-center text-stone-400 hover:text-white"
+            title="Impostazioni"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Mobile Bottom Tab Bar (iOS Native Style) */}

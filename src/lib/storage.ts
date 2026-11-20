@@ -1,7 +1,11 @@
 import { Location, Client, Appointment, WeddingService, Expense, AppSettings, GiftVoucher, ServicePrice } from '@/types';
-import initialData from '@/data/initialData.json';
 import { CloudSync } from '@/lib/supabase';
 import { PASTEL_LOCATION_PALETTE } from '@/lib/locationColors';
+
+const DEFAULT_SETTINGS: AppSettings = {
+  pin_hash: '',
+  yearly_target: 35000,
+};
 
 const STORAGE_KEYS = {
   LOCATIONS: 'fede_locations_v2',
@@ -15,7 +19,6 @@ const STORAGE_KEYS = {
   PIN_AUTH: 'fede_pin_auth',
 };
 
-// Check if localStorage is available
 function getStorage<T>(key: string, defaultData: T): T {
   if (typeof window === 'undefined') return defaultData;
   try {
@@ -42,7 +45,7 @@ function setStorage<T>(key: string, data: T): void {
 
 export const DataService = {
   getLocations(): Location[] {
-    const raw = getStorage<Location[]>(STORAGE_KEYS.LOCATIONS, initialData.locations);
+    const raw = getStorage<Location[]>(STORAGE_KEYS.LOCATIONS, []);
     // Auto-migrate legacy high-saturation colors to elegant pastel palette
     const legacyMap: Record<string, string> = {
       '#ec4899': '#F472B6', // Beauty Center
@@ -83,27 +86,32 @@ export const DataService = {
   addOrUpdateLocation(loc: Location): Location {
     const list = this.getLocations();
     const idx = list.findIndex(l => l.id === loc.id);
-    let updatedList: Location[];
-    if (idx >= 0) {
-      updatedList = list.map(l => (l.id === loc.id ? loc : l));
-    } else {
-      updatedList = [...list, loc];
-    }
+    const updatedList = idx >= 0
+      ? list.map(l => (l.id === loc.id ? loc : l))
+      : [...list, loc];
     setStorage(STORAGE_KEYS.LOCATIONS, updatedList);
     CloudSync.upsertLocation(loc);
-    CloudSync.syncAllLocations(updatedList);
     return loc;
   },
   deleteLocation(id: string): void {
     const list = this.getLocations().filter(l => l.id !== id);
     setStorage(STORAGE_KEYS.LOCATIONS, list);
     CloudSync.deleteLocation(id);
-    CloudSync.syncAllLocations(list);
+
+    // Clean up orphaned service_prices for this location
+    const allPrices = this.getServicePrices();
+    const orphaned = allPrices.filter(sp => sp.location_id === id);
+    if (orphaned.length > 0) {
+      const remaining = allPrices.filter(sp => sp.location_id !== id);
+      setStorage(STORAGE_KEYS.SERVICE_PRICES, remaining);
+      orphaned.forEach(sp => {
+        CloudSync.deleteServicePrice(sp.id, remaining);
+      });
+    }
   },
 
   getClients(): Client[] {
-    const rawClients = getStorage<any[]>(STORAGE_KEYS.CLIENTS, initialData.clients as any[]);
-    // Ensure first_name and last_name exist on all clients
+    const rawClients = getStorage<any[]>(STORAGE_KEYS.CLIENTS, []);
     return rawClients.map(c => {
       if (!c.first_name || !c.last_name) {
         const parts = (c.full_name || '').trim().split(' ');
@@ -129,8 +137,7 @@ export const DataService = {
   },
   addOrUpdateClient(client: Partial<Client> & { first_name?: string; last_name?: string; full_name?: string }): Client {
     const clients = this.getClients();
-    
-    // Compute first_name, last_name, full_name
+
     let first = (client.first_name || '').trim();
     let last = (client.last_name || '').trim();
     if (!first && client.full_name) {
@@ -140,7 +147,7 @@ export const DataService = {
     }
     const computedFullName = `${first} ${last}`.trim();
 
-    const existingIndex = client.id 
+    const existingIndex = client.id
       ? clients.findIndex(c => c.id === client.id)
       : clients.findIndex(c => c.full_name.trim().toLowerCase() === computedFullName.toLowerCase());
 
@@ -152,12 +159,14 @@ export const DataService = {
         first_name: first || oldClient.first_name,
         last_name: last || oldClient.last_name,
         full_name: computedFullName || oldClient.full_name,
+        phone: client.phone !== undefined ? client.phone : oldClient.phone,
+        notes: client.notes !== undefined ? client.notes : oldClient.notes,
       };
       clients[existingIndex] = updated;
       this.saveClients(clients);
       CloudSync.upsertClient(updated);
 
-      // If full_name changed, cascade to existing appointments and weddings
+      // If full_name changed, cascade to existing appointments, weddings, and vouchers
       if (oldClient.full_name && updated.full_name && oldClient.full_name !== updated.full_name) {
         const apps = this.getAppointments();
         let appsChanged = false;
@@ -184,19 +193,29 @@ export const DataService = {
         if (weddingsChanged) this.saveWeddings(weddings);
 
         const vouchers = this.getGiftVouchers();
-        let vouchersChanged = false;
+        let anyVoucherChanged = false;
+        const modifiedVouchers: GiftVoucher[] = [];
         vouchers.forEach(v => {
+          let itemChanged = false;
           if (v.buyer_id === updated.id || v.buyer_name === oldClient.full_name) {
             v.buyer_name = updated.full_name;
-            vouchersChanged = true;
+            itemChanged = true;
           }
           if (v.recipient_id === updated.id || v.recipient_name === oldClient.full_name) {
             v.recipient_name = updated.full_name;
-            vouchersChanged = true;
+            itemChanged = true;
           }
-          if (vouchersChanged) CloudSync.upsertGiftVoucher(v);
+          if (itemChanged) {
+            anyVoucherChanged = true;
+            modifiedVouchers.push(v);
+          }
         });
-        if (vouchersChanged) this.saveGiftVouchers(vouchers);
+        if (anyVoucherChanged) {
+          this.saveGiftVouchers(vouchers);
+          modifiedVouchers.forEach(v => {
+            CloudSync.upsertGiftVoucher(v, vouchers);
+          });
+        }
       }
 
       return updated;
@@ -218,27 +237,7 @@ export const DataService = {
   },
 
   getAppointments(): Appointment[] {
-    const raw = getStorage<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, initialData.appointments as Appointment[]);
-    // Auto-migrate past appointments imported from Excel that were already fully paid
-    const now = new Date().toISOString();
-    let changed = false;
-    const sanitized = raw.map(a => {
-      if (a.appointment_date && a.appointment_date < now && (Number(a.balance) > 0 || (a.status !== 'annullato' && a.payment < (a.total_price || a.payment + a.balance)))) {
-        changed = true;
-        const finalPayment = a.total_price !== undefined ? a.total_price : ((Number(a.payment) || 0) + (Number(a.balance) || 0));
-        return {
-          ...a,
-          payment: finalPayment,
-          balance: 0,
-          status: a.status === 'annullato' ? a.status : ('completato' as const),
-        };
-      }
-      return a;
-    });
-    if (changed) {
-      setStorage(STORAGE_KEYS.APPOINTMENTS, sanitized);
-    }
-    return sanitized;
+    return getStorage<Appointment[]>(STORAGE_KEYS.APPOINTMENTS, []);
   },
   saveAppointments(appointments: Appointment[]): void {
     setStorage(STORAGE_KEYS.APPOINTMENTS, appointments);
@@ -251,9 +250,8 @@ export const DataService = {
     };
     appointments.unshift(newApp);
     this.saveAppointments(appointments);
-    CloudSync.upsertAppointment(newApp);
 
-    // Ensure client exists in Rubrica and link client_id
+    // Ensure client exists in Rubrica and link client_id before cloud upsert
     if (newApp.client_name) {
       const ensured = this.addOrUpdateClient({
         id: newApp.client_id,
@@ -263,29 +261,42 @@ export const DataService = {
         newApp.client_id = ensured.id;
         appointments[0] = newApp;
         this.saveAppointments(appointments);
-        CloudSync.upsertAppointment(newApp);
       }
     }
 
+    CloudSync.upsertAppointment(newApp);
     return newApp;
   },
-  updateAppointment(app: Appointment): void {
+  updateAppointment(app: Appointment): Appointment {
     const appointments = this.getAppointments();
     const idx = appointments.findIndex(a => a.id === app.id);
     if (idx >= 0) {
-      if (app.client_name) {
+      const updated: Appointment = { ...app };
+      if (updated.client_name) {
         const ensured = this.addOrUpdateClient({
-          id: app.client_id,
-          full_name: app.client_name,
+          id: updated.client_id,
+          full_name: updated.client_name,
         });
-        if (ensured && !app.client_id) {
-          app.client_id = ensured.id;
+        if (ensured && !updated.client_id) {
+          updated.client_id = ensured.id;
         }
       }
-      appointments[idx] = app;
+      appointments[idx] = updated;
       this.saveAppointments(appointments);
-      CloudSync.upsertAppointment(app);
+      CloudSync.upsertAppointment(updated);
+      return updated;
     }
+    return app;
+  },
+  patchAppointment(id: string, patch: Partial<Appointment>): Appointment | null {
+    const appointments = this.getAppointments();
+    const idx = appointments.findIndex(a => a.id === id);
+    if (idx < 0) return null;
+    const updated: Appointment = { ...appointments[idx], ...patch };
+    appointments[idx] = updated;
+    this.saveAppointments(appointments);
+    CloudSync.upsertAppointment(updated);
+    return updated;
   },
   deleteAppointment(id: string): void {
     const appointments = this.getAppointments().filter(a => a.id !== id);
@@ -294,27 +305,7 @@ export const DataService = {
   },
 
   getWeddings(): WeddingService[] {
-    const raw = getStorage<WeddingService[]>(STORAGE_KEYS.WEDDINGS, initialData.weddings as WeddingService[]);
-    // Auto-migrate past weddings imported from Excel that were already fully paid
-    const now = new Date().toISOString();
-    let changed = false;
-    const sanitized = raw.map(w => {
-      if (w.wedding_date && w.wedding_date < now && (Number(w.wedding_balance) > 0 || (w.status !== 'annullato' && (Number(w.trial_deposit) + Number(w.wedding_balance)) < (w.total_price || 0)))) {
-        changed = true;
-        const finalDeposit = w.total_price !== undefined ? w.total_price : ((Number(w.trial_deposit) || 0) + (Number(w.wedding_balance) || 0));
-        return {
-          ...w,
-          trial_deposit: finalDeposit,
-          wedding_balance: 0,
-          status: w.status === 'annullato' ? w.status : ('completato' as const),
-        };
-      }
-      return w;
-    });
-    if (changed) {
-      setStorage(STORAGE_KEYS.WEDDINGS, sanitized);
-    }
-    return sanitized;
+    return getStorage<WeddingService[]>(STORAGE_KEYS.WEDDINGS, []);
   },
   saveWeddings(weddings: WeddingService[]): void {
     setStorage(STORAGE_KEYS.WEDDINGS, weddings);
@@ -327,42 +318,58 @@ export const DataService = {
     };
     weddings.unshift(newWedding);
     this.saveWeddings(weddings);
-    CloudSync.upsertWedding(newWedding);
 
-    // Ensure bride exists in Rubrica and link client_id
+    // Ensure bride exists in Rubrica without overwriting existing client notes
     if (newWedding.bride_name) {
+      const existingClient = this.getClients().find(c =>
+        (newWedding.client_id && c.id === newWedding.client_id) ||
+        c.full_name.trim().toLowerCase() === newWedding.bride_name.trim().toLowerCase()
+      );
       const ensured = this.addOrUpdateClient({
         id: newWedding.client_id,
         full_name: newWedding.bride_name,
-        notes: `Sposa - Matrimonio: ${newWedding.wedding_date.slice(0, 10)}`,
+        ...(existingClient ? {} : { notes: `Sposa - Matrimonio: ${newWedding.wedding_date.slice(0, 10)}` }),
       });
       if (ensured && (!newWedding.client_id || newWedding.client_id !== ensured.id)) {
         newWedding.client_id = ensured.id;
         weddings[0] = newWedding;
         this.saveWeddings(weddings);
-        CloudSync.upsertWedding(newWedding);
       }
     }
 
+    CloudSync.upsertWedding(newWedding);
     return newWedding;
   },
-  updateWedding(wedding: WeddingService): void {
+  updateWedding(wedding: WeddingService): WeddingService {
     const weddings = this.getWeddings();
     const idx = weddings.findIndex(w => w.id === wedding.id);
     if (idx >= 0) {
-      if (wedding.bride_name) {
+      const updated: WeddingService = { ...wedding };
+      if (updated.bride_name) {
         const ensured = this.addOrUpdateClient({
-          id: wedding.client_id,
-          full_name: wedding.bride_name,
+          id: updated.client_id,
+          full_name: updated.bride_name,
         });
-        if (ensured && !wedding.client_id) {
-          wedding.client_id = ensured.id;
+        if (ensured && !updated.client_id) {
+          updated.client_id = ensured.id;
         }
       }
-      weddings[idx] = wedding;
+      weddings[idx] = updated;
       this.saveWeddings(weddings);
-      CloudSync.upsertWedding(wedding);
+      CloudSync.upsertWedding(updated);
+      return updated;
     }
+    return wedding;
+  },
+  patchWedding(id: string, patch: Partial<WeddingService>): WeddingService | null {
+    const weddings = this.getWeddings();
+    const idx = weddings.findIndex(w => w.id === id);
+    if (idx < 0) return null;
+    const updated: WeddingService = { ...weddings[idx], ...patch };
+    weddings[idx] = updated;
+    this.saveWeddings(weddings);
+    CloudSync.upsertWedding(updated);
+    return updated;
   },
   deleteWedding(id: string): void {
     const weddings = this.getWeddings().filter(w => w.id !== id);
@@ -371,7 +378,7 @@ export const DataService = {
   },
 
   getExpenses(): Expense[] {
-    return getStorage<Expense[]>(STORAGE_KEYS.EXPENSES, initialData.expenses as Expense[]);
+    return getStorage<Expense[]>(STORAGE_KEYS.EXPENSES, []);
   },
   saveExpenses(expenses: Expense[]): void {
     setStorage(STORAGE_KEYS.EXPENSES, expenses);
@@ -387,6 +394,15 @@ export const DataService = {
     CloudSync.upsertExpense(newExpense);
     return newExpense;
   },
+  updateExpense(expense: Expense): void {
+    const expenses = this.getExpenses();
+    const idx = expenses.findIndex(e => e.id === expense.id);
+    if (idx >= 0) {
+      expenses[idx] = expense;
+      this.saveExpenses(expenses);
+      CloudSync.upsertExpense(expense);
+    }
+  },
   deleteExpense(id: string): void {
     const expenses = this.getExpenses().filter(e => e.id !== id);
     this.saveExpenses(expenses);
@@ -394,7 +410,7 @@ export const DataService = {
   },
 
   getGiftVouchers(): GiftVoucher[] {
-    const raw = getStorage<GiftVoucher[]>(STORAGE_KEYS.GIFT_VOUCHERS, (initialData as any).gift_vouchers || []);
+    const raw = getStorage<GiftVoucher[]>(STORAGE_KEYS.GIFT_VOUCHERS, []);
     return raw.map(v => {
       const initAmount = v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0);
       const remAmount = v.remaining_amount !== undefined ? v.remaining_amount : (v.is_used ? 0 : initAmount);
@@ -403,7 +419,7 @@ export const DataService = {
         initial_amount: initAmount,
         remaining_amount: remAmount,
         amount: initAmount,
-        category: 'pmu', // PMU sotto il cofano come richiesto
+        category: 'pmu',
         is_used: remAmount <= 0,
       };
     });
@@ -417,7 +433,7 @@ export const DataService = {
     const remAmount = voucher.remaining_amount !== undefined ? voucher.remaining_amount : initAmount;
     const newVoucher: GiftVoucher = {
       ...voucher,
-      category: 'pmu', // Sempre assegnato a PMU sotto il cofano
+      category: 'pmu',
       initial_amount: initAmount,
       remaining_amount: remAmount,
       amount: initAmount,
@@ -428,9 +444,7 @@ export const DataService = {
     vouchers.unshift(newVoucher);
     this.saveGiftVouchers(vouchers);
     CloudSync.upsertGiftVoucher(newVoucher, vouchers);
-    CloudSync.syncAllGiftVouchers(vouchers);
 
-    // Make sure buyer exists in Rubrica
     if (newVoucher.buyer_name) {
       this.addOrUpdateClient({
         id: newVoucher.buyer_id,
@@ -438,7 +452,6 @@ export const DataService = {
       });
     }
 
-    // If recipient is specified, also ensure recipient exists in Rubrica
     if (newVoucher.recipient_name) {
       this.addOrUpdateClient({
         id: newVoucher.recipient_id,
@@ -465,7 +478,6 @@ export const DataService = {
       vouchers[idx] = updated;
       this.saveGiftVouchers(vouchers);
       CloudSync.upsertGiftVoucher(updated, vouchers);
-      CloudSync.syncAllGiftVouchers(vouchers);
 
       if (updated.recipient_name) {
         this.addOrUpdateClient({
@@ -479,14 +491,30 @@ export const DataService = {
     const vouchers = this.getGiftVouchers().filter(v => v.id !== id);
     this.saveGiftVouchers(vouchers);
     CloudSync.deleteGiftVoucher(id, vouchers);
-    CloudSync.syncAllGiftVouchers(vouchers);
   },
 
   getSettings(): AppSettings {
-    return getStorage<AppSettings>(STORAGE_KEYS.SETTINGS, initialData.settings as AppSettings);
+    return getStorage<AppSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
   },
   saveSettings(settings: AppSettings): void {
-    setStorage(STORAGE_KEYS.SETTINGS, settings);
+    setStorage(STORAGE_KEYS.SETTINGS, { ...settings, pin_hash: '' });
+    CloudSync.upsertAppSettings(settings);
+  },
+
+  clearLocalCache(): void {
+    if (typeof window === 'undefined') return;
+    Object.values(STORAGE_KEYS).forEach(k => {
+      try {
+        localStorage.removeItem(k);
+      } catch {
+        // ignore
+      }
+    });
+    try {
+      localStorage.removeItem('fede_auth_session');
+    } catch {
+      // ignore
+    }
   },
 
   getServicePrices(): ServicePrice[] {
@@ -494,7 +522,6 @@ export const DataService = {
   },
   saveServicePrices(prices: ServicePrice[]): void {
     setStorage(STORAGE_KEYS.SERVICE_PRICES, prices);
-    CloudSync.syncAllServicePrices(prices);
   },
   addOrUpdateServicePrice(priceItem: Partial<ServicePrice> & { location_id: string; name: string; price: number }): ServicePrice {
     const list = this.getServicePrices();
@@ -508,25 +535,25 @@ export const DataService = {
         created_at: priceItem.created_at || new Date().toISOString(),
       };
       const nextList = list.map(item => (item.id === updated.id ? updated : item));
-      this.saveServicePrices(nextList);
+      setStorage(STORAGE_KEYS.SERVICE_PRICES, nextList);
       CloudSync.upsertServicePrice(updated, nextList);
     } else {
       updated = {
-        id: `sp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        id: `sp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         location_id: priceItem.location_id,
         name: priceItem.name.trim(),
         price: Number(priceItem.price) || 0,
         created_at: new Date().toISOString(),
       };
       const nextList = [...list, updated];
-      this.saveServicePrices(nextList);
+      setStorage(STORAGE_KEYS.SERVICE_PRICES, nextList);
       CloudSync.upsertServicePrice(updated, nextList);
     }
     return updated;
   },
   deleteServicePrice(id: string): void {
     const list = this.getServicePrices().filter(item => item.id !== id);
-    this.saveServicePrices(list);
+    setStorage(STORAGE_KEYS.SERVICE_PRICES, list);
     CloudSync.deleteServicePrice(id, list);
   },
 
@@ -538,30 +565,51 @@ export const DataService = {
     expenses?: Expense[];
     vouchers?: GiftVoucher[];
     servicePrices?: ServicePrice[];
+    settings?: AppSettings;
   } | null> {
     const cloud = await CloudSync.fetchAll();
     if (!cloud) return null;
 
-    if (cloud.locations && cloud.locations.length > 0) {
-      setStorage(STORAGE_KEYS.LOCATIONS, cloud.locations);
+    if (cloud.locations.ok) {
+      setStorage(STORAGE_KEYS.LOCATIONS, cloud.locations.data);
     }
-    if (cloud.clients && cloud.clients.length > 0) {
-      this.saveClients(cloud.clients);
+    if (cloud.clients.ok) {
+      setStorage(STORAGE_KEYS.CLIENTS, cloud.clients.data);
     }
-    if (cloud.appointments && cloud.appointments.length > 0) {
-      this.saveAppointments(cloud.appointments);
+    if (cloud.appointments.ok) {
+      setStorage(STORAGE_KEYS.APPOINTMENTS, cloud.appointments.data);
     }
-    if (cloud.weddings && cloud.weddings.length > 0) {
-      this.saveWeddings(cloud.weddings);
+    if (cloud.weddings.ok) {
+      setStorage(STORAGE_KEYS.WEDDINGS, cloud.weddings.data);
     }
-    if (cloud.expenses && cloud.expenses.length > 0) {
-      this.saveExpenses(cloud.expenses);
+    if (cloud.expenses.ok) {
+      setStorage(STORAGE_KEYS.EXPENSES, cloud.expenses.data);
     }
-    if (cloud.vouchers && cloud.vouchers.length > 0) {
-      this.saveGiftVouchers(cloud.vouchers);
+    if (cloud.vouchers.ok) {
+      setStorage(STORAGE_KEYS.GIFT_VOUCHERS, cloud.vouchers.data);
     }
-    if (cloud.servicePrices && cloud.servicePrices.length > 0) {
-      this.saveServicePrices(cloud.servicePrices);
+    if (cloud.servicePrices.ok) {
+      setStorage(STORAGE_KEYS.SERVICE_PRICES, cloud.servicePrices.data);
+    }
+    if (cloud.appSettings) {
+      const localSettings = this.getSettings();
+      const merged: AppSettings = {
+        ...localSettings,
+        pin_hash: cloud.appSettings.pin_hash || localSettings.pin_hash,
+        yearly_target:
+          cloud.appSettings.yearly_target !== undefined
+            ? cloud.appSettings.yearly_target
+            : localSettings.yearly_target,
+        monthly_target:
+          cloud.appSettings.monthly_target !== undefined
+            ? cloud.appSettings.monthly_target
+            : localSettings.monthly_target,
+        google_calendar_email:
+          cloud.appSettings.google_calendar_email !== undefined
+            ? cloud.appSettings.google_calendar_email
+            : localSettings.google_calendar_email,
+      };
+      setStorage(STORAGE_KEYS.SETTINGS, merged);
     }
 
     return {
@@ -572,10 +620,10 @@ export const DataService = {
       expenses: this.getExpenses(),
       vouchers: this.getGiftVouchers(),
       servicePrices: this.getServicePrices(),
+      settings: this.getSettings(),
     };
   },
 
-  // Export full JSON backup
   exportFullBackup(): string {
     const data = {
       locations: this.getLocations(),
@@ -584,18 +632,17 @@ export const DataService = {
       weddings: this.getWeddings(),
       expenses: this.getExpenses(),
       gift_vouchers: this.getGiftVouchers(),
+      service_prices: this.getServicePrices(),
       settings: this.getSettings(),
       exportDate: new Date().toISOString(),
     };
     return JSON.stringify(data, null, 2);
   },
 
-  // Reset to initial Excel data
   resetToDefault(): void {
     if (typeof window !== 'undefined') {
       localStorage.clear();
       window.location.reload();
     }
-  }
+  },
 };
-

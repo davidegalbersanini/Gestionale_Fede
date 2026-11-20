@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Location, ServicePrice } from '@/types';
 import { getNextPastelLocationColor, PASTEL_LOCATION_PALETTE } from '@/lib/locationColors';
+import ConfirmModal from '@/components/ConfirmModal';
 import {
   Store,
   MapPin,
@@ -10,12 +11,12 @@ import {
   Edit2,
   Trash2,
   ExternalLink,
-  DollarSign,
   Tag,
   Check,
   X,
   Sparkles,
   Palette,
+  AlertCircle,
 } from 'lucide-react';
 
 interface LocationsViewProps {
@@ -37,36 +38,37 @@ export default function LocationsView({
   onSaveServicePrice,
   onDeleteServicePrice,
 }: LocationsViewProps) {
-  // New Location Form State
   const [isAddingLoc, setIsAddingLoc] = useState(false);
   const [newLocName, setNewLocName] = useState('');
   const [newLocAddress, setNewLocAddress] = useState('');
   const [newLocColor, setNewLocColor] = useState(() => getNextPastelLocationColor(locations));
 
-  // Quando si apre il form o cambiano le sedi esistenti, assegna di default il prossimo colore pastello libero
   useEffect(() => {
     if (isAddingLoc) {
       setNewLocColor(getNextPastelLocationColor(locations));
     }
   }, [isAddingLoc, locations]);
 
-  // Edit Location State
   const [editingLocId, setEditingLocId] = useState<string | null>(null);
   const [editingLocName, setEditingLocName] = useState('');
   const [editingLocAddress, setEditingLocAddress] = useState('');
   const [editingLocColor, setEditingLocColor] = useState('#F472B6');
 
-  // New Service Form State (per location)
   const [addingServiceLocId, setAddingServiceLocId] = useState<string | null>(null);
   const [newServiceName, setNewServiceName] = useState('');
   const [newServicePrice, setNewServicePrice] = useState('');
 
-  // Edit Service State
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editingServiceName, setEditingServiceName] = useState('');
   const [editingServicePrice, setEditingServicePrice] = useState('');
 
-  // Handle Add Location
+  const [locationWarning, setLocationWarning] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { type: 'location'; loc: Location }
+    | { type: 'service'; srv: ServicePrice; locName: string }
+    | null
+  >(null);
+
   const handleAddLocation = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLocName.trim()) return;
@@ -90,7 +92,6 @@ export default function LocationsView({
     setNewLocColor(getNextPastelLocationColor([...locations, newLoc]));
   };
 
-  // Handle Update Location
   const handleSaveEditLocation = (id: string) => {
     if (!editingLocName.trim()) return;
     const existing = locations.find(l => l.id === id);
@@ -111,23 +112,30 @@ export default function LocationsView({
     setEditingLocId(null);
   };
 
-  // Handle Delete Location
-  const handleDeleteLocation = (id: string) => {
+  const requestDeleteLocation = (loc: Location) => {
     if (locations.length <= 1) {
-      alert('Devi mantenere almeno una sede attiva.');
+      setLocationWarning('Devi mantenere almeno una sede attiva.');
       return;
     }
-    if (confirm('Sei sicura di voler eliminare questa sede? I trattamenti associati non saranno più visibili per questa sede.')) {
-      if (onDeleteLocationProp) {
-        onDeleteLocationProp(id);
-      } else {
-        const updated = locations.filter(l => l.id !== id);
-        onUpdateLocations(updated);
-      }
-    }
+    setLocationWarning(null);
+    setDeleteTarget({ type: 'location', loc });
   };
 
-  // Handle Add Service Price
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === 'location') {
+      if (onDeleteLocationProp) {
+        onDeleteLocationProp(deleteTarget.loc.id);
+      } else {
+        const updated = locations.filter(l => l.id !== deleteTarget.loc.id);
+        onUpdateLocations(updated);
+      }
+    } else {
+      onDeleteServicePrice(deleteTarget.srv.id);
+    }
+    setDeleteTarget(null);
+  };
+
   const handleAddService = (locId: string) => {
     if (!newServiceName.trim() || !newServicePrice) return;
     onSaveServicePrice({
@@ -140,7 +148,6 @@ export default function LocationsView({
     setAddingServiceLocId(null);
   };
 
-  // Handle Edit Service Price
   const handleSaveEditService = (item: ServicePrice) => {
     if (!editingServiceName.trim() || !editingServicePrice) return;
     onSaveServicePrice({
@@ -175,7 +182,24 @@ export default function LocationsView({
         </button>
       </div>
 
-      {/* Add New Location Card Form */}
+      {/* Inline Warning */}
+      {locationWarning && (
+        <div className="p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 flex items-center justify-between gap-3 text-amber-200 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span>{locationWarning}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLocationWarning(null)}
+            className="text-amber-400 hover:text-amber-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Add New Location Form */}
       {isAddingLoc && (
         <form
           onSubmit={handleAddLocation}
@@ -228,7 +252,6 @@ export default function LocationsView({
                 <label className="block text-[11px] font-semibold text-stone-400 uppercase mb-1">
                   Colore Sede
                 </label>
-                {/* Palette consigliata */}
                 <div className="flex items-center gap-2 flex-wrap mb-2.5">
                   {PASTEL_LOCATION_PALETTE.map(c => {
                     const isSelected = newLocColor.toUpperCase() === c.toUpperCase();
@@ -238,7 +261,7 @@ export default function LocationsView({
                         type="button"
                         key={c}
                         onClick={() => setNewLocColor(c)}
-                        title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
+                        title={`${c}${isAlreadyUsed ? " (già in uso da un'altra sede)" : ''}`}
                         className={`w-6 h-6 rounded-full transition-all relative border border-white/20 ${
                           isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
                         }`}
@@ -252,7 +275,6 @@ export default function LocationsView({
                   })}
                 </div>
 
-                {/* Selettore colore personalizzato esplicito */}
                 <label className="flex items-center justify-between gap-2 bg-stone-800/90 hover:bg-stone-800 border border-stone-700/80 rounded-xl px-2.5 py-1.5 cursor-pointer transition-all group">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="relative flex items-center justify-center">
@@ -289,7 +311,7 @@ export default function LocationsView({
         </form>
       )}
 
-      {/* Locations and their Price Lists */}
+      {/* Locations & Price Lists */}
       <div className="space-y-6">
         {locations.map(loc => {
           const locServices = servicePrices.filter(sp => sp.location_id === loc.id);
@@ -301,10 +323,8 @@ export default function LocationsView({
               key={loc.id}
               className="bg-stone-900 border border-stone-800 rounded-3xl overflow-hidden shadow-sm transition-all"
             >
-              {/* Location Header Bar */}
               <div className="p-4 sm:p-5 bg-stone-900/90 border-b border-stone-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 {isEditingThisLoc ? (
-                  /* Edit Location Form */
                   <div className="flex-1 flex flex-col gap-3">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                       <div className="flex-1 flex items-center gap-2">
@@ -340,21 +360,20 @@ export default function LocationsView({
                       </div>
                     </div>
 
-                    {/* Color selection row with palette swatches + custom picker button */}
                     <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-stone-800/80">
                       <span className="text-[11px] font-semibold text-stone-400 uppercase">Colore:</span>
-                      
-                      {/* Swatches */}
                       <div className="flex items-center gap-2 flex-wrap">
                         {PASTEL_LOCATION_PALETTE.map(c => {
                           const isSelected = editingLocColor.toUpperCase() === c.toUpperCase();
-                          const isAlreadyUsed = locations.some(l => l.id !== loc.id && (l.color || '').toUpperCase() === c.toUpperCase());
+                          const isAlreadyUsed = locations.some(
+                            l => l.id !== loc.id && (l.color || '').toUpperCase() === c.toUpperCase()
+                          );
                           return (
                             <button
                               type="button"
                               key={c}
                               onClick={() => setEditingLocColor(c)}
-                              title={`${c}${isAlreadyUsed ? ' (già in uso da un\'altra sede)' : ''}`}
+                              title={`${c}${isAlreadyUsed ? " (già in uso da un'altra sede)" : ''}`}
                               className={`w-6 h-6 rounded-full transition-all relative border border-white/20 ${
                                 isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-stone-900 scale-110 shadow-md' : 'hover:scale-110 opacity-90 hover:opacity-100'
                               }`}
@@ -368,7 +387,6 @@ export default function LocationsView({
                         })}
                       </div>
 
-                      {/* Custom color picker */}
                       <label className="flex items-center gap-1.5 bg-stone-800/90 hover:bg-stone-800 border border-stone-700/80 rounded-lg px-2 py-1 cursor-pointer transition-all group ml-auto sm:ml-0">
                         <div className="relative flex items-center justify-center">
                           <span
@@ -386,14 +404,11 @@ export default function LocationsView({
                           <Palette className="w-2.5 h-2.5 text-rose-400" />
                           <span>Personalizzato</span>
                         </span>
-                        <span className="text-[10px] font-mono text-stone-400">
-                          {editingLocColor}
-                        </span>
+                        <span className="text-[10px] font-mono text-stone-400">{editingLocColor}</span>
                       </label>
                     </div>
                   </div>
                 ) : (
-                  /* Standard Location Info */
                   <>
                     <div className="flex items-center gap-3 min-w-0">
                       <span
@@ -402,9 +417,7 @@ export default function LocationsView({
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h2 className="text-base sm:text-lg font-bold text-white truncate">
-                            {loc.name}
-                          </h2>
+                          <h2 className="text-base sm:text-lg font-bold text-white truncate">{loc.name}</h2>
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-800 text-stone-400 border border-stone-700/60 flex-shrink-0">
                             {locServices.length} {locServices.length === 1 ? 'trattamento' : 'trattamenti'}
                           </span>
@@ -442,7 +455,7 @@ export default function LocationsView({
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDeleteLocation(loc.id)}
+                        onClick={() => requestDeleteLocation(loc)}
                         className="p-2 rounded-xl bg-stone-800 hover:bg-red-950/40 text-stone-400 hover:text-red-400 transition-colors"
                         title="Elimina sede"
                       >
@@ -476,7 +489,6 @@ export default function LocationsView({
                   )}
                 </div>
 
-                {/* Form Add Service in this location */}
                 {isAddingService && (
                   <div className="p-3.5 rounded-2xl bg-stone-800/80 border border-rose-500/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 animate-in fade-in">
                     <input
@@ -515,7 +527,6 @@ export default function LocationsView({
                   </div>
                 )}
 
-                {/* Service List Grid */}
                 {locServices.length === 0 ? (
                   <div className="py-6 text-center text-stone-500 text-xs border border-dashed border-stone-800 rounded-2xl bg-stone-900/20">
                     Nessun trattamento nel listino per questa sede.
@@ -580,12 +591,8 @@ export default function LocationsView({
                           className="px-3.5 py-2.5 bg-stone-800/60 hover:bg-stone-800 border border-stone-700/50 rounded-2xl flex items-center justify-between gap-2 group transition-all shadow-xs"
                         >
                           <div className="min-w-0 flex-1">
-                            <span className="text-xs font-semibold text-white truncate block">
-                              {srv.name}
-                            </span>
-                            <span className="text-xs font-bold text-emerald-400">
-                              {srv.price} €
-                            </span>
+                            <span className="text-xs font-semibold text-white truncate block">{srv.name}</span>
+                            <span className="text-xs font-bold text-emerald-400">{srv.price} €</span>
                           </div>
 
                           <div className="flex items-center gap-1 flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -601,11 +608,9 @@ export default function LocationsView({
                               <Edit2 className="w-3 h-3" />
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm(`Rimuovere "${srv.name}" dal listino di ${loc.name}?`)) {
-                                  onDeleteServicePrice(srv.id);
-                                }
-                              }}
+                              onClick={() =>
+                                setDeleteTarget({ type: 'service', srv, locName: loc.name })
+                              }
                               className="p-1 rounded-lg text-stone-500 hover:text-red-400 hover:bg-stone-700 transition-colors"
                               title="Rimuovi trattamento"
                             >
@@ -622,7 +627,21 @@ export default function LocationsView({
           );
         })}
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        title={deleteTarget?.type === 'location' ? 'Elimina Sede' : 'Rimuovi Trattamento'}
+        message={
+          deleteTarget?.type === 'location'
+            ? `Sei sicura di voler eliminare la sede "${deleteTarget.loc.name}"? Anche il listino trattamenti di questa sede verrà rimosso.`
+            : deleteTarget?.type === 'service'
+            ? `Rimuovere "${deleteTarget.srv.name}" dal listino di ${deleteTarget.locName}?`
+            : ''
+        }
+        confirmLabel="Elimina"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
-

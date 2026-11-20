@@ -2,25 +2,24 @@
 
 import React, { useState, useMemo } from 'react';
 import { Client, Appointment, WeddingService, GiftVoucher } from '@/types';
+import { computeClientTotalSpent, normalizeWhatsAppPhone } from '@/lib/finance';
+import ConfirmModal from '@/components/ConfirmModal';
 import {
   Users,
   Search,
   Plus,
   Phone,
   Calendar,
-  Clock,
   ChevronRight,
   ChevronLeft,
   X,
   History,
-  Sparkles,
   Heart,
-  DollarSign,
   Trash2,
   AlertCircle,
   Gift,
   Pencil,
-  Check
+  Check,
 } from 'lucide-react';
 
 interface ClientsViewProps {
@@ -35,7 +34,7 @@ interface ClientsViewProps {
   onOpenNewVoucherForClient?: (client: Client) => void;
 }
 
-const ITEMS_PER_PAGE = 48; // Divisibile per 1, 2, 3 (e 4) colonne per evitare spazi vuoti in fondo alla griglia
+const ITEMS_PER_PAGE = 48;
 
 export default function ClientsView({
   clients,
@@ -57,6 +56,7 @@ export default function ClientsView({
   const [newPhone, setNewPhone] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
   // Edit Client state
   const [isEditingClient, setIsEditingClient] = useState(false);
@@ -99,20 +99,22 @@ export default function ClientsView({
       notes: editNotes.trim(),
     });
 
-    // Update locally selected client to reflect changes immediately
-    setSelectedClient(prev => prev ? {
-      ...prev,
-      first_name: cleanFirst || cleanLast,
-      last_name: cleanLast || '-',
-      full_name,
-      phone: editPhone.trim(),
-      notes: editNotes.trim(),
-    } : null);
+    setSelectedClient(prev =>
+      prev
+        ? {
+            ...prev,
+            first_name: cleanFirst || cleanLast,
+            last_name: cleanLast || '-',
+            full_name,
+            phone: editPhone.trim(),
+            notes: editNotes.trim(),
+          }
+        : null
+    );
 
     setIsEditingClient(false);
   };
 
-  // Filter and sort clients alphabetically by full_name (A -> Z)
   const filteredClients = useMemo(() => {
     let list = clients;
     if (search.trim()) {
@@ -126,14 +128,22 @@ export default function ClientsView({
           (c.notes && c.notes.toLowerCase().includes(q))
       );
     }
-    return [...list].sort((a, b) => {
-      return a.full_name.trim().localeCompare(b.full_name.trim(), 'it', { sensitivity: 'base' });
-    });
+    return [...list].sort((a, b) =>
+      a.full_name.trim().localeCompare(b.full_name.trim(), 'it', { sensitivity: 'base' })
+    );
   }, [clients, search]);
 
-  // History for selected client
   const clientHistory = useMemo(() => {
-    if (!selectedClient) return { past: [], upcoming: [], purchasedVouchers: [] as GiftVoucher[], receivedVouchers: [] as GiftVoucher[], totalSpent: 0, totalCount: 0 };
+    if (!selectedClient) {
+      return {
+        past: [],
+        upcoming: [],
+        purchasedVouchers: [] as GiftVoucher[],
+        receivedVouchers: [] as GiftVoucher[],
+        totalSpent: 0,
+        totalCount: 0,
+      };
+    }
 
     const cName = selectedClient.full_name.trim().toLowerCase();
     const today = new Date().toISOString();
@@ -146,43 +156,46 @@ export default function ClientsView({
       w => w.client_id === selectedClient.id || w.bride_name.trim().toLowerCase() === cName
     );
 
-    // Buoni comprati dal cliente
     const purchasedVouchers = vouchers.filter(
       v => v.buyer_id === selectedClient.id || v.buyer_name.trim().toLowerCase() === cName
     );
 
-    // Buoni di cui il cliente è beneficiario/destinatario
     const receivedVouchers = vouchers.filter(
-      v => (v.recipient_id === selectedClient.id || (v.recipient_name && v.recipient_name.trim().toLowerCase() === cName)) &&
-           (v.buyer_id !== selectedClient.id && v.buyer_name.trim().toLowerCase() !== cName)
+      v =>
+        (v.recipient_id === selectedClient.id ||
+          (v.recipient_name && v.recipient_name.trim().toLowerCase() === cName)) &&
+        v.buyer_id !== selectedClient.id &&
+        v.buyer_name.trim().toLowerCase() !== cName
     );
 
     const past: any[] = [];
     const upcoming: any[] = [];
-    let totalSpent = 0;
 
-    // Vouchers bought count as spent by this buyer!
-    purchasedVouchers.forEach(v => {
-      totalSpent += (v.initial_amount !== undefined ? v.initial_amount : (v.amount || 0));
-    });
+    const totalSpent = computeClientTotalSpent(clientPmus, clientWeddings, purchasedVouchers);
 
     clientPmus.forEach(p => {
-      totalSpent += p.payment || 0;
       const isPast = p.appointment_date < today;
-      const item = { type: 'pmu', date: p.appointment_date, title: p.treatment, amount: p.payment, raw: p };
+      const item = {
+        type: 'pmu',
+        date: p.appointment_date,
+        title: p.treatment,
+        amount: p.payment,
+        status: p.status,
+        raw: p,
+      };
       if (isPast) past.push(item);
       else upcoming.push(item);
     });
 
     clientWeddings.forEach(w => {
-      totalSpent += (w.trial_deposit || 0) + (w.wedding_balance || 0);
       const isPast = w.wedding_date < today;
       const item = {
         type: 'wedding',
         date: w.wedding_date,
         title: `${w.event_type || 'Matrimonio'} (${w.people_count} pers.)`,
-        amount: w.total_price || ((w.trial_deposit || 0) + (w.wedding_balance || 0)),
-        raw: w
+        amount: w.trial_deposit || 0,
+        status: w.status,
+        raw: w,
       };
       if (isPast) past.push(item);
       else upcoming.push(item);
@@ -191,7 +204,14 @@ export default function ClientsView({
     past.sort((a, b) => b.date.localeCompare(a.date));
     upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
-    return { past, upcoming, purchasedVouchers, receivedVouchers, totalSpent, totalCount: past.length + upcoming.length };
+    return {
+      past,
+      upcoming,
+      purchasedVouchers,
+      receivedVouchers,
+      totalSpent,
+      totalCount: past.length + upcoming.length,
+    };
   }, [selectedClient, appointments, weddings, vouchers]);
 
   const handleCreateClient = (e: React.FormEvent) => {
@@ -216,6 +236,8 @@ export default function ClientsView({
     setNewPhone('');
     setNewNotes('');
   };
+
+  const whatsappDigits = selectedClient?.phone ? normalizeWhatsAppPhone(selectedClient.phone) : '';
 
   return (
     <div className="space-y-4">
@@ -253,7 +275,6 @@ export default function ClientsView({
         />
       </div>
 
-      {/* Pagination summary info */}
       {filteredClients.length > ITEMS_PER_PAGE && (
         <div className="flex items-center justify-between text-xs text-stone-400 px-1">
           <span>
@@ -265,7 +286,7 @@ export default function ClientsView({
         </div>
       )}
 
-      {/* Client List Grid (divisibile per numero di colonne) */}
+      {/* Client List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredClients.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(c => (
           <div
@@ -325,11 +346,18 @@ export default function ClientsView({
         </div>
       )}
 
-      {/* Client Detail Drawer / Modal */}
+      {/* Client Detail Modal */}
       {selectedClient && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setSelectedClient(null);
+              setDeleteErrorMessage(null);
+            }
+          }}
+        >
           <div className="bg-stone-900 border border-stone-800 text-stone-100 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-            {/* Header */}
             <div className="sticky top-0 bg-stone-900/95 backdrop-blur-md px-6 py-4 border-b border-stone-800 flex items-center justify-between z-10">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-rose-600/20 border border-rose-500/30 flex items-center justify-center text-rose-400 font-black text-lg flex-shrink-0">
@@ -363,7 +391,6 @@ export default function ClientsView({
               </button>
             </div>
 
-            {/* Error Message for Blocked Delete */}
             {deleteErrorMessage && (
               <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-amber-950/60 border border-amber-500/50 flex items-start gap-3 animate-fade-in text-amber-200 text-xs">
                 <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
@@ -381,7 +408,6 @@ export default function ClientsView({
               </div>
             )}
 
-            {/* Body */}
             <div className="p-6 space-y-5">
               {/* Phone / WhatsApp quick actions */}
               <div className="flex gap-2">
@@ -393,14 +419,16 @@ export default function ClientsView({
                     >
                       <Phone className="w-3.5 h-3.5 text-rose-400" /> Chiama
                     </a>
-                    <a
-                      href={`https://wa.me/${selectedClient.phone.replace(/[^0-9]/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2"
-                    >
-                      WhatsApp
-                    </a>
+                    {whatsappDigits && (
+                      <a
+                        href={`https://wa.me/${whatsappDigits}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-2"
+                      >
+                        WhatsApp
+                      </a>
+                    )}
                   </>
                 ) : (
                   <button
@@ -414,7 +442,6 @@ export default function ClientsView({
                 )}
               </div>
 
-              {/* Client Notes / Note anagrafica */}
               {selectedClient.notes ? (
                 <div className="p-3.5 rounded-2xl bg-stone-800/50 border border-stone-700/60 text-xs">
                   <div className="flex items-center justify-between text-stone-400 mb-1">
@@ -432,7 +459,6 @@ export default function ClientsView({
                 </div>
               ) : null}
 
-              {/* Actions: Book PMU, Event or Issue Gift Voucher for this client */}
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => {
@@ -470,7 +496,7 @@ export default function ClientsView({
                 )}
               </div>
 
-              {/* Buoni Regalo Acquistati da questo cliente */}
+              {/* Buoni Acquistati */}
               <div>
                 <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Gift className="w-3.5 h-3.5" />
@@ -534,7 +560,7 @@ export default function ClientsView({
                 )}
               </div>
 
-              {/* Buoni Regalo Ricevuti (Beneficiario) */}
+              {/* Buoni Ricevuti */}
               {clientHistory.receivedVouchers.length > 0 && (
                 <div>
                   <h4 className="text-xs font-bold text-pink-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -591,7 +617,7 @@ export default function ClientsView({
                 </div>
               )}
 
-              {/* Upcoming Scheduled Appointments */}
+              {/* In programma */}
               <div>
                 <h4 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5" />
@@ -606,17 +632,23 @@ export default function ClientsView({
                     {clientHistory.upcoming.map((item, idx) => (
                       <div key={idx} className="p-3 rounded-xl bg-rose-950/20 border border-rose-900/40 text-xs flex justify-between items-center">
                         <div>
-                          <p className="font-bold text-white">{item.title}</p>
-                          <p className="text-stone-400 text-[11px]">{item.date.slice(0, 10)}</p>
+                          <p className={`font-bold text-white ${item.status === 'annullato' ? 'line-through text-stone-400' : ''}`}>
+                            {item.title}
+                          </p>
+                          <p className="text-stone-400 text-[11px]">
+                            {item.date.slice(0, 10)} {item.status === 'annullato' ? '• Annullato' : ''}
+                          </p>
                         </div>
-                        <span className="font-bold text-rose-400">{item.amount}€</span>
+                        <span className={`font-bold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-rose-400'}`}>
+                          {item.amount}€
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Past Treatments History */}
+              {/* Storico */}
               <div>
                 <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5" />
@@ -631,32 +663,33 @@ export default function ClientsView({
                     {clientHistory.past.map((item, idx) => (
                       <div key={idx} className="p-3 rounded-xl bg-stone-800/60 border border-stone-700/60 text-xs flex justify-between items-center">
                         <div>
-                          <p className="font-medium text-white">{item.title}</p>
-                          <p className="text-stone-400 text-[11px]">{item.date.slice(0, 10)}</p>
+                          <p className={`font-medium text-white ${item.status === 'annullato' ? 'line-through text-stone-400' : ''}`}>
+                            {item.title}
+                          </p>
+                          <p className="text-stone-400 text-[11px]">
+                            {item.date.slice(0, 10)} {item.status === 'annullato' ? '• Annullato' : ''}
+                          </p>
                         </div>
-                        <span className="font-semibold text-emerald-400">{item.amount}€</span>
+                        <span className={`font-semibold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-emerald-400'}`}>
+                          {item.amount}€
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Delete Client Section */}
+              {/* Delete Client */}
               <div className="pt-3 border-t border-stone-800">
                 <button
                   type="button"
                   onClick={() => {
-                    const hasAppointments = clientHistory.totalCount > 0;
-                    if (hasAppointments) {
+                    if (clientHistory.totalCount > 0) {
                       setDeleteErrorMessage(
                         `Impossibile eliminare: ci sono ${clientHistory.totalCount} appuntamenti collegati a questo contatto.`
                       );
                     } else {
-                      if (confirm(`Eliminare definitivamente "${selectedClient.full_name}" dalla rubrica?`)) {
-                        onDeleteClient(selectedClient.id);
-                        setSelectedClient(null);
-                        setDeleteErrorMessage(null);
-                      }
+                      setClientToDelete(selectedClient);
                     }
                   }}
                   className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
@@ -685,7 +718,12 @@ export default function ClientsView({
 
       {/* Add Client Modal */}
       {isAddingClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsAddingClient(false);
+          }}
+        >
           <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
               <h3 className="text-base font-bold text-white">Nuovo Cliente</h3>
@@ -771,7 +809,12 @@ export default function ClientsView({
 
       {/* Edit Client Modal */}
       {isEditingClient && selectedClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto"
+          onClick={e => {
+            if (e.target === e.currentTarget) setIsEditingClient(false);
+          }}
+        >
           <div className="bg-stone-900 border border-stone-800 rounded-3xl w-full max-w-md p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-800 mb-4">
               <div className="flex items-center gap-2">
@@ -858,6 +901,22 @@ export default function ClientsView({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={Boolean(clientToDelete)}
+        title="Elimina Cliente"
+        message={`Eliminare definitivamente "${clientToDelete?.full_name || ''}" dalla rubrica?`}
+        confirmLabel="Elimina"
+        onConfirm={() => {
+          if (clientToDelete) {
+            onDeleteClient(clientToDelete.id);
+            setSelectedClient(null);
+            setDeleteErrorMessage(null);
+          }
+          setClientToDelete(null);
+        }}
+        onCancel={() => setClientToDelete(null)}
+      />
     </div>
   );
 }

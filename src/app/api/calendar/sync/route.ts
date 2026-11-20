@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { syncGoogleCalendarEvent, deleteGoogleCalendarEvent } from '@/lib/googleAuth';
+import { requireAuth } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const result = await syncGoogleCalendarEvent({
@@ -22,6 +26,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   try {
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');

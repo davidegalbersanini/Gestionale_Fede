@@ -1,13 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
+import { getServerSupabase } from '@/lib/serverSupabase';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 function getAdminSupabase() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) return null;
-  return createClient(SUPABASE_URL, SUPABASE_KEY);
+  try {
+    return getServerSupabase();
+  } catch {
+    return null;
+  }
 }
 
 export interface GoogleTokens {
@@ -18,9 +19,13 @@ export interface GoogleTokens {
 }
 
 export function getRedirectUri(requestUrl: string, headers?: Headers): string {
+  if (process.env.GOOGLE_REDIRECT_URI) {
+    return process.env.GOOGLE_REDIRECT_URI;
+  }
+
   if (headers) {
     const forwardedHost = headers.get('x-forwarded-host') || headers.get('host');
-    if (forwardedHost && forwardedHost.includes('localhost')) {
+    if (forwardedHost && (forwardedHost.includes('localhost') || forwardedHost.startsWith('127.0.0.1'))) {
       return `http://${forwardedHost}/api/auth/google/callback`;
     }
   }
@@ -29,7 +34,7 @@ export function getRedirectUri(requestUrl: string, headers?: Headers): string {
   return 'https://gestionale-fede.vercel.app/api/auth/google/callback';
 }
 
-export function getGoogleAuthUrl(redirectUri: string): string {
+export function getGoogleAuthUrl(redirectUri: string, state?: string): string {
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: redirectUri,
@@ -38,6 +43,9 @@ export function getGoogleAuthUrl(redirectUri: string): string {
     access_type: 'offline',
     prompt: 'consent',
   });
+  if (state) {
+    params.set('state', state);
+  }
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
@@ -229,16 +237,94 @@ function findClosestGoogleColorId(hex?: string): string | undefined {
   return closestId;
 }
 
+function getRomeOffsetMinutes(epochMs: number): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Rome',
+    timeZoneName: 'shortOffset',
+  }).formatToParts(new Date(epochMs));
+  const tzName = parts.find(p => p.type === 'timeZoneName')?.value || 'GMT+1';
+  const match = tzName.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!match) return 60;
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = parseInt(match[2], 10) || 0;
+  const mins = parseInt(match[3] || '0', 10) || 0;
+  return sign * (hours * 60 + mins);
+}
+
+function formatOffsetMinutes(offsetMinutes: number): string {
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMinutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+  const mm = String(abs % 60).padStart(2, '0');
+  return `${sign}${hh}:${mm}`;
+}
+
+function formatEpochInRomeRfc3339(epochMs: number): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(epochMs));
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    if (p.type !== 'literal') map[p.type] = p.value;
+  }
+  const offsetStr = formatOffsetMinutes(getRomeOffsetMinutes(epochMs));
+  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}${offsetStr}`;
+}
+
+export function formatRomeRfc3339(dateTimeStr: string, addMinutes: number = 0): string {
+  const trimmed = (dateTimeStr || '').trim();
+  if (/(Z|[+-]\d{2}:\d{2})$/i.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return formatEpochInRomeRfc3339(parsed.getTime() + addMinutes * 60_000);
+    }
+  }
+
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!match) {
+    const fallback = new Date(trimmed);
+    const ms = isNaN(fallback.getTime()) ? Date.now() : fallback.getTime();
+    return formatEpochInRomeRfc3339(ms + addMinutes * 60_000);
+  }
+
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  const hour = parseInt(match[4] || '0', 10);
+  const minute = parseInt(match[5] || '0', 10);
+  const second = parseInt(match[6] || '0', 10);
+
+  const wallUtc = new Date(Date.UTC(year, month - 1, day, hour, minute + addMinutes, second));
+  const y = wallUtc.getUTCFullYear();
+  const m = String(wallUtc.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(wallUtc.getUTCDate()).padStart(2, '0');
+  const hh = String(wallUtc.getUTCHours()).padStart(2, '0');
+  const mm = String(wallUtc.getUTCMinutes()).padStart(2, '0');
+  const ss = String(wallUtc.getUTCSeconds()).padStart(2, '0');
+
+  const approxEpoch = wallUtc.getTime();
+  const estOffset = getRomeOffsetMinutes(approxEpoch - 3600_000);
+  const actualOffset = getRomeOffsetMinutes(approxEpoch - estOffset * 60_000);
+  return `${y}-${m}-${d}T${hh}:${mm}:${ss}${formatOffsetMinutes(actualOffset)}`;
+}
+
 export async function syncGoogleCalendarEvent(params: SyncEventParams): Promise<{ success: boolean; eventId?: string; error?: string }> {
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
     return { success: false, error: 'Google Calendar non collegato' };
   }
 
-  const startIso = new Date(params.startDate).toISOString();
-  const endIso = params.endDate
-    ? new Date(params.endDate).toISOString()
-    : new Date(new Date(params.startDate).getTime() + 60 * 60 * 1000).toISOString();
+  const startRfc = formatRomeRfc3339(params.startDate);
+  const endRfc = params.endDate
+    ? formatRomeRfc3339(params.endDate)
+    : formatRomeRfc3339(params.startDate, 60);
 
   const colorId = findClosestGoogleColorId(params.colorHex);
 
@@ -246,8 +332,8 @@ export async function syncGoogleCalendarEvent(params: SyncEventParams): Promise<
     summary: params.title,
     description: params.details || '',
     location: params.location || '',
-    start: { dateTime: startIso },
-    end: { dateTime: endIso },
+    start: { dateTime: startRfc, timeZone: 'Europe/Rome' },
+    end: { dateTime: endRfc, timeZone: 'Europe/Rome' },
   };
 
   if (colorId) {

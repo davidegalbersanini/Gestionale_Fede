@@ -13,7 +13,6 @@ import {
   Check,
   Cloud,
   RefreshCw,
-  Download,
   AlertCircle,
 } from 'lucide-react';
 
@@ -73,19 +72,6 @@ export default function SettingsModal({
     await disconnectGoogleCalendar();
     setGcalStatus({ connected: false });
     setIsGcalLoading(false);
-  };
-
-  const handleDownloadBackup = () => {
-    const json = DataService.exportFullBackup();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `gestionale-fede-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   if (!isOpen) return null;
@@ -254,17 +240,8 @@ export default function SettingsModal({
             )}
           </div>
 
-          {/* Backup & Lock Actions */}
+          {/* Lock Action */}
           <div className="pt-2 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={handleDownloadBackup}
-              className="w-full py-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
-            >
-              <Download className="w-4 h-4 text-emerald-600" />
-              Scarica Backup Completo (JSON)
-            </button>
-
             <button
               type="button"
               onClick={async () => {

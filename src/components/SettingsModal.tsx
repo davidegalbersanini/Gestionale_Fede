@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AppSettings } from '@/types';
+import { AppSettings, MasterSheetStatus } from '@/types';
 import { DataService } from '@/lib/storage';
 import { checkGoogleCalendarStatus, startGoogleCalendarConnect, disconnectGoogleCalendar } from '@/lib/calendar';
 import {
@@ -14,6 +14,9 @@ import {
   Cloud,
   RefreshCw,
   AlertCircle,
+  FileSpreadsheet,
+  ExternalLink,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -22,6 +25,10 @@ interface SettingsModalProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
   onLockApp: () => void;
+  sheetStatus?: MasterSheetStatus | null;
+  isSheetSyncing?: boolean;
+  onSyncSheet?: () => void;
+  onCreateMasterSheet?: () => void;
 }
 
 export default function SettingsModal({
@@ -30,6 +37,10 @@ export default function SettingsModal({
   settings,
   onUpdateSettings,
   onLockApp,
+  sheetStatus,
+  isSheetSyncing = false,
+  onSyncSheet,
+  onCreateMasterSheet,
 }: SettingsModalProps) {
   const [newPin, setNewPin] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
@@ -201,24 +212,91 @@ export default function SettingsModal({
             </div>
 
             {gcalStatus.connected ? (
-              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 bg-white p-3 rounded-xl border border-stone-200 min-w-0">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                    <Check className="w-4 h-4" />
+              <div className="space-y-2.5">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 bg-white p-3 rounded-xl border border-stone-200 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                      <Check className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-stone-900 truncate">{gcalStatus.email}</p>
+                      <p className="text-[10px] text-emerald-700 font-medium">Sincronizzazione calendario & Foglio Google attiva</p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-stone-900 truncate">{gcalStatus.email}</p>
-                    <p className="text-[10px] text-emerald-700 font-medium">Sincronizzazione calendario & Drive attiva</p>
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGoogle}
+                    disabled={isGcalLoading}
+                    className="px-2.5 py-1 text-[11px] text-stone-500 hover:text-red-600 hover:bg-stone-100 rounded-lg transition-colors shrink-0"
+                  >
+                    {isGcalLoading ? 'Disconnessione...' : 'Disconnetti'}
+                  </button>
+                </div>
+
+                {/* Master Google Sheet Sub-Card */}
+                <div className="bg-white p-3 rounded-xl border border-stone-200 space-y-2 min-w-0">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="text-xs font-bold text-stone-800 truncate">Foglio Google Master</span>
+                    </div>
+                    {sheetStatus?.lastSyncedAt && (
+                      <span className="text-[10px] text-stone-500 shrink-0">
+                        {new Date(sheetStatus.lastSyncedAt).toLocaleString('it-IT', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    )}
+                  </div>
+
+                  {sheetStatus?.lastSyncSummary && (
+                    <p className="text-[11px] text-stone-600 truncate">{sheetStatus.lastSyncSummary}</p>
+                  )}
+
+                  {sheetStatus?.lastSyncWarning && (
+                    <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 flex items-start gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <span>{sheetStatus.lastSyncWarning}</span>
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    {sheetStatus?.spreadsheetUrl ? (
+                      <a
+                        href={sheetStatus.spreadsheetUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-[120px] py-2 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700 text-xs font-bold flex items-center justify-center gap-1.5"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                        <span>Apri Foglio</span>
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onCreateMasterSheet}
+                        disabled={isSheetSyncing}
+                        className="flex-1 min-w-[120px] py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+                        <span>{isSheetSyncing ? 'Creazione...' : 'Crea Foglio Master'}</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={onSyncSheet}
+                      disabled={isSheetSyncing}
+                      className="flex-1 min-w-[120px] py-2 px-3 rounded-lg bg-stone-100 hover:bg-stone-200 disabled:opacity-50 border border-stone-200 text-stone-700 text-xs font-semibold flex items-center justify-center gap-1.5"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSheetSyncing ? 'animate-spin' : ''}`} />
+                      <span>{isSheetSyncing ? 'Sincronizzazione...' : 'Sincronizza ora'}</span>
+                    </button>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleDisconnectGoogle}
-                  disabled={isGcalLoading}
-                  className="px-2.5 py-1 text-[11px] text-stone-500 hover:text-red-600 hover:bg-stone-100 rounded-lg transition-colors shrink-0"
-                >
-                  {isGcalLoading ? 'Disconnessione...' : 'Disconnetti'}
-                </button>
               </div>
             ) : (
               <button

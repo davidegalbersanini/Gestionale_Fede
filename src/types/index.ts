@@ -140,3 +140,28 @@ export interface UnifiedEvent {
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
 export type ToastVariant = 'success' | 'error' | 'info';
+
+export interface MasterSheetStatus {
+  googleConnected: boolean;
+  googleEmail?: string;
+  spreadsheetId?: string;
+  spreadsheetUrl?: string;
+  ownerEmail?: string;
+  lastSyncedAt?: string;
+  lastSyncSummary?: string;
+  lastSyncWarning?: string | null;
+  sheetsApiDisabled?: boolean;
+}
+
+export interface MasterSheetSyncResult {
+  ok: boolean;
+  status: 'synced' | 'noop' | 'locked' | 'not_connected' | 'error';
+  spreadsheetId?: string;
+  spreadsheetUrl?: string;
+  dataChanged?: boolean;
+  summary?: string;
+  warning?: string | null;
+  error?: string;
+  sheetsApiDisabled?: boolean;
+  scopeMissing?: boolean;
+}

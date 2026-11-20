@@ -12,10 +12,16 @@ import {
   ServicePrice,
   SyncStatus,
   ToastVariant,
+  MasterSheetStatus,
 } from '@/types';
 import { DataService } from '@/lib/storage';
 import { setCloudErrorHandler, setAuthExpiredHandler } from '@/lib/supabase';
 import { syncCalendarAutomatically, deleteCalendarEventSilently } from '@/lib/calendar';
+import {
+  getMasterSheetStatus,
+  triggerMasterSheetSync,
+  scheduleBackgroundSheetPush,
+} from '@/lib/sheetsClient';
 import { PASTEL_EVENT_COLORS } from '@/lib/locationColors';
 import { reconcileVoucherUsage } from '@/lib/finance';
 import PinLock from '@/components/PinLock';
@@ -73,6 +79,10 @@ export default function Home() {
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Master Google Sheet Sync state
+  const [sheetStatus, setSheetStatus] = useState<MasterSheetStatus | null>(null);
+  const [isSheetSyncing, setIsSheetSyncing] = useState(false);
+
   const showToast = useCallback(
     (message: string, variant: ToastVariant = 'success', duration: number = 4000) => {
       if (toastTimerRef.current) {
@@ -94,33 +104,140 @@ export default function Home() {
   } | null>(null);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<Appointment | null>(null);
 
-  const performCloudSync = useCallback(async () => {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setSyncStatus('offline');
-      return;
-    }
+  const refreshSupabaseState = useCallback(async () => {
+    const synced = await DataService.syncFromCloud();
+    if (!synced) return false;
+    if (synced.locations) setLocations(synced.locations);
+    if (synced.clients) setClients(synced.clients);
+    if (synced.appointments) setAppointments(synced.appointments);
+    if (synced.weddings) setWeddings(synced.weddings);
+    if (synced.expenses) setExpenses(synced.expenses);
+    if (synced.vouchers) setVouchers(synced.vouchers);
+    if (synced.servicePrices) setServicePrices(synced.servicePrices);
+    if (synced.settings) setSettings(synced.settings);
+    return true;
+  }, []);
 
-    setSyncStatus('syncing');
-    try {
-      const synced = await DataService.syncFromCloud();
-      if (!synced) {
-        setSyncStatus(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error');
+  const refreshMasterSheetStatus = useCallback(async () => {
+    const status = await getMasterSheetStatus();
+    setSheetStatus(status);
+    return status;
+  }, []);
+
+  const queueSheetPush = useCallback(() => {
+    scheduleBackgroundSheetPush(async res => {
+      if (res.status === 'synced') {
+        await refreshMasterSheetStatus();
+        if (res.dataChanged) {
+          await refreshSupabaseState();
+        }
+        if (res.warning) {
+          showToast(res.warning, 'info', 6000);
+        }
+      }
+    });
+  }, [refreshMasterSheetStatus, refreshSupabaseState, showToast]);
+
+  const handleSyncSheet = useCallback(
+    async (opts?: { createIfMissing?: boolean; silent?: boolean }) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (!opts?.silent) showToast('Connessione offline: sincronizzazione rimandata.', 'info', 3500);
+        return null;
+      }
+
+      setIsSheetSyncing(true);
+      try {
+        const res = await triggerMasterSheetSync({
+          source: opts?.createIfMissing ? 'manual' : 'manual',
+          force: true,
+          createIfMissing: Boolean(opts?.createIfMissing),
+        });
+        await refreshMasterSheetStatus();
+
+        if (!res.ok) {
+          if (!opts?.silent) {
+            if (res.sheetsApiDisabled) {
+              showToast(
+                'Abilita "Google Sheets API" su Google Cloud Console prima di sincronizzare il Foglio.',
+                'error',
+                6500
+              );
+            } else {
+              showToast(res.error || 'Errore nella sincronizzazione con il Foglio Google.', 'error', 5500);
+            }
+          }
+          return res;
+        }
+
+        if (res.dataChanged) {
+          await refreshSupabaseState();
+        }
+        if (res.warning) {
+          showToast(res.warning, 'info', 6500);
+        } else if (!opts?.silent) {
+          showToast(res.summary || 'Foglio Google sincronizzato!', 'success', 4000);
+        }
+        return res;
+      } finally {
+        setIsSheetSyncing(false);
+      }
+    },
+    [refreshMasterSheetStatus, refreshSupabaseState, showToast]
+  );
+
+  const handleCreateMasterSheet = useCallback(async () => {
+    const res = await handleSyncSheet({ createIfMissing: true, silent: false });
+    if (res?.ok && res.spreadsheetUrl && typeof window !== 'undefined') {
+      window.open(res.spreadsheetUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, [handleSyncSheet]);
+
+  const performCloudSync = useCallback(
+    async (manualTrigger: boolean = false) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setSyncStatus('offline');
         return;
       }
-      if (synced.locations) setLocations(synced.locations);
-      if (synced.clients) setClients(synced.clients);
-      if (synced.appointments) setAppointments(synced.appointments);
-      if (synced.weddings) setWeddings(synced.weddings);
-      if (synced.expenses) setExpenses(synced.expenses);
-      if (synced.vouchers) setVouchers(synced.vouchers);
-      if (synced.servicePrices) setServicePrices(synced.servicePrices);
-      if (synced.settings) setSettings(synced.settings);
-      setSyncStatus('synced');
-    } catch (err) {
-      console.warn('Sync with Supabase was deferred:', err);
-      setSyncStatus('error');
-    }
-  }, []);
+
+      setSyncStatus('syncing');
+      try {
+        const ok = await refreshSupabaseState();
+        if (!ok) {
+          setSyncStatus(typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error');
+          return;
+        }
+        setSyncStatus('synced');
+
+        const st = await refreshMasterSheetStatus();
+        if (st.googleConnected && st.spreadsheetId) {
+          setIsSheetSyncing(true);
+          try {
+            const sheetRes = await triggerMasterSheetSync({
+              source: manualTrigger ? 'manual' : 'app',
+              force: manualTrigger,
+              createIfMissing: false,
+            });
+            await refreshMasterSheetStatus();
+            if (sheetRes.ok && sheetRes.dataChanged) {
+              await refreshSupabaseState();
+              if (sheetRes.summary) {
+                showToast(sheetRes.summary, 'success', 4000);
+              }
+            }
+            if (sheetRes.warning) {
+              showToast(sheetRes.warning, 'info', 6000);
+            }
+          } finally {
+            setIsSheetSyncing(false);
+          }
+        }
+      } catch (err) {
+        console.warn('Sync with Supabase was deferred:', err);
+        setSyncStatus('error');
+      }
+    },
+    [refreshMasterSheetStatus, refreshSupabaseState, showToast]
+  );
 
   // Check URL params for Google connection callback
   useEffect(() => {
@@ -319,6 +436,7 @@ export default function Home() {
     setClients(DataService.getClients());
     setEditingPmu(null);
     setSelectedClientForPmu(null);
+    queueSheetPush();
   };
 
   const handleDeletePmu = (id: string) => {
@@ -386,6 +504,7 @@ export default function Home() {
       'success',
       3500
     );
+    queueSheetPush();
   };
 
   // Save / Update Wedding / Event
@@ -496,6 +615,7 @@ export default function Home() {
     setClients(DataService.getClients());
     setEditingWedding(null);
     setSelectedClientForWedding(null);
+    queueSheetPush();
   };
 
   const handleDeleteWedding = (id: string) => {
@@ -522,6 +642,7 @@ export default function Home() {
     }
     setWeddings(DataService.getWeddings());
     showToast('Evento eliminato.', 'success', 3500);
+    queueSheetPush();
   };
 
   // Save Client from Rubrica
@@ -533,29 +654,34 @@ export default function Home() {
     setAppointments(DataService.getAppointments());
     setWeddings(DataService.getWeddings());
     setVouchers(DataService.getGiftVouchers());
+    queueSheetPush();
   };
 
   const handleDeleteClient = (id: string) => {
     DataService.deleteClient(id);
     setClients(DataService.getClients());
     showToast('Contatto rimosso dalla rubrica.', 'success', 3000);
+    queueSheetPush();
   };
 
   // Expenses Handlers
   const handleAddExpense = (expenseData: Omit<Expense, 'id'>) => {
     DataService.addExpense(expenseData);
     setExpenses(DataService.getExpenses());
+    queueSheetPush();
   };
 
   const handleUpdateExpense = (expense: Expense) => {
     DataService.updateExpense(expense);
     setExpenses(DataService.getExpenses());
     showToast('Spesa aggiornata.', 'success', 3000);
+    queueSheetPush();
   };
 
   const handleDeleteExpense = (id: string) => {
     DataService.deleteExpense(id);
     setExpenses(DataService.getExpenses());
+    queueSheetPush();
   };
 
   // Gift Vouchers Handlers
@@ -564,18 +690,21 @@ export default function Home() {
     setVouchers(DataService.getGiftVouchers());
     setClients(DataService.getClients());
     showToast(`Buono Regalo di ${created.amount}€ emesso con successo! Ricavi aggiornati.`, 'success', 4000);
+    queueSheetPush();
   };
 
   const handleDeleteGiftVoucher = (id: string) => {
     DataService.deleteGiftVoucher(id);
     setVouchers(DataService.getGiftVouchers());
     showToast('Buono Regalo eliminato.', 'success', 3000);
+    queueSheetPush();
   };
 
   // Update Settings
   const handleUpdateSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
     DataService.saveSettings(newSettings);
+    queueSheetPush();
   };
 
   if (!authChecked) {
@@ -605,7 +734,7 @@ export default function Home() {
         onSelectTab={setActiveTab}
         onOpenSettings={() => setIsSettingsOpen(true)}
         syncStatus={syncStatus}
-        onResync={performCloudSync}
+        onResync={() => performCloudSync(true)}
       />
 
       {/* Toast Notification */}
@@ -692,23 +821,28 @@ export default function Home() {
             onUpdateLocations={newLocs => {
               setLocations(newLocs);
               DataService.saveLocations(newLocs);
+              queueSheetPush();
             }}
             onSaveLocation={loc => {
               DataService.addOrUpdateLocation(loc);
               setLocations(DataService.getLocations());
+              queueSheetPush();
             }}
             onDeleteLocationProp={id => {
               DataService.deleteLocation(id);
               setLocations(DataService.getLocations());
               setServicePrices(DataService.getServicePrices());
+              queueSheetPush();
             }}
             onSaveServicePrice={item => {
               DataService.addOrUpdateServicePrice(item);
               setServicePrices(DataService.getServicePrices());
+              queueSheetPush();
             }}
             onDeleteServicePrice={id => {
               DataService.deleteServicePrice(id);
               setServicePrices(DataService.getServicePrices());
+              queueSheetPush();
             }}
           />
         )}
@@ -732,6 +866,10 @@ export default function Home() {
             settings={settings}
             onUpdateSettings={handleUpdateSettings}
             onShowToast={(msg, variant) => showToast(msg, variant || 'success', 5000)}
+            sheetStatus={sheetStatus}
+            isSheetSyncing={isSheetSyncing}
+            onSyncSheet={() => handleSyncSheet({ silent: false })}
+            onCreateMasterSheet={handleCreateMasterSheet}
           />
         )}
       </main>
@@ -777,6 +915,10 @@ export default function Home() {
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
         onLockApp={() => setIsAuthenticated(false)}
+        sheetStatus={sheetStatus}
+        isSheetSyncing={isSheetSyncing}
+        onSyncSheet={() => handleSyncSheet({ silent: false })}
+        onCreateMasterSheet={handleCreateMasterSheet}
       />
 
       <GiftVouchersModal

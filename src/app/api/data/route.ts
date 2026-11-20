@@ -6,6 +6,7 @@ import {
   safeServerUpsert,
   safeServerDelete,
 } from '@/lib/serverSupabase';
+import { markAppDirtyForSheetSync } from '@/lib/sheetsSync';
 import {
   Location,
   Client,
@@ -118,6 +119,9 @@ export async function POST(request: Request) {
         key: 'app_settings',
         value: merged,
       });
+      if (res.ok) {
+        await markAppDirtyForSheetSync();
+      }
       return NextResponse.json(res, { status: res.ok ? 200 : 500 });
     }
 
@@ -131,6 +135,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: 'Payload mancante' }, { status: 400 });
       }
       const res = await safeServerUpsert(supabase, table, payload);
+      if (res.ok) {
+        await markAppDirtyForSheetSync();
+      }
       return NextResponse.json(res, { status: res.ok ? 200 : 500 });
     }
 
@@ -139,6 +146,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ ok: false, error: 'ID mancante' }, { status: 400 });
       }
       const res = await safeServerDelete(supabase, table, id);
+      if (res.ok) {
+        await markAppDirtyForSheetSync();
+      }
       return NextResponse.json(res, { status: res.ok ? 200 : 500 });
     }
 

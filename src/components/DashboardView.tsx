@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Appointment, WeddingService, Expense, Location, AppSettings, GiftVoucher, ToastVariant } from '@/types';
-import { downloadAppointmentsExcel, exportAppointmentsToExcel } from '@/lib/excelExport';
+import {
+  Appointment,
+  WeddingService,
+  Expense,
+  Location,
+  AppSettings,
+  GiftVoucher,
+  ToastVariant,
+  MasterSheetStatus,
+} from '@/types';
 import { computeMonthlyFinancials } from '@/lib/finance';
 import {
   TrendingUp,
@@ -13,13 +21,10 @@ import {
   Award,
   ArrowUpRight,
   FileSpreadsheet,
-  Download,
-  UploadCloud,
   RefreshCw,
   ExternalLink,
-  CheckCircle2,
   Clock,
-  X,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -31,34 +36,26 @@ interface DashboardViewProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
   onShowToast?: (msg: string, variant?: ToastVariant) => void;
+  sheetStatus?: MasterSheetStatus | null;
+  isSheetSyncing?: boolean;
+  onSyncSheet?: () => void;
+  onCreateMasterSheet?: () => void;
 }
-
-const MONTH_NAMES = [
-  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
-  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
-];
 
 export default function DashboardView({
   appointments,
   weddings,
   expenses,
-  locations,
   vouchers = [],
   settings,
-  onShowToast,
+  sheetStatus,
+  isSheetSyncing = false,
+  onSyncSheet,
+  onCreateMasterSheet,
 }: DashboardViewProps) {
   const nowDate = new Date();
   const currentYearStr = String(nowDate.getFullYear());
-  const currentMonthIdx = nowDate.getMonth();
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
-
-  // Excel Export Modal state
-  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-  const [exportAction, setExportAction] = useState<'download' | 'drive' | null>(null);
-  const [exportRange, setExportRange] = useState<'all' | 'selected_year' | 'current_month' | 'custom'>('all');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [exportSuccessInfo, setExportSuccessInfo] = useState<{ fileName: string; webViewLink?: string } | null>(null);
 
   const availableYears = useMemo(() => {
     const years = new Set<string>();
@@ -85,112 +82,26 @@ export default function DashboardView({
   const targetYearly = settings.yearly_target || 35000;
   const yearlyProgress = Math.min(100, Math.round((annualStats.totalRevenue / targetYearly) * 100));
 
-  const buildFilterOptions = () => {
-    let periodLabel = 'Tutto lo storico';
-    let start: string | undefined;
-    let end: string | undefined;
-
-    if (exportRange === 'selected_year') {
-      periodLabel = `Anno ${selectedYear}`;
-      start = `${selectedYear}-01-01`;
-      end = `${selectedYear}-12-31`;
-    } else if (exportRange === 'current_month') {
-      const mPadded = String(currentMonthIdx + 1).padStart(2, '0');
-      const lastDay = new Date(Number(currentYearStr), currentMonthIdx + 1, 0).getDate();
-      periodLabel = `${MONTH_NAMES[currentMonthIdx]} ${currentYearStr}`;
-      start = `${currentYearStr}-${mPadded}-01`;
-      end = `${currentYearStr}-${mPadded}-${String(lastDay).padStart(2, '0')}`;
-    } else if (exportRange === 'custom') {
-      periodLabel = `Dal ${customStartDate || 'inizio'} al ${customEndDate || 'oggi'}`;
-      start = customStartDate || undefined;
-      end = customEndDate || undefined;
-    }
-
-    return { startDate: start, endDate: end, periodLabel };
-  };
-
-  const handleDownloadLocalExcel = async () => {
-    setExportAction('download');
-    try {
-      const result = await downloadAppointmentsExcel({
-        appointments,
-        weddings,
-        expenses,
-        locations,
-        giftVouchers: vouchers,
-        filter: buildFilterOptions(),
-      });
-
-      if (result.localSuccess) {
-        setIsExcelModalOpen(false);
-        onShowToast?.(`Report "${result.fileName}" scaricato sul dispositivo.`, 'success');
-      } else {
-        onShowToast?.(result.error || 'Errore durante il download del report Excel.', 'error');
-      }
-    } catch {
-      onShowToast?.('Errore durante la generazione del report Excel.', 'error');
-    } finally {
-      setExportAction(null);
-    }
-  };
-
-  const handleExecuteDriveExport = async () => {
-    setExportAction('drive');
-    try {
-      const result = await exportAppointmentsToExcel({
-        appointments,
-        weddings,
-        expenses,
-        locations,
-        giftVouchers: vouchers,
-        filter: buildFilterOptions(),
-      });
-
-      if (result.driveSuccess) {
-        setExportSuccessInfo({
-          fileName: result.fileName,
-          webViewLink: result.driveWebViewLink,
-        });
-        onShowToast?.('Report Excel caricato con successo su Google Drive!', 'success');
-      } else {
-        setIsExcelModalOpen(false);
-        if (result.scopeMissing) {
-          onShowToast?.(
-            "Caricamento non riuscito: ricollega l'Account Google nelle Impostazioni per concedere i permessi Drive.",
-            'error'
-          );
-        } else if (result.driveError?.includes('Account Google non collegato')) {
-          onShowToast?.(
-            'Errore: collega prima il tuo Account Google nelle Impostazioni per caricare il file su Drive.',
-            'error'
-          );
-        } else {
-          onShowToast?.(
-            `Caricamento su Drive non riuscito: ${result.driveError || 'Verifica la connessione Google'}`,
-            'error'
-          );
-        }
-      }
-    } catch (err) {
-      console.error('Export error:', err);
-      setIsExcelModalOpen(false);
-      onShowToast?.('Errore durante la generazione o il caricamento del report su Google Drive.', 'error');
-    } finally {
-      setExportAction(null);
-    }
-  };
-
-  const isBusy = exportAction !== null;
-
   return (
     <div className="space-y-5 min-w-0 max-w-full">
-      {/* Header & Year Switcher & Excel Export Button */}
+      {/* Header & Year Switcher & Google Sheet Actions */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-4 rounded-3xl">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-rose-500" />
             Riepilogo
           </h1>
+          {sheetStatus?.lastSyncedAt && (
+            <p className="text-[11px] text-stone-500 mt-0.5">
+              Foglio Google aggiornato:{' '}
+              {new Date(sheetStatus.lastSyncedAt).toLocaleString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -210,18 +121,48 @@ export default function DashboardView({
             ))}
           </div>
 
+          {sheetStatus?.spreadsheetUrl ? (
+            <a
+              href={sheetStatus.spreadsheetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-500/40 text-emerald-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm shrink-0"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Apri Foglio Google</span>
+              <ExternalLink className="w-3 h-3 text-emerald-600" />
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={onCreateMasterSheet}
+              disabled={isSheetSyncing}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 border border-emerald-500/40 text-emerald-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm shrink-0"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>{isSheetSyncing ? 'Creazione...' : 'Apri Foglio Google'}</span>
+            </button>
+          )}
+
           <button
-            onClick={() => {
-              setExportSuccessInfo(null);
-              setIsExcelModalOpen(true);
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-500/40 text-emerald-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm shrink-0"
+            type="button"
+            onClick={onSyncSheet}
+            disabled={isSheetSyncing}
+            className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 disabled:opacity-50 border border-stone-200 text-stone-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shrink-0"
+            title="Sincronizza ora con Foglio Google e Calendar"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Esporta Excel</span>
+            <RefreshCw className={`w-3.5 h-3.5 text-rose-600 ${isSheetSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSheetSyncing ? 'Sync...' : 'Sincronizza ora'}</span>
           </button>
         </div>
       </div>
+
+      {sheetStatus?.lastSyncWarning && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-800 text-xs flex items-start gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <span className="leading-relaxed">{sheetStatus.lastSyncWarning}</span>
+        </div>
+      )}
 
       {/* Target Box */}
       <div className="relative overflow-hidden bg-gradient-to-br from-rose-50 via-white to-amber-50/60 border border-rose-200 p-4 sm:p-5 rounded-3xl shadow-lg">
@@ -488,202 +429,6 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* Excel Export Modal */}
-      {isExcelModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/35 backdrop-blur-sm p-4 overflow-y-auto"
-          onClick={e => {
-            if (e.target === e.currentTarget && !isBusy) {
-              setExportSuccessInfo(null);
-              setIsExcelModalOpen(false);
-            }
-          }}
-        >
-          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md max-h-[90dvh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 shadow-2xl text-stone-900">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-4">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base font-bold text-stone-900">Esporta Report Excel</h3>
-              </div>
-              <button
-                onClick={() => {
-                  setExportSuccessInfo(null);
-                  setIsExcelModalOpen(false);
-                }}
-                disabled={isBusy}
-                className="text-stone-500 hover:text-stone-900 disabled:opacity-40"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {exportSuccessInfo ? (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-500/40 flex flex-col items-center text-center gap-2">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-                  <h4 className="text-sm font-bold text-stone-900">Report caricato con successo!</h4>
-                  <p className="text-xs text-stone-700 break-all">{exportSuccessInfo.fileName}</p>
-                  <p className="text-[11px] text-emerald-700">
-                    Cartella Drive: <span className="font-semibold">Gestionale Fede - Report</span>
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
-                  {exportSuccessInfo.webViewLink && (
-                    <a
-                      href={exportSuccessInfo.webViewLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200/70 transition-all"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Apri File su Google Drive</span>
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExportSuccessInfo(null);
-                      setIsExcelModalOpen(false);
-                    }}
-                    className="py-2.5 px-5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold"
-                  >
-                    Chiudi
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider">
-                    Periodo
-                  </label>
-                  <div className="grid grid-cols-1 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setExportRange('all')}
-                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
-                        exportRange === 'all'
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
-                          : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900'
-                      }`}
-                    >
-                      Tutto lo storico
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setExportRange('selected_year')}
-                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
-                        exportRange === 'selected_year'
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
-                          : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900'
-                      }`}
-                    >
-                      Anno selezionato ({selectedYear})
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setExportRange('current_month')}
-                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
-                        exportRange === 'current_month'
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
-                          : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900'
-                      }`}
-                    >
-                      Mese corrente ({MONTH_NAMES[currentMonthIdx]} {currentYearStr})
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setExportRange('custom')}
-                      className={`p-3 rounded-xl text-left border text-xs font-semibold transition-all ${
-                        exportRange === 'custom'
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
-                          : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-900'
-                      }`}
-                    >
-                      Personalizzato
-                    </button>
-                  </div>
-                </div>
-
-                {exportRange === 'custom' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div className="min-w-0">
-                      <label className="block text-xs text-stone-500 mb-1">Da data</label>
-                      <input
-                        type="date"
-                        value={customStartDate}
-                        onChange={e => setCustomStartDate(e.target.value)}
-                        className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-xs"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <label className="block text-xs text-stone-500 mb-1">A data</label>
-                      <input
-                        type="date"
-                        value={customEndDate}
-                        onChange={e => setCustomEndDate(e.target.value)}
-                        className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-4 flex flex-col sm:flex-row gap-2.5">
-                  <button
-                    type="button"
-                    onClick={handleDownloadLocalExcel}
-                    disabled={isBusy}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 disabled:opacity-50 border border-stone-300 text-stone-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-                  >
-                    {exportAction === 'download' ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Generazione...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4 text-emerald-600" />
-                        <span>Scarica Excel</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleExecuteDriveExport}
-                    disabled={isBusy}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-200/70 transition-all"
-                  >
-                    {exportAction === 'drive' ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Caricamento...</span>
-                      </>
-                    ) : (
-                      <>
-                        <UploadCloud className="w-4 h-4" />
-                        <span>Carica su Drive</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsExcelModalOpen(false)}
-                  disabled={isBusy}
-                  className="w-full py-2 text-stone-500 hover:text-stone-900 text-xs font-medium disabled:opacity-40"
-                >
-                  Annulla
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -91,9 +91,9 @@ export default function ClientAutocomplete({
       : 'hover:bg-rose-50';
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative min-w-0">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
+        <div className="min-w-0">
           {firstNameLabel && (
             <label className={`block text-xs font-semibold ${labelColorClass} uppercase tracking-wider mb-1.5`}>
               {firstNameLabel}
@@ -113,7 +113,7 @@ export default function ClientAutocomplete({
           />
         </div>
 
-        <div>
+        <div className="min-w-0">
           {lastNameLabel && (
             <label className={`block text-xs font-semibold ${labelColorClass} uppercase tracking-wider mb-1.5`}>
               {lastNameLabel}
@@ -143,15 +143,15 @@ export default function ClientAutocomplete({
                 onSelectClient(c);
                 setShowSuggestions(false);
               }}
-              className={`w-full px-4 py-2.5 text-left ${hoverItemClass} text-stone-700 text-sm flex items-center justify-between border-b border-stone-100 last:border-0`}
+              className={`w-full px-4 py-2.5 text-left ${hoverItemClass} text-stone-700 text-sm flex items-center justify-between gap-2 min-w-0 border-b border-stone-100 last:border-0`}
             >
-              <div>
+              <div className="min-w-0 truncate">
                 <span className="font-bold text-stone-900">{c.first_name || c.full_name}</span>
                 {c.last_name && c.last_name !== '-' && (
                   <span className="text-stone-600 ml-1.5">{c.last_name}</span>
                 )}
               </div>
-              {c.phone && <span className="text-stone-500 text-xs">{c.phone}</span>}
+              {c.phone && <span className="text-stone-500 text-xs shrink-0">{c.phone}</span>}
             </button>
           ))}
         </div>

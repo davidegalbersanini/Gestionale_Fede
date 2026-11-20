@@ -6,6 +6,14 @@
   color-scheme: light;
 }
 
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+
 body {
   background-color: #fafaf9;
   color: #1c1917;
@@ -16,6 +24,23 @@ body {
 
 input, textarea, select {
   user-select: text;
+}
+
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+input[type="date"],
+input[type="time"] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* Custom sleek scrollbar */
@@ -34,6 +59,32 @@ input, textarea, select {
   background: #a8a29e;
 }
 
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 1rem);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-nav-safe {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0.75rem));
+}
+
+.pb-modal-safe {
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+.px-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

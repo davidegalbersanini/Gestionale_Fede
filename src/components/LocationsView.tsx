@@ -160,7 +160,7 @@ export default function LocationsView({
   };
 
   return (
-    <div className="space-y-6 pb-20 md:pb-6">
+    <div className="space-y-5 min-w-0 max-w-full">
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-4 sm:p-5 rounded-3xl shadow-sm">
         <div>
@@ -325,22 +325,22 @@ export default function LocationsView({
             >
               <div className="p-4 sm:p-5 bg-white border-b border-stone-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 {isEditingThisLoc ? (
-                  <div className="flex-1 flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                      <div className="flex-1 flex items-center gap-2">
+                  <div className="flex-1 flex flex-col gap-3 min-w-0">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 min-w-0">
+                      <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0">
                         <input
                           type="text"
                           value={editingLocName}
                           onChange={e => setEditingLocName(e.target.value)}
                           placeholder="Nome sede"
-                          className="bg-stone-100 border border-stone-300 rounded-xl px-3 py-1.5 text-sm text-stone-900 font-bold min-w-[140px]"
+                          className="w-full sm:w-auto sm:min-w-[140px] min-w-0 bg-stone-100 border border-stone-300 rounded-xl px-3 py-1.5 text-sm text-stone-900 font-bold"
                         />
                         <input
                           type="text"
                           value={editingLocAddress}
                           onChange={e => setEditingLocAddress(e.target.value)}
                           placeholder="Indirizzo (opzionale)"
-                          className="flex-1 bg-stone-100 border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900"
+                          className="w-full flex-1 min-w-0 bg-stone-100 border border-stone-300 rounded-xl px-3 py-1.5 text-xs text-stone-900"
                         />
                       </div>
                       <div className="flex items-center gap-2 justify-end">
@@ -423,14 +423,14 @@ export default function LocationsView({
                           </span>
                         </div>
                         {loc.address ? (
-                          <div className="flex items-center gap-1.5 text-xs text-stone-500 mt-0.5 truncate">
+                          <div className="flex items-center gap-1.5 text-xs text-stone-500 mt-0.5 min-w-0">
                             <MapPin className="w-3 h-3 text-rose-600 flex-shrink-0" />
-                            <span className="truncate">{loc.address}</span>
+                            <span className="truncate min-w-0">{loc.address}</span>
                             <a
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.address)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-rose-600 hover:text-rose-700 ml-1 font-semibold flex items-center gap-0.5"
+                              className="text-rose-600 hover:text-rose-700 ml-1 font-semibold flex items-center gap-0.5 flex-shrink-0"
                             >
                               Maps <ExternalLink className="w-2.5 h-2.5" />
                             </a>
@@ -468,10 +468,10 @@ export default function LocationsView({
 
               {/* Price List Section */}
               <div className="p-4 sm:p-5 space-y-3 bg-stone-50/70">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-rose-600" />
-                    Listino Trattamenti per {loc.name}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5 min-w-0">
+                    <Tag className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span className="truncate">Listino Trattamenti per {loc.name}</span>
                   </span>
 
                   {!isAddingService && (
@@ -481,7 +481,7 @@ export default function LocationsView({
                         setNewServiceName('');
                         setNewServicePrice('');
                       }}
-                      className="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-rose-600 hover:text-rose-700 border border-stone-200 text-xs font-semibold flex items-center gap-1 transition-all active:scale-95"
+                      className="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-rose-600 hover:text-rose-700 border border-stone-200 text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Aggiungi Trattamento</span>
@@ -490,16 +490,16 @@ export default function LocationsView({
                 </div>
 
                 {isAddingService && (
-                  <div className="p-3.5 rounded-2xl bg-stone-100 border border-rose-500/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 animate-in fade-in">
+                  <div className="p-3.5 rounded-2xl bg-stone-100 border border-rose-500/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 animate-in fade-in min-w-0">
                     <input
                       type="text"
                       placeholder="Nome trattamento (es. Sopracciglia Pixel, Eye-liner)..."
                       value={newServiceName}
                       onChange={e => setNewServiceName(e.target.value)}
-                      className="flex-1 bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                      className="flex-1 min-w-0 bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
                     />
-                    <div className="flex items-center gap-2">
-                      <div className="relative w-28">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                      <div className="relative flex-1 sm:flex-none sm:w-28 min-w-[100px]">
                         <input
                           type="number"
                           placeholder="Prezzo (€)"
@@ -556,8 +556,8 @@ export default function LocationsView({
                               onChange={e => setEditingServiceName(e.target.value)}
                               className="w-full bg-white border border-stone-300 rounded-xl px-2.5 py-1.5 text-xs text-stone-900"
                             />
-                            <div className="flex items-center gap-2">
-                              <div className="relative flex-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="relative flex-1 min-w-0">
                                 <input
                                   type="number"
                                   value={editingServicePrice}

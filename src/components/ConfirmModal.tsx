@@ -47,7 +47,7 @@ export default function ConfirmModal({
         if (e.target === e.currentTarget) onCancel();
       }}
     >
-      <div className="bg-white border border-stone-200 rounded-3xl max-w-sm w-full p-6 shadow-2xl text-stone-900">
+      <div className="bg-white border border-stone-200 rounded-3xl max-w-sm w-full max-h-[90dvh] overflow-y-auto overflow-x-hidden p-5 sm:p-6 shadow-2xl text-stone-900">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <div

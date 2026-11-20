@@ -84,10 +84,10 @@ export default function Navbar({
   syncStatus = 'idle',
   onResync,
 }: NavbarProps) {
-  const tabs = [
+  const tabs: { id: ActiveTab; label: string; mobileLabel?: string; icon: typeof Calendar }[] = [
     { id: 'agenda' as ActiveTab, label: 'Agenda', icon: Calendar },
     { id: 'clients' as ActiveTab, label: 'Rubrica', icon: Users },
-    { id: 'locations' as ActiveTab, label: 'Sedi & Listino', icon: Store },
+    { id: 'locations' as ActiveTab, label: 'Sedi & Listino', mobileLabel: 'Sedi', icon: Store },
     { id: 'expenses' as ActiveTab, label: 'Spese', icon: Receipt },
     { id: 'dashboard' as ActiveTab, label: 'Riepilogo', icon: TrendingUp },
   ];
@@ -146,27 +146,34 @@ export default function Navbar({
       </header>
 
       {/* Mobile Top Header */}
-      <div className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-stone-200/80 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 px-1.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center shadow-xs">
-            <img src="/logo.png" alt="Gestionale Fede" className="h-5 w-auto object-contain" />
-          </div>
-          <span className="text-sm font-black text-stone-900 tracking-tight">Gestionale Fede</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <SyncBadge syncStatus={syncStatus} onResync={onResync} compact />
-          <button
-            onClick={onOpenSettings}
-            className="w-8 h-8 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-600 hover:text-stone-900"
-            title="Impostazioni"
+      <div className="md:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-stone-200/80 pt-safe w-full max-w-full overflow-x-clip">
+        <div className="px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 min-w-0">
+          <div
+            className="flex items-center gap-2.5 min-w-0 cursor-pointer select-none"
+            onClick={() => onSelectTab('agenda')}
           >
-            <Settings className="w-4 h-4" />
-          </button>
+            <div className="h-8 px-1.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center shadow-xs shrink-0">
+              <img src="/logo.png" alt="Gestionale Fede" className="h-5 w-auto object-contain" />
+            </div>
+            <span className="text-sm font-black text-stone-900 tracking-tight truncate">
+              Gestionale Fede
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <SyncBadge syncStatus={syncStatus} onResync={onResync} compact />
+            <button
+              onClick={onOpenSettings}
+              className="w-8 h-8 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-600 hover:text-stone-900 shrink-0"
+              title="Impostazioni"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-2xl border-t border-stone-200 pb-safe shadow-lg">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-2xl border-t border-stone-200 w-full max-w-full overflow-x-clip pb-safe shadow-lg">
         <div className="grid grid-cols-5 h-16">
           {tabs.map(t => {
             const Icon = t.icon;
@@ -175,13 +182,17 @@ export default function Navbar({
               <button
                 key={t.id}
                 onClick={() => onSelectTab(t.id)}
-                className={`flex flex-col items-center justify-center gap-1 transition-all ${
+                className={`min-w-0 px-0.5 flex flex-col items-center justify-center gap-1 transition-all ${
                   isActive ? 'text-rose-600' : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.75]'}`} />
-                <span className={`text-[10px] font-semibold tracking-tight ${isActive ? 'font-bold' : ''}`}>
-                  {t.label}
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.75]'}`} />
+                <span
+                  className={`text-[10px] leading-tight pb-0.5 truncate max-w-full font-semibold tracking-tight ${
+                    isActive ? 'font-bold' : ''
+                  }`}
+                >
+                  {t.mobileLabel || t.label}
                 </span>
               </button>
             );

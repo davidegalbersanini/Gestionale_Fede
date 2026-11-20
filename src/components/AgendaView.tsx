@@ -194,20 +194,20 @@ export default function AgendaView({
   const todayRef = new Date();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0 max-w-full">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-4 rounded-3xl shadow-sm">
-        <div>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-3.5 sm:p-4 rounded-3xl shadow-sm">
+        <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
-            <CalendarIcon className="w-6 h-6 text-rose-500" />
-            Agenda
+            <CalendarIcon className="w-6 h-6 text-rose-500 shrink-0" />
+            <span>Agenda</span>
           </h1>
           <p className="text-stone-500 text-xs">
             {appointments.length} PMU • {weddings.length} eventi
           </p>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0">
           {onOpenGiftVouchers && (
             <button
               onClick={onOpenGiftVouchers}
@@ -243,9 +243,9 @@ export default function AgendaView({
       </div>
 
       {/* Filters & Search */}
-      <div className="space-y-2.5 bg-white p-3 rounded-2xl border border-stone-200">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="relative flex-1 min-w-[200px]">
+      <div className="space-y-2.5 bg-white p-3 rounded-2xl border border-stone-200 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
+          <div className="relative w-full sm:flex-1 sm:min-w-[200px] min-w-0">
             <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -259,13 +259,13 @@ export default function AgendaView({
             />
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full min-w-0 pb-0.5 sm:pb-0 scrollbar-none">
             <button
               onClick={() => {
                 setEventTypeFilter('all');
                 setListPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all ${
                 eventTypeFilter === 'all'
                   ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
                   : 'bg-stone-100 text-stone-500 hover:text-stone-900'
@@ -279,7 +279,7 @@ export default function AgendaView({
                 setEventTypeFilter('pmu');
                 setListPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
                 eventTypeFilter === 'pmu'
                   ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
                   : 'bg-stone-100 text-stone-500 hover:text-stone-900'
@@ -295,7 +295,7 @@ export default function AgendaView({
                 setSelectedLocationId('all');
                 setListPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all flex items-center gap-1.5 ${
                 eventTypeFilter === 'events'
                   ? 'bg-pink-600 text-white shadow-sm ring-1 ring-pink-400'
                   : 'bg-stone-100 text-stone-500 hover:text-stone-900'
@@ -306,10 +306,10 @@ export default function AgendaView({
             </button>
           </div>
 
-          <div className="flex items-center bg-stone-100 p-0.5 rounded-xl border border-stone-200">
+          <div className="flex items-center bg-stone-100 p-0.5 rounded-xl border border-stone-200 shrink-0">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === 'calendar' ? 'bg-stone-200 text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
               }`}
             >
@@ -317,7 +317,7 @@ export default function AgendaView({
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === 'list' ? 'bg-stone-200 text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-900'
               }`}
             >
@@ -328,13 +328,13 @@ export default function AgendaView({
 
         {/* Location Filter Chips */}
         {eventTypeFilter !== 'events' && activeLocations.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none pt-1 border-t border-stone-200">
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full min-w-0 pb-0.5 scrollbar-none pt-1 border-t border-stone-200">
             <button
               onClick={() => {
                 setSelectedLocationId('all');
                 setListPage(1);
               }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all ${
                 selectedLocationId === 'all'
                   ? 'bg-stone-200 text-stone-900 border border-stone-300'
                   : 'bg-stone-50 text-stone-500 hover:text-stone-900 border border-transparent'
@@ -351,7 +351,7 @@ export default function AgendaView({
                     setSelectedLocationId(loc.id);
                     setListPage(1);
                   }}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 border ${
                     isSelected
                       ? 'bg-stone-100 text-stone-900 border-rose-500/60 shadow-xs'
                       : 'bg-stone-50 text-stone-500 hover:text-stone-900 border-stone-200'
@@ -371,14 +371,14 @@ export default function AgendaView({
 
       {/* Main Content Area */}
       {viewMode === 'calendar' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-w-0">
           {/* Calendar Grid */}
-          <div className="lg:col-span-2 bg-white border border-stone-200 rounded-3xl p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base sm:text-lg font-bold text-stone-900 capitalize">
+          <div className="lg:col-span-2 min-w-0 max-w-full overflow-hidden bg-white border border-stone-200 rounded-3xl p-2.5 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 capitalize truncate min-w-0">
                 {format(currentDate, 'MMMM yyyy', { locale: it })}
               </h2>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => setCurrentDate(subMonths(currentDate, 1))}
                   className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700"
@@ -404,15 +404,18 @@ export default function AgendaView({
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 text-center mb-2">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center mb-1.5 sm:mb-2">
               {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
-                <div key={d} className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider py-1">
+                <div
+                  key={d}
+                  className="min-w-0 text-[10px] sm:text-[11px] font-semibold text-stone-500 uppercase tracking-wider py-1"
+                >
                   {d}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
               {calendarDays.map(day => {
                 const dayIso = format(day, 'yyyy-MM-dd');
                 const isSelected = isSameDay(day, selectedDay);
@@ -426,7 +429,7 @@ export default function AgendaView({
                   <button
                     key={day.toISOString()}
                     onClick={() => setSelectedDay(day)}
-                    className={`min-h-[58px] sm:min-h-[72px] p-1.5 rounded-2xl flex flex-col justify-between items-start transition-all border ${
+                    className={`min-w-0 w-full overflow-hidden min-h-[54px] sm:min-h-[72px] p-1 sm:p-1.5 rounded-xl sm:rounded-2xl flex flex-col justify-between items-center sm:items-start transition-all border ${
                       isSelected
                         ? 'border-rose-500 bg-rose-50 shadow-sm ring-1 ring-rose-500/50'
                         : isToday
@@ -435,7 +438,7 @@ export default function AgendaView({
                     } ${!isCurrentMonth ? 'opacity-30' : ''}`}
                   >
                     <span
-                      className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
+                      className={`text-[11px] sm:text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                         isToday
                           ? 'bg-rose-500 text-white'
                           : isSelected
@@ -447,15 +450,15 @@ export default function AgendaView({
                     </span>
 
                     {count > 0 && (
-                      <div className="w-full flex items-center justify-between mt-1">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700">
+                      <div className="w-full min-w-0 flex flex-col items-center gap-0.5 sm:flex-row sm:items-center sm:justify-between mt-0.5 sm:mt-1">
+                        <span className="text-[9px] sm:text-[10px] leading-none font-bold px-1 sm:px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">
                           {count}
                         </span>
-                        <div className="flex gap-0.5">
+                        <div className="flex items-center justify-center gap-0.5 max-w-full overflow-hidden">
                           {dayEvents.slice(0, 3).map((e, idx) => (
                             <span
                               key={idx}
-                              className="w-1.5 h-1.5 rounded-full"
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
                               style={{ backgroundColor: e.location_color || '#ec4899' }}
                             />
                           ))}
@@ -469,10 +472,10 @@ export default function AgendaView({
           </div>
 
           {/* Selected Day Agenda Drawer */}
-          <div className="bg-white border border-stone-200 rounded-3xl p-5 shadow-sm flex flex-col">
-            <div className="border-b border-stone-200 pb-3 mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-stone-900 capitalize">
+          <div className="bg-white border border-stone-200 rounded-3xl p-4 sm:p-5 shadow-sm flex flex-col min-w-0 max-w-full overflow-hidden">
+            <div className="border-b border-stone-200 pb-3 mb-3 flex items-center justify-between min-w-0">
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-stone-900 capitalize truncate">
                   {format(selectedDay, 'EEEE d MMMM yyyy', { locale: it })}
                 </h3>
                 <p className="text-stone-500 text-xs">
@@ -481,7 +484,7 @@ export default function AgendaView({
               </div>
             </div>
 
-            <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[500px] pr-1">
+            <div className="space-y-2.5 flex-1 lg:overflow-y-auto lg:max-h-[500px] lg:pr-1">
               {selectedDayEvents.length === 0 ? (
                 <div className="text-center py-12 text-stone-500 text-sm">
                   Nessun appuntamento in questa data.
@@ -509,7 +512,7 @@ export default function AgendaView({
         </div>
       ) : (
         /* Full List View */
-        <div className="bg-white border border-stone-200 rounded-3xl p-4 sm:p-6 space-y-4">
+        <div className="bg-white border border-stone-200 rounded-3xl p-4 sm:p-6 space-y-4 min-w-0 max-w-full overflow-hidden">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-stone-200 pb-3">
             <div className="text-stone-500 text-xs font-semibold uppercase tracking-wider">
               Visualizzati {filteredEvents.length} appuntamenti
@@ -528,11 +531,11 @@ export default function AgendaView({
           </div>
 
           {Math.ceil(filteredEvents.length / ITEMS_PER_PAGE) > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-stone-200 text-xs sm:text-sm">
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-4 border-t border-stone-200 text-xs sm:text-sm">
               <button
                 onClick={() => setListPage(p => Math.max(1, p - 1))}
                 disabled={listPage <= 1}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Precedente
@@ -546,7 +549,7 @@ export default function AgendaView({
               <button
                 onClick={() => setListPage(p => Math.min(Math.ceil(filteredEvents.length / ITEMS_PER_PAGE), p + 1))}
                 disabled={listPage >= Math.ceil(filteredEvents.length / ITEMS_PER_PAGE)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 Successiva
                 <ChevronRight className="w-4 h-4" />
@@ -585,16 +588,16 @@ function renderEventCard(
         if (ev.rawPmu) onSelectPmu(ev.rawPmu);
         if (ev.rawWedding) onSelectWedding(ev.rawWedding);
       }}
-      className={`p-3.5 rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all cursor-pointer group shadow-sm flex flex-col justify-between ${
+      className={`p-3.5 rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all cursor-pointer group shadow-sm flex flex-col justify-between min-w-0 max-w-full overflow-hidden ${
         isCancelled ? 'opacity-60' : ''
       }`}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1.5 min-w-0">
             {isWedding ? (
               <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border max-w-full truncate"
                 style={{
                   backgroundColor: `${ev.location_color}25`,
                   borderColor: `${ev.location_color}40`,
@@ -603,23 +606,23 @@ function renderEventCard(
               >
                 {ev.type === 'wedding_day' ? (
                   <>
-                    <Heart className="w-2.5 h-2.5 fill-current" />
-                    <span>{ev.rawWedding?.event_type || 'Evento'}</span>
+                    <Heart className="w-2.5 h-2.5 fill-current shrink-0" />
+                    <span className="truncate">{ev.rawWedding?.event_type || 'Evento'}</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-2.5 h-2.5" />
+                    <Sparkles className="w-2.5 h-2.5 shrink-0" />
                     <span>Prova Trucco</span>
                   </>
                 )}
               </span>
             ) : isGeneric ? (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-500/30">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-500/30 max-w-full truncate">
                 Generico • {ev.location_name}
               </span>
             ) : (
               <span
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full max-w-full truncate"
                 style={{
                   backgroundColor: `${ev.location_color}25`,
                   color: ev.location_color,
@@ -676,8 +679,8 @@ function renderEventCard(
       </div>
 
       {ev.address && !ev.rawPmu && (
-        <div className="mb-2 flex items-center justify-between text-[11px] text-stone-500 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
-          <span className="truncate flex items-center gap-1 text-stone-700">
+        <div className="mb-2 flex items-center justify-between gap-2 min-w-0 text-[11px] text-stone-500 bg-stone-50 px-2.5 py-1 rounded-lg border border-stone-200">
+          <span className="min-w-0 truncate flex items-center gap-1 text-stone-700">
             <MapPin className="w-3 h-3 text-rose-600 flex-shrink-0" />
             <span className="truncate">{ev.address}</span>
           </span>

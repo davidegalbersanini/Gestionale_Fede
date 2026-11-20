@@ -580,7 +580,7 @@ export default function Home() {
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center text-stone-500 text-xs">
+      <div className="min-h-[100dvh] bg-stone-50 flex items-center justify-center text-stone-500 text-xs">
         Verifica sessione...
       </div>
     );
@@ -598,7 +598,7 @@ export default function Home() {
       : 'bg-emerald-600 border-emerald-400 text-white';
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col pb-20 md:pb-8">
+    <div className="min-h-[100dvh] w-full max-w-full overflow-x-clip bg-stone-50 text-stone-900 flex flex-col pb-nav-safe md:pb-8">
       {/* Navigation */}
       <Navbar
         activeTab={activeTab}
@@ -611,7 +611,7 @@ export default function Home() {
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between text-xs sm:text-sm font-medium animate-fade-in border ${toastClasses}`}
+          className={`fixed top-[calc(1rem+env(safe-area-inset-top,0px))] left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-1.5rem)] px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between text-xs sm:text-sm font-medium animate-fade-in border ${toastClasses}`}
         >
           <span>{toast.message}</span>
           <button
@@ -624,7 +624,7 @@ export default function Home() {
       )}
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 flex-1 w-full">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:pt-6 flex-1 w-full min-w-0 overflow-x-clip">
         {activeTab === 'agenda' && (
           <AgendaView
             appointments={appointments}
@@ -800,7 +800,7 @@ export default function Home() {
             if (e.target === e.currentTarget) setLinkedDeleteTarget(null);
           }}
         >
-          <div className="bg-white border border-stone-200 rounded-3xl max-w-md w-full p-6 shadow-2xl text-stone-900">
+          <div className="bg-white border border-stone-200 rounded-3xl max-w-md w-full max-h-[90dvh] overflow-y-auto overflow-x-hidden p-5 sm:p-6 shadow-2xl text-stone-900">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-500/30 flex items-center justify-center text-amber-600">
                 <AlertTriangle className="w-6 h-6" />

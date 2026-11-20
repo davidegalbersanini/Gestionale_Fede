@@ -240,20 +240,20 @@ export default function ClientsView({
   const whatsappDigits = selectedClient?.phone ? normalizeWhatsAppPhone(selectedClient.phone) : '';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0 max-w-full">
       {/* Header */}
-      <div className="flex items-center justify-between bg-white border border-stone-200 p-4 rounded-3xl">
-        <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
-          <Users className="w-6 h-6 text-rose-500" />
+      <div className="flex items-center justify-between gap-2 flex-wrap min-w-0 bg-white border border-stone-200 p-4 rounded-3xl">
+        <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2 min-w-0">
+          <Users className="w-6 h-6 text-rose-500 shrink-0" />
           <span>Rubrica</span>
-          <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-300">
+          <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-300 shrink-0">
             {clients.length}
           </span>
         </h1>
 
         <button
           onClick={() => setIsAddingClient(true)}
-          className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-200/70 flex items-center gap-1.5 active:scale-95 transition-all"
+          className="px-3.5 py-2 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm shadow-md shadow-rose-200/70 flex items-center gap-1.5 active:scale-95 transition-all shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Nuovo</span>
@@ -276,7 +276,7 @@ export default function ClientsView({
       </div>
 
       {filteredClients.length > ITEMS_PER_PAGE && (
-        <div className="flex items-center justify-between text-xs text-stone-500 px-1">
+        <div className="flex items-center justify-between flex-wrap gap-1 text-xs text-stone-500 px-1">
           <span>
             Mostrati {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filteredClients.length)} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredClients.length)} di {filteredClients.length} clienti
           </span>
@@ -320,11 +320,11 @@ export default function ClientsView({
 
       {/* Pagination Controls */}
       {Math.ceil(filteredClients.length / ITEMS_PER_PAGE) > 1 && (
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-stone-200 text-xs sm:text-sm">
+        <div className="flex items-center justify-between gap-2 flex-wrap p-3 sm:p-4 rounded-2xl bg-white border border-stone-200 text-xs sm:text-sm">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage <= 1}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             <ChevronLeft className="w-4 h-4" />
             Precedente
@@ -338,7 +338,7 @@ export default function ClientsView({
           <button
             onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredClients.length / ITEMS_PER_PAGE), p + 1))}
             disabled={currentPage >= Math.ceil(filteredClients.length / ITEMS_PER_PAGE)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
             Successiva
             <ChevronRight className="w-4 h-4" />
@@ -357,8 +357,8 @@ export default function ClientsView({
             }
           }}
         >
-          <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-            <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
+          <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden shadow-2xl flex flex-col">
+            <div className="sticky top-0 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-4 border-b border-stone-200 flex items-center justify-between gap-2 min-w-0 z-10">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-500/30 flex items-center justify-center text-rose-600 font-black text-lg flex-shrink-0">
                   {selectedClient.full_name.charAt(0).toUpperCase()}
@@ -408,7 +408,7 @@ export default function ClientsView({
               </div>
             )}
 
-            <div className="p-6 space-y-5">
+            <div className="p-4 sm:p-6 pb-modal-safe space-y-5">
               {/* Phone / WhatsApp quick actions */}
               <div className="flex gap-2">
                 {selectedClient.phone ? (
@@ -465,10 +465,10 @@ export default function ClientsView({
                     onOpenNewAppointmentForClient(selectedClient);
                     setSelectedClient(null);
                   }}
-                  className="py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-500/40 text-rose-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  className="py-2.5 px-2 sm:px-3 min-w-0 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-500/40 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5 text-rose-600" />
-                  <span>PMU</span>
+                  <Plus className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                  <span className="truncate">PMU</span>
                 </button>
 
                 <button
@@ -476,10 +476,10 @@ export default function ClientsView({
                     onOpenNewWeddingForClient(selectedClient);
                     setSelectedClient(null);
                   }}
-                  className="py-2.5 px-3 rounded-xl bg-pink-50 hover:bg-pink-100 border border-pink-500/40 text-pink-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  className="py-2.5 px-2 sm:px-3 min-w-0 rounded-xl bg-pink-50 hover:bg-pink-100 border border-pink-500/40 text-pink-700 text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all"
                 >
-                  <Heart className="w-3.5 h-3.5 text-pink-600" />
-                  <span>Evento</span>
+                  <Heart className="w-3.5 h-3.5 text-pink-600 shrink-0" />
+                  <span className="truncate">Evento</span>
                 </button>
 
                 {onOpenNewVoucherForClient && (
@@ -488,10 +488,10 @@ export default function ClientsView({
                       onOpenNewVoucherForClient(selectedClient);
                       setSelectedClient(null);
                     }}
-                    className="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-500/40 text-amber-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                    className="py-2.5 px-2 sm:px-3 min-w-0 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-500/40 text-amber-700 text-xs font-bold flex items-center justify-center gap-1 sm:gap-1.5 transition-all"
                   >
-                    <Gift className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Buono</span>
+                    <Gift className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span className="truncate">Buono</span>
                   </button>
                 )}
               </div>
@@ -517,7 +517,7 @@ export default function ClientsView({
                       return (
                         <div
                           key={idx}
-                          className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
+                          className={`p-3 rounded-xl border text-xs flex justify-between items-center gap-2 min-w-0 ${
                             isFullyUsed
                               ? 'bg-stone-50 border-stone-200 text-stone-500'
                               : isPartial
@@ -525,7 +525,7 @@ export default function ClientsView({
                               : 'bg-amber-50/70 border-amber-200 text-amber-800'
                           }`}
                         >
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-bold text-stone-900">Buono</span>
                               <span
@@ -540,12 +540,12 @@ export default function ClientsView({
                                 {isFullyUsed ? 'Utilizzato' : isPartial ? 'Parzialmente Usato' : 'Da Usare'}
                               </span>
                             </div>
-                            <p className="text-stone-500 text-[11px] mt-0.5">
+                            <p className="text-stone-500 text-[11px] mt-0.5 break-words">
                               {v.recipient_name ? `Per: ${v.recipient_name} • ` : 'Beneficiario non specificato • '}
                               {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <span className="font-bold text-amber-600 text-sm">{initVal}€</span>
                             {remVal < initVal && (
                               <p className="text-[10px] text-emerald-600 font-semibold">
@@ -577,7 +577,7 @@ export default function ClientsView({
                       return (
                         <div
                           key={idx}
-                          className={`p-3 rounded-xl border text-xs flex justify-between items-center ${
+                          className={`p-3 rounded-xl border text-xs flex justify-between items-center gap-2 min-w-0 ${
                             isFullyUsed
                               ? 'bg-stone-50 border-stone-200 text-stone-500'
                               : isPartial
@@ -585,9 +585,9 @@ export default function ClientsView({
                               : 'bg-pink-50/70 border-pink-800/40 text-pink-800'
                           }`}
                         >
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-stone-900">Da: {v.buyer_name}</span>
+                              <span className="font-bold text-stone-900 truncate">Da: {v.buyer_name}</span>
                               <span
                                 className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                                   isFullyUsed
@@ -600,11 +600,11 @@ export default function ClientsView({
                                 {isFullyUsed ? 'Utilizzato' : isPartial ? 'Parzialmente Usato' : 'Da Usare'}
                               </span>
                             </div>
-                            <p className="text-stone-500 text-[11px] mt-0.5">
+                            <p className="text-stone-500 text-[11px] mt-0.5 break-words">
                               {v.purchase_date} {v.notes ? `• ${v.notes}` : ''}
                             </p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right shrink-0">
                             <span className="font-bold text-pink-600 text-sm">{initVal}€</span>
                             <p className="text-[10px] text-emerald-600 font-semibold">
                               Disponibili: {remVal}€
@@ -630,16 +630,16 @@ export default function ClientsView({
                 ) : (
                   <div className="space-y-2">
                     {clientHistory.upcoming.map((item, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-rose-50/70 border border-rose-200 text-xs flex justify-between items-center">
-                        <div>
-                          <p className={`font-bold text-stone-900 ${item.status === 'annullato' ? 'line-through text-stone-500' : ''}`}>
+                      <div key={idx} className="p-3 rounded-xl bg-rose-50/70 border border-rose-200 text-xs flex justify-between items-center gap-2 min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <p className={`font-bold text-stone-900 truncate ${item.status === 'annullato' ? 'line-through text-stone-500' : ''}`}>
                             {item.title}
                           </p>
                           <p className="text-stone-500 text-[11px]">
                             {item.date.slice(0, 10)} {item.status === 'annullato' ? '• Annullato' : ''}
                           </p>
                         </div>
-                        <span className={`font-bold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-rose-600'}`}>
+                        <span className={`font-bold shrink-0 ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-rose-600'}`}>
                           {item.amount}€
                         </span>
                       </div>
@@ -661,16 +661,16 @@ export default function ClientsView({
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {clientHistory.past.map((item, idx) => (
-                      <div key={idx} className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs flex justify-between items-center">
-                        <div>
-                          <p className={`font-medium text-stone-900 ${item.status === 'annullato' ? 'line-through text-stone-500' : ''}`}>
+                      <div key={idx} className="p-3 rounded-xl bg-stone-50 border border-stone-200 text-xs flex justify-between items-center gap-2 min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <p className={`font-medium text-stone-900 truncate ${item.status === 'annullato' ? 'line-through text-stone-500' : ''}`}>
                             {item.title}
                           </p>
                           <p className="text-stone-500 text-[11px]">
                             {item.date.slice(0, 10)} {item.status === 'annullato' ? '• Annullato' : ''}
                           </p>
                         </div>
-                        <span className={`font-semibold ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-emerald-600'}`}>
+                        <span className={`font-semibold shrink-0 ${item.status === 'annullato' ? 'text-stone-500 line-through' : 'text-emerald-600'}`}>
                           {item.amount}€
                         </span>
                       </div>
@@ -724,7 +724,7 @@ export default function ClientsView({
             if (e.target === e.currentTarget) setIsAddingClient(false);
           }}
         >
-          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md max-h-[90dvh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-4">
               <h3 className="text-base font-bold text-stone-900">Nuovo Cliente</h3>
               <button onClick={() => setIsAddingClient(false)} className="text-stone-500 hover:text-stone-900">
@@ -732,9 +732,9 @@ export default function ClientsView({
               </button>
             </div>
 
-            <form onSubmit={handleCreateClient} className="space-y-4">
+            <form onSubmit={handleCreateClient} className="space-y-4 pb-safe">
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Nome *
                   </label>
@@ -747,7 +747,7 @@ export default function ClientsView({
                     className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 text-sm"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Cognome
                   </label>
@@ -815,7 +815,7 @@ export default function ClientsView({
             if (e.target === e.currentTarget) setIsEditingClient(false);
           }}
         >
-          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md max-h-[90dvh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-4">
               <div className="flex items-center gap-2">
                 <Pencil className="w-5 h-5 text-rose-500" />
@@ -826,9 +826,9 @@ export default function ClientsView({
               </button>
             </div>
 
-            <form onSubmit={handleUpdateClient} className="space-y-4">
+            <form onSubmit={handleUpdateClient} className="space-y-4 pb-safe">
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Nome *
                   </label>
@@ -841,7 +841,7 @@ export default function ClientsView({
                     className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2.5 text-stone-900 text-sm"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Cognome
                   </label>

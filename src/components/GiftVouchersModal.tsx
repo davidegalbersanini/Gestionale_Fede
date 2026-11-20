@@ -177,10 +177,10 @@ export default function GiftVouchersModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
+      <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden animate-fade-in">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-stone-200 bg-white/95 backdrop-blur-md flex items-center justify-between z-10 flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-4 sm:px-6 py-4 border-b border-stone-200 bg-white/95 backdrop-blur-md flex items-center justify-between gap-2 z-10 flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             {view === 'create' ? (
               <button
                 type="button"
@@ -188,28 +188,28 @@ export default function GiftVouchersModal({
                   resetForm();
                   setView('list');
                 }}
-                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 transition-colors"
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-700 transition-colors shrink-0"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
             ) : (
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-500/40 flex items-center justify-center text-amber-600">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-500/40 flex items-center justify-center text-amber-600 shrink-0">
                 <Gift className="w-5 h-5" />
               </div>
             )}
-            <div>
-              <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2 truncate">
                 {view === 'create' ? 'Nuovo Buono' : 'Buoni Regalo'}
               </h2>
               {view === 'list' && (
-                <p className="text-stone-500 text-xs">
+                <p className="text-stone-500 text-xs truncate">
                   {`${activeCount} attivi (${totalRemainingAmount.toFixed(0)}€) • ${usedCount} usati`}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {view === 'list' && (
               <button
                 type="button"
@@ -234,7 +234,7 @@ export default function GiftVouchersModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="p-4 sm:p-6 pb-modal-safe overflow-y-auto overflow-x-hidden flex-1 space-y-4">
           {view === 'create' && (
             <form onSubmit={handleSubmitCreate} className="space-y-4">
               {formError && (
@@ -319,7 +319,7 @@ export default function GiftVouchersModal({
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5 text-amber-600" /> Importo (€) *
                   </label>
@@ -338,7 +338,7 @@ export default function GiftVouchersModal({
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                     <CalendarIcon className="w-3.5 h-3.5 text-rose-600" /> Data *
                   </label>
@@ -401,11 +401,11 @@ export default function GiftVouchersModal({
                   />
                 </div>
 
-                <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 w-fit">
+                <div className="w-full sm:w-fit flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 overflow-x-auto max-w-full scrollbar-none">
                   <button
                     type="button"
                     onClick={() => setFilterStatus('all')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 sm:flex-none whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                       filterStatus === 'all'
                         ? 'bg-amber-500 text-white shadow-sm'
                         : 'text-stone-500 hover:text-stone-900'
@@ -416,7 +416,7 @@ export default function GiftVouchersModal({
                   <button
                     type="button"
                     onClick={() => setFilterStatus('active')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 sm:flex-none whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                       filterStatus === 'active'
                         ? 'bg-amber-500 text-white shadow-sm'
                         : 'text-stone-500 hover:text-stone-900'
@@ -427,7 +427,7 @@ export default function GiftVouchersModal({
                   <button
                     type="button"
                     onClick={() => setFilterStatus('used')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    className={`flex-1 sm:flex-none whitespace-nowrap px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all ${
                       filterStatus === 'used'
                         ? 'bg-amber-500 text-white shadow-sm'
                         : 'text-stone-500 hover:text-stone-900'
@@ -477,17 +477,17 @@ export default function GiftVouchersModal({
                               </span>
                             </div>
 
-                            <h4 className="text-sm font-bold text-stone-900 truncate flex items-center gap-1.5">
-                              <span className="text-stone-500 text-xs font-normal">Acquirente:</span>
-                              <span>{voucher.buyer_name}</span>
+                            <h4 className="text-sm font-bold text-stone-900 flex items-center gap-1.5 min-w-0">
+                              <span className="text-stone-500 text-xs font-normal shrink-0">Acquirente:</span>
+                              <span className="truncate">{voucher.buyer_name}</span>
                             </h4>
 
-                            <p className="text-xs text-stone-700 mt-0.5 flex items-center gap-1.5 truncate">
-                              <span className="text-stone-500 text-[11px]">Destinatario:</span>
+                            <p className="text-xs text-stone-700 mt-0.5 flex items-center gap-1.5 min-w-0">
+                              <span className="text-stone-500 text-[11px] shrink-0">Destinatario:</span>
                               {voucher.recipient_name ? (
-                                <span className="font-semibold text-pink-700">{voucher.recipient_name}</span>
+                                <span className="font-semibold text-pink-700 truncate">{voucher.recipient_name}</span>
                               ) : (
-                                <span className="text-stone-500 italic">Non assegnato</span>
+                                <span className="text-stone-500 italic truncate">Non assegnato</span>
                               )}
                             </p>
 

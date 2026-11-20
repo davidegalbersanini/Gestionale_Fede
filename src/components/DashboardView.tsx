@@ -183,7 +183,7 @@ export default function DashboardView({
   const isBusy = exportAction !== null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 min-w-0 max-w-full">
       {/* Header & Year Switcher & Excel Export Button */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-4 rounded-3xl">
         <div>
@@ -193,13 +193,13 @@ export default function DashboardView({
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full scrollbar-none">
             {availableYears.map(yr => (
               <button
                 key={yr}
                 onClick={() => setSelectedYear(yr)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all ${
                   selectedYear === yr
                     ? 'bg-rose-600 text-white shadow-md shadow-rose-200/60'
                     : 'bg-stone-100 text-stone-500 hover:text-stone-900'
@@ -215,7 +215,7 @@ export default function DashboardView({
               setExportSuccessInfo(null);
               setIsExcelModalOpen(true);
             }}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-500/40 text-emerald-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-500/40 text-emerald-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-sm shrink-0"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             <span>Esporta Excel</span>
@@ -226,12 +226,12 @@ export default function DashboardView({
       {/* Target Box */}
       <div className="relative overflow-hidden bg-gradient-to-br from-rose-50 via-white to-amber-50/60 border border-rose-200 p-4 sm:p-5 rounded-3xl shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-md shadow-amber-200/60 flex-shrink-0">
               <Award className="w-6 h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-extrabold text-stone-900">Target Annuale</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-500/30">
                   Anno {selectedYear}
@@ -243,18 +243,18 @@ export default function DashboardView({
             </div>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-4 text-right border-t sm:border-t-0 border-stone-200 pt-2 sm:pt-0">
-            <div>
+          <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 text-left sm:text-right border-t sm:border-t-0 border-stone-200 pt-2 sm:pt-0 min-w-0">
+            <div className="min-w-0">
               <p className="text-stone-500 text-[11px] uppercase font-semibold">
                 Media Mensile ({annualStats.elapsedMonths} mesi)
               </p>
-              <p className="text-lg sm:text-xl font-black text-rose-600">
+              <p className="text-lg sm:text-xl font-black text-rose-600 truncate">
                 {annualStats.monthlyAverage.toLocaleString('it-IT', { maximumFractionDigits: 0 })} €/m
               </p>
             </div>
-            <div className="border-l border-stone-200 pl-4">
+            <div className="border-l border-stone-200 pl-3 sm:pl-4 min-w-0">
               <p className="text-stone-500 text-[11px] uppercase font-semibold">Fatturato Annuo</p>
-              <p className="text-lg sm:text-xl font-black text-emerald-600">
+              <p className="text-lg sm:text-xl font-black text-emerald-600 truncate">
                 {annualStats.totalRevenue.toLocaleString('it-IT', { maximumFractionDigits: 0 })} €
               </p>
             </div>
@@ -263,11 +263,11 @@ export default function DashboardView({
 
         {/* Progress Bar */}
         <div className="space-y-1.5">
-          <div className="flex justify-between text-xs font-semibold">
-            <span className="text-stone-700">
+          <div className="flex justify-between gap-2 text-xs font-semibold min-w-0">
+            <span className="text-stone-700 truncate">
               Avanzamento ({annualStats.totalRevenue.toLocaleString('it-IT')}€ / {targetYearly.toLocaleString('it-IT')}€)
             </span>
-            <span className="text-amber-600 font-bold">{yearlyProgress}%</span>
+            <span className="text-amber-600 font-bold shrink-0">{yearlyProgress}%</span>
           </div>
           <div className="w-full h-3 rounded-full bg-stone-100 overflow-hidden p-0.5 border border-stone-200">
             <div
@@ -279,50 +279,50 @@ export default function DashboardView({
       </div>
 
       {/* 4 Specific KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white border border-stone-200 p-4 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-1">
-            <span>Fatturato Annuo</span>
-            <DollarSign className="w-4 h-4 text-emerald-600" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="bg-white border border-stone-200 p-3 sm:p-4 rounded-2xl flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-1 text-stone-500 text-xs font-semibold mb-1">
+            <span className="truncate">Fatturato Annuo</span>
+            <DollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
           </div>
-          <div>
-            <p className="text-xl sm:text-2xl font-black text-stone-900">
+          <div className="min-w-0">
+            <p className="text-lg sm:text-2xl font-black text-stone-900 truncate">
               {annualStats.totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
           </div>
         </div>
 
-        <div className="bg-white border border-stone-200 p-4 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-1">
-            <span>Spese Annue</span>
-            <Receipt className="w-4 h-4 text-rose-600" />
+        <div className="bg-white border border-stone-200 p-3 sm:p-4 rounded-2xl flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-1 text-stone-500 text-xs font-semibold mb-1">
+            <span className="truncate">Spese Annue</span>
+            <Receipt className="w-4 h-4 text-rose-600 shrink-0" />
           </div>
-          <div>
-            <p className="text-xl sm:text-2xl font-black text-rose-600">
+          <div className="min-w-0">
+            <p className="text-lg sm:text-2xl font-black text-rose-600 truncate">
               {annualStats.totalExpenses.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
           </div>
         </div>
 
-        <div className="bg-white border border-stone-200 p-4 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-1">
-            <span>Fatturato PMU</span>
-            <Sparkles className="w-4 h-4 text-rose-600" />
+        <div className="bg-white border border-stone-200 p-3 sm:p-4 rounded-2xl flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-1 text-stone-500 text-xs font-semibold mb-1">
+            <span className="truncate">Fatturato PMU</span>
+            <Sparkles className="w-4 h-4 text-rose-600 shrink-0" />
           </div>
-          <div>
-            <p className="text-xl sm:text-2xl font-black text-rose-700">
+          <div className="min-w-0">
+            <p className="text-lg sm:text-2xl font-black text-rose-700 truncate">
               {annualStats.pmuRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
           </div>
         </div>
 
-        <div className="bg-white border border-stone-200 p-4 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-stone-500 text-xs font-semibold mb-1">
-            <span>Fatturato Eventi</span>
-            <Heart className="w-4 h-4 text-pink-600 fill-pink-400" />
+        <div className="bg-white border border-stone-200 p-3 sm:p-4 rounded-2xl flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-1 text-stone-500 text-xs font-semibold mb-1">
+            <span className="truncate">Fatturato Eventi</span>
+            <Heart className="w-4 h-4 text-pink-600 fill-pink-400 shrink-0" />
           </div>
-          <div>
-            <p className="text-xl sm:text-2xl font-black text-pink-700">
+          <div className="min-w-0">
+            <p className="text-lg sm:text-2xl font-black text-pink-700 truncate">
               {annualStats.weddingRevenue.toLocaleString('it-IT', { minimumFractionDigits: 0 })} €
             </p>
           </div>
@@ -410,13 +410,13 @@ export default function DashboardView({
         </div>
 
         {/* Mobile View */}
-        <div className="block md:hidden divide-y divide-stone-200 p-3 space-y-2.5">
+        <div className="block md:hidden p-3 space-y-2.5">
           {monthlyData.map(m => {
             const hasActivity = m.totalRevenue > 0 || m.expensesTotal > 0;
             return (
               <div
                 key={m.monthIndex}
-                className={`p-3 rounded-2xl border transition-all ${
+                className={`p-3 rounded-2xl border transition-all min-w-0 ${
                   hasActivity
                     ? 'bg-stone-50 border-stone-200'
                     : 'bg-stone-50/50 border-stone-200/70 opacity-60'
@@ -438,21 +438,21 @@ export default function DashboardView({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-white p-2 rounded-xl border border-stone-200">
+                  <div className="bg-white p-2 rounded-xl border border-stone-200 min-w-0">
                     <span className="text-[10px] text-stone-500 block uppercase font-medium">PMU</span>
-                    <span className="text-stone-800 font-bold">{m.pmuRevenue.toLocaleString('it-IT')} €</span>
+                    <span className="text-stone-800 font-bold truncate block">{m.pmuRevenue.toLocaleString('it-IT')} €</span>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-stone-200">
+                  <div className="bg-white p-2 rounded-xl border border-stone-200 min-w-0">
                     <span className="text-[10px] text-pink-600 block uppercase font-medium">Eventi</span>
-                    <span className="text-pink-700 font-bold">{m.weddingRevenue.toLocaleString('it-IT')} €</span>
+                    <span className="text-pink-700 font-bold truncate block">{m.weddingRevenue.toLocaleString('it-IT')} €</span>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-stone-200">
+                  <div className="bg-white p-2 rounded-xl border border-stone-200 min-w-0">
                     <span className="text-[10px] text-stone-900 block uppercase font-bold">Totale Ricavi</span>
-                    <span className="text-stone-900 font-black">{m.totalRevenue.toLocaleString('it-IT')} €</span>
+                    <span className="text-stone-900 font-black truncate block">{m.totalRevenue.toLocaleString('it-IT')} €</span>
                   </div>
-                  <div className="bg-white p-2 rounded-xl border border-stone-200">
+                  <div className="bg-white p-2 rounded-xl border border-stone-200 min-w-0">
                     <span className="text-[10px] text-rose-600 block uppercase font-medium">Spese</span>
-                    <span className="text-rose-600 font-bold">-{m.expensesTotal.toLocaleString('it-IT')} €</span>
+                    <span className="text-rose-600 font-bold truncate block">-{m.expensesTotal.toLocaleString('it-IT')} €</span>
                   </div>
                 </div>
               </div>
@@ -467,21 +467,21 @@ export default function DashboardView({
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
+              <div className="min-w-0">
                 <span className="text-[10px] text-stone-500 block">Ricavi PMU</span>
-                <span className="font-bold text-stone-900">{annualStats.pmuRevenue.toLocaleString('it-IT')} €</span>
+                <span className="font-bold text-stone-900 truncate block">{annualStats.pmuRevenue.toLocaleString('it-IT')} €</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-[10px] text-pink-600 block">Ricavi Eventi</span>
-                <span className="font-bold text-pink-700">{annualStats.weddingRevenue.toLocaleString('it-IT')} €</span>
+                <span className="font-bold text-pink-700 truncate block">{annualStats.weddingRevenue.toLocaleString('it-IT')} €</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-[10px] text-emerald-600 block font-bold">Totale Fatturato</span>
-                <span className="font-black text-emerald-600 text-sm">{annualStats.totalRevenue.toLocaleString('it-IT')} €</span>
+                <span className="font-black text-emerald-600 text-sm truncate block">{annualStats.totalRevenue.toLocaleString('it-IT')} €</span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="text-[10px] text-rose-600 block font-medium">Totale Spese</span>
-                <span className="font-black text-rose-600 text-sm">-{annualStats.totalExpenses.toLocaleString('it-IT')} €</span>
+                <span className="font-black text-rose-600 text-sm truncate block">-{annualStats.totalExpenses.toLocaleString('it-IT')} €</span>
               </div>
             </div>
           </div>
@@ -499,7 +499,7 @@ export default function DashboardView({
             }
           }}
         >
-          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md p-6 shadow-2xl text-stone-900">
+          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md max-h-[90dvh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 shadow-2xl text-stone-900">
             <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-4">
               <div className="flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
@@ -610,8 +610,8 @@ export default function DashboardView({
                 </div>
 
                 {exportRange === 'custom' && (
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <div className="min-w-0">
                       <label className="block text-xs text-stone-500 mb-1">Da data</label>
                       <input
                         type="date"
@@ -620,7 +620,7 @@ export default function DashboardView({
                         className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-xs"
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className="block text-xs text-stone-500 mb-1">A data</label>
                       <input
                         type="date"

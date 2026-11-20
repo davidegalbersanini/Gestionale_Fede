@@ -24,6 +24,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: 'cover',
   themeColor: '#fafaf9',
 };
@@ -34,12 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="it">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      </head>
-      <body className="min-h-screen bg-stone-50 font-sans antialiased text-stone-900">
+    <html lang="it" className="overflow-x-clip">
+      <body className="min-h-[100dvh] w-full max-w-full overflow-x-clip bg-stone-50 font-sans antialiased text-stone-900">
         {children}
       </body>
     </html>

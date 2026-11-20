@@ -126,21 +126,21 @@ export default function SettingsModal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white border border-stone-200 text-stone-900 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-        <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <SettingsIcon className="w-5 h-5 text-rose-500" />
-            <h2 className="text-lg font-bold text-stone-900">Impostazioni</h2>
+      <div className="bg-white border border-stone-200 text-stone-900 rounded-3xl w-full max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden shadow-2xl flex flex-col">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
+          <div className="flex items-center gap-2 min-w-0">
+            <SettingsIcon className="w-5 h-5 text-rose-500 shrink-0" />
+            <h2 className="text-lg font-bold text-stone-900 truncate">Impostazioni</h2>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500"
+            className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="p-6 space-y-6">
+        <form onSubmit={handleSave} className="p-4 sm:p-6 pb-modal-safe space-y-6">
           {/* PIN Lock Section */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-rose-600 uppercase tracking-wider flex items-center gap-1.5">
@@ -201,13 +201,13 @@ export default function SettingsModal({
             </div>
 
             {gcalStatus.connected ? (
-              <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-stone-200">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 bg-white p-3 rounded-xl border border-stone-200 min-w-0">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
                     <Check className="w-4 h-4" />
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-stone-900">{gcalStatus.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-stone-900 truncate">{gcalStatus.email}</p>
                     <p className="text-[10px] text-emerald-700 font-medium">Sincronizzazione calendario & Drive attiva</p>
                   </div>
                 </div>
@@ -215,7 +215,7 @@ export default function SettingsModal({
                   type="button"
                   onClick={handleDisconnectGoogle}
                   disabled={isGcalLoading}
-                  className="px-2.5 py-1 text-[11px] text-stone-500 hover:text-red-600 hover:bg-stone-100 rounded-lg transition-colors"
+                  className="px-2.5 py-1 text-[11px] text-stone-500 hover:text-red-600 hover:bg-stone-100 rounded-lg transition-colors shrink-0"
                 >
                   {isGcalLoading ? 'Disconnessione...' : 'Disconnetti'}
                 </button>

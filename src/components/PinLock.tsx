@@ -88,7 +88,7 @@ export default function PinLock({ onSuccess }: PinLockProps) {
   const hasError = Boolean(errorMessage);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-b from-rose-50/70 via-stone-50 to-stone-100 text-stone-900 p-4 select-none flex items-center justify-center">
+    <div className="fixed inset-0 z-50 min-h-[100dvh] pt-safe pb-safe overflow-y-auto overflow-x-hidden bg-gradient-to-b from-rose-50/70 via-stone-50 to-stone-100 text-stone-900 p-4 select-none flex items-center justify-center">
       <div className="w-full max-w-sm flex flex-col items-center my-auto py-4">
         {/* Header with Brand Logo */}
         <div className="flex flex-col items-center mb-6 text-center">

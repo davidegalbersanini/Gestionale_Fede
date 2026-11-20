@@ -228,28 +228,28 @@ export default function WeddingModal({
           if (e.target === e.currentTarget) onClose();
         }}
       >
-        <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
+        <div className="bg-white border border-stone-200 text-stone-900 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden shadow-2xl flex flex-col">
           {/* Header */}
-          <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center">
+          <div className="sticky top-0 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-4 border-b border-stone-200 flex items-center justify-between z-10">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
                 <Sparkles className="w-4 h-4 fill-pink-500" />
               </span>
-              <h2 className="text-lg font-bold text-stone-900">
+              <h2 className="text-lg font-bold text-stone-900 truncate">
                 {initialWedding ? 'Modifica Evento' : 'Nuovo Evento'}
               </h2>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900"
+              className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center text-stone-500 hover:text-stone-900 shrink-0"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Form Body */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 pb-modal-safe space-y-5">
             {/* Tipologia Evento */}
             <div>
               <label className="block text-xs font-semibold text-pink-700 uppercase tracking-wider mb-1.5">
@@ -340,7 +340,7 @@ export default function WeddingModal({
                 <Heart className="w-3.5 h-3.5" /> Evento
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-stone-500 mb-1">Data *</label>
                   <input
                     type="date"
@@ -350,7 +350,7 @@ export default function WeddingModal({
                     className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-sm"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-stone-500 mb-1">Inizio</label>
                   <input
                     type="time"
@@ -359,7 +359,7 @@ export default function WeddingModal({
                     className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-sm"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-stone-500 mb-1">Fine</label>
                   <input
                     type="time"
@@ -388,7 +388,7 @@ export default function WeddingModal({
                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-stone-500 mb-1">Data Prova</label>
                   <input
                     type="date"
@@ -397,7 +397,7 @@ export default function WeddingModal({
                     className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-sm"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-stone-500 mb-1">Inizio</label>
                   <input
                     type="time"
@@ -407,7 +407,7 @@ export default function WeddingModal({
                     className="w-full bg-stone-100 border border-stone-300 rounded-xl px-3 py-2 text-stone-900 text-sm disabled:opacity-40"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs text-stone-500 mb-1">Fine</label>
                   <input
                     type="time"
@@ -425,13 +425,13 @@ export default function WeddingModal({
               <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">
                 Persone da truccare
               </label>
-              <div className="flex items-center gap-3">
+              <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
                 {[1, 2, 3, 4, 5, 6].map(n => (
                   <button
                     type="button"
                     key={n}
                     onClick={() => setPeopleCount(n)}
-                    className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                    className={`min-w-0 py-2 rounded-xl text-sm font-semibold border transition-all ${
                       peopleCount === n
                         ? 'bg-pink-100 border-pink-500 text-pink-700 shadow-sm'
                         : 'bg-stone-100 border-stone-300 text-stone-500 hover:text-stone-900'
@@ -449,7 +449,7 @@ export default function WeddingModal({
                 <label className="block text-xs font-semibold text-stone-500 uppercase tracking-wider mb-1.5">
                   Stato Evento
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                   {(
                     [
                       { id: 'programmato', label: 'Programmato', activeClass: 'bg-sky-50 border-sky-500 text-sky-700' },
@@ -461,7 +461,7 @@ export default function WeddingModal({
                       type="button"
                       key={opt.id}
                       onClick={() => setStatus(opt.id)}
-                      className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all ${
+                      className={`py-2 px-1.5 sm:px-3 min-w-0 truncate rounded-xl text-[11px] sm:text-xs font-semibold border transition-all ${
                         status === opt.id
                           ? opt.activeClass
                           : 'bg-stone-100 border-stone-300 text-stone-500 hover:text-stone-900'
@@ -477,7 +477,7 @@ export default function WeddingModal({
             {/* Aspetti Economici */}
             <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-3.5">
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-pink-700 uppercase tracking-wider mb-1.5">
                     Totale (€)
                   </label>
@@ -500,8 +500,8 @@ export default function WeddingModal({
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                <div className="min-w-0">
+                  <label className="block text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1.5 flex items-center justify-between flex-wrap gap-x-1">
                     <span>Ricevuto (€)</span>
                     <span className="text-[10px] text-stone-500 font-normal">
                       Max: {maxAcceptableDeposit.toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}€

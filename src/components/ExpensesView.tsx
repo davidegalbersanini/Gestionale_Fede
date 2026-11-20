@@ -141,7 +141,7 @@ export default function ExpensesView({
     : [category, ...EXPENSE_CATEGORIES];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0 max-w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white border border-stone-200 p-4 rounded-3xl">
         <div>
@@ -164,9 +164,9 @@ export default function ExpensesView({
       </div>
 
       {/* Filters & Categories */}
-      <div className="space-y-2.5 bg-white p-3.5 rounded-2xl border border-stone-200">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="relative flex-1 min-w-[180px]">
+      <div className="space-y-2.5 bg-white p-3.5 rounded-2xl border border-stone-200 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 min-w-0">
+          <div className="relative w-full sm:flex-1 sm:min-w-[180px] min-w-0">
             <Search className="w-4 h-4 text-stone-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -177,10 +177,10 @@ export default function ExpensesView({
             />
           </div>
 
-          <div className="flex items-center gap-1 overflow-x-auto">
+          <div className="flex items-center gap-1 overflow-x-auto max-w-full scrollbar-none">
             <button
               onClick={() => setSelectedYear('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 ${
                 selectedYear === 'all' ? 'bg-rose-600 text-white' : 'bg-stone-100 text-stone-500 hover:text-stone-900'
               }`}
             >
@@ -190,7 +190,7 @@ export default function ExpensesView({
               <button
                 key={yr}
                 onClick={() => setSelectedYear(yr)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 ${
                   selectedYear === yr ? 'bg-rose-600 text-white' : 'bg-stone-100 text-stone-500 hover:text-stone-900'
                 }`}
               >
@@ -200,7 +200,7 @@ export default function ExpensesView({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 scrollbar-none">
           <button
             onClick={() => setSelectedCategory('all')}
             className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
@@ -281,7 +281,7 @@ export default function ExpensesView({
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  <span className="text-base font-black text-rose-600 mr-1">
+                  <span className="text-sm sm:text-base font-black text-rose-600 mr-0.5 sm:mr-1 whitespace-nowrap">
                     -{e.amount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                   <button
@@ -315,7 +315,7 @@ export default function ExpensesView({
             if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
-          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+          <div className="bg-white border border-stone-200 rounded-3xl w-full max-w-md max-h-[90dvh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-stone-200 mb-4">
               <h3 className="text-base font-bold text-stone-900">
                 {editingExpense ? 'Modifica Spesa Studio' : 'Nuova Spesa Studio'}
@@ -325,7 +325,7 @@ export default function ExpensesView({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 pb-safe">
               <div>
                 <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                   Descrizione Spesa *
@@ -340,8 +340,8 @@ export default function ExpensesView({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Importo (€) *
                   </label>
@@ -356,7 +356,7 @@ export default function ExpensesView({
                     className="w-full bg-stone-100 border border-stone-300 rounded-xl px-4 py-2.5 text-stone-900 text-sm"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-semibold text-stone-500 uppercase mb-1">
                     Data Spesa
                   </label>

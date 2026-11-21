@@ -34,11 +34,14 @@ import {
   GoogleSheetsApiError,
   readAllBidirectionalTabs,
   SHEET_TABS,
+  SummaryLayoutMeta,
+  SummaryYearBlockLayout,
   writeAllTabsAndFormat,
 } from '@/lib/googleSheets';
 
 export const SYNC_STATE_SETTINGS_KEY = 'google_sheets_sync_state';
 export const MAX_BULK_DELETES = 5;
+export const SHEET_TEMPLATE_VERSION = 2;
 
 const DEFAULT_PMU_TREATMENTS = [
   'Ritocco',
@@ -78,6 +81,7 @@ export interface GoogleSheetsSyncState {
   spreadsheet_id?: string;
   spreadsheet_url?: string;
   owner_email?: string;
+  template_version?: number;
   last_sheet_modified_time?: string;
   dirty_from_app?: boolean;
   app_last_mutated_at?: number;
@@ -641,7 +645,7 @@ function serializePmuRow(
     total,
     paid,
     voucherAmt,
-    `=IF(AND(A${rowNum}="",D${rowNum}=""),"",MAX(0,IF(ISNUMBER(G${rowNum}),G${rowNum},0)-IF(ISNUMBER(H${rowNum}),H${rowNum},0)-IF(ISNUMBER(I${rowNum}),I${rowNum},0)))`,
+    `=IF(AND(A${rowNum}="";D${rowNum}="");"";MAX(0;IF(ISNUMBER(G${rowNum});G${rowNum};0)-IF(ISNUMBER(H${rowNum});H${rowNum};0)-IF(ISNUMBER(I${rowNum});I${rowNum};0)))`,
     normalizeStatus(app.status, extractDateKey(app.appointment_date)),
     formatDateForSheet(app.touch_up_date),
     app.sync_google_calendar === false ? 'No' : 'Sì',
@@ -706,7 +710,7 @@ function serializeWeddingRow(w: WeddingService, rowNum: number): any[] {
     total,
     deposit,
     voucherAmt,
-    `=IF(AND(A${rowNum}="",E${rowNum}=""),"",MAX(0,IF(ISNUMBER(H${rowNum}),H${rowNum},0)-IF(ISNUMBER(I${rowNum}),I${rowNum},0)-IF(ISNUMBER(J${rowNum}),J${rowNum},0)))`,
+    `=IF(AND(A${rowNum}="";E${rowNum}="");"";MAX(0;IF(ISNUMBER(H${rowNum});H${rowNum};0)-IF(ISNUMBER(I${rowNum});I${rowNum};0)-IF(ISNUMBER(J${rowNum});J${rowNum};0)))`,
     formatDateForSheet(w.trial_date),
     normalizeStatus(w.status, extractDateKey(w.wedding_date)),
     w.sync_google_calendar === false ? 'No' : 'Sì',
@@ -759,7 +763,7 @@ function serializeVoucherRow(v: GiftVoucher, rowNum: number): any[] {
     v.recipient_name || '',
     initVal,
     remVal,
-    `=IF(AND(A${rowNum}="",B${rowNum}=""),"",IF(IF(ISNUMBER(E${rowNum}),E${rowNum},0)<=0,"Esaurito",IF(IF(ISNUMBER(E${rowNum}),E${rowNum},0)<IF(ISNUMBER(D${rowNum}),D${rowNum},0),"Parzialmente Usato","Attivo")))`,
+    `=IF(AND(A${rowNum}="";B${rowNum}="");"";IF(IF(ISNUMBER(E${rowNum});E${rowNum};0)<=0;"Esaurito";IF(IF(ISNUMBER(E${rowNum});E${rowNum};0)<IF(ISNUMBER(D${rowNum});D${rowNum};0);"Parzialmente Usato";"Attivo")))`,
     v.notes || '',
     v.id,
   ];
@@ -827,79 +831,175 @@ function buildListsTabRows(
   return rows;
 }
 
-function buildSummaryTabRows(params: {
-  year: number;
+export function buildSummaryTabRows(params: {
+  years: number[];
+  currentYear: number;
   yearlyTarget: number;
   syncedLabel: string;
-}): any[][] {
-  const { year, yearlyTarget, syncedLabel } = params;
+}): { rows: any[][]; layout: SummaryLayoutMeta } {
+  const { years, currentYear, yearlyTarget, syncedLabel } = params;
+  const normalizedYears = Array.from(
+    new Set(years.filter(y => Number.isInteger(y) && y >= 2000 && y <= 2100))
+  ).sort((a, b) => b - a);
+  const sortedYears = normalizedYears.length > 0 ? normalizedYears : [currentYear];
+
+  const yearSpanLabel =
+    sortedYears.length > 1
+      ? `${sortedYears[sortedYears.length - 1]}–${sortedYears[0]}`
+      : String(sortedYears[0]);
+
   const pmuRef = `'${SHEET_TABS.PMU}'`;
   const wedRef = `'${SHEET_TABS.WEDDINGS}'`;
   const expRef = `'${SHEET_TABS.EXPENSES}'`;
   const vouRef = `'${SHEET_TABS.VOUCHERS}'`;
 
+  const n = sortedYears.length;
+  const annualHeaderRowIndex = 6; // 0-based (Row 7)
+  const annualFirstDataIndex = 7; // 0-based (Row 8)
+  const annualLastDataIndex = 6 + n; // 0-based (Row 7 + n)
+  const annualTotalRowIndex = 7 + n; // 0-based (Row 8 + n)
+
+  const annualFirstDataRow = annualFirstDataIndex + 1;
+  const annualLastDataRow = annualLastDataIndex + 1;
+  const annualTotalRow = annualTotalRowIndex + 1;
+
+  const currentYearIdx = sortedYears.indexOf(currentYear);
+  const currentYearAnnualRow =
+    currentYearIdx >= 0 ? annualFirstDataRow + currentYearIdx : annualFirstDataRow;
+
   const rows: any[][] = [
-    [`RIEPILOGO FINANZIARIO ${year} — GESTIONALE FEDE (SOLA LETTURA)`],
-    [`Ultimo aggiornamento: ${syncedLabel} • Valori calcolati in tempo reale dalle schede PMU, Eventi, Spese e Buoni Regalo`],
+    [`RIEPILOGO FINANZIARIO (${yearSpanLabel}) — GESTIONALE FEDE (SOLA LETTURA)`],
+    [
+      `Ultimo aggiornamento: ${syncedLabel} • Confronto tutti gli anni e dettaglio mensile live dalle schede PMU, Eventi, Spese e Buoni Regalo`,
+    ],
     [],
     [
-      `Fatturato Totale ${year}`,
-      'PMU + Buoni',
-      'Eventi & Cerimonie',
-      `Spese ${year}`,
-      `Utile Netto ${year}`,
+      'Fatturato Totale (Tutti gli anni)',
+      'PMU + Buoni (Totale)',
+      'Eventi & Cerimonie (Totale)',
+      'Spese Totali',
+      'Utile Netto Totale',
       'Crediti Da Saldare',
-      `Obiettivo (${yearlyTarget.toLocaleString('it-IT')} €)`,
+      `Obiettivo ${currentYear} (${yearlyTarget.toLocaleString('it-IT')} €)`,
     ],
-    ['=D20', '=B20', '=C20', '=E20', '=F20', '=G20', `=IFERROR(A5/${Math.max(1, yearlyTarget)},0)`],
+    [
+      `=D${annualTotalRow}`,
+      `=B${annualTotalRow}`,
+      `=C${annualTotalRow}`,
+      `=E${annualTotalRow}`,
+      `=F${annualTotalRow}`,
+      `=G${annualTotalRow}`,
+      `=IFERROR(D${currentYearAnnualRow}/${Math.max(1, yearlyTarget)};0)`,
+    ],
     [],
-    ['Mese', 'PMU + Buoni (€)', 'Eventi (€)', 'Totale Ricavi (€)', 'Spese (€)', 'Utile Netto (€)', 'Da Saldare (€)'],
+    ['Anno', 'PMU + Buoni (€)', 'Eventi (€)', 'Totale Ricavi (€)', 'Spese (€)', 'Utile Netto (€)', 'Da Saldare (€)'],
   ];
 
-  for (let m = 1; m <= 12; m++) {
-    const r = 7 + m; // Row 8..19
-    const nextYear = m === 12 ? year + 1 : year;
-    const nextMonth = m === 12 ? 1 : m + 1;
-    const startCond = `">="&DATE(${year},${m},1)`;
-    const endCond = `"<"&DATE(${nextYear},${nextMonth},1)`;
+  const yearBlocks: SummaryYearBlockLayout[] = sortedYears.map((yr, bIdx) => {
+    const spacerIndex = annualTotalRowIndex + 1 + bIdx * 16;
+    const bannerRowIndex = spacerIndex + 1;
+    const headerRowIndex = spacerIndex + 2;
+    const firstMonthIndex = spacerIndex + 3;
+    const lastMonthIndex = spacerIndex + 14;
+    const totalRowIndex = spacerIndex + 15;
+    return {
+      year: yr,
+      bannerRowIndex,
+      headerRowIndex,
+      firstMonthIndex,
+      lastMonthIndex,
+      totalRowIndex,
+    };
+  });
 
-    const pmuCash =
-      `=SUMIFS(${pmuRef}!$H$3:$H$5000,${pmuRef}!$A$3:$A$5000,${startCond},${pmuRef}!$A$3:$A$5000,${endCond},${pmuRef}!$K$3:$K$5000,"<>annullato")` +
-      `+SUMIFS(${vouRef}!$D$3:$D$5000,${vouRef}!$A$3:$A$5000,${startCond},${vouRef}!$A$3:$A$5000,${endCond})`;
-
-    const wedCash =
-      `=SUMIFS(${wedRef}!$I$3:$I$5000,${wedRef}!$A$3:$A$5000,${startCond},${wedRef}!$A$3:$A$5000,${endCond},${wedRef}!$M$3:$M$5000,"<>annullato")`;
-
-    const totRev = `=B${r}+C${r}`;
-    const expFormula = `=SUMIFS(${expRef}!$D$3:$D$5000,${expRef}!$A$3:$A$5000,${startCond},${expRef}!$A$3:$A$5000,${endCond})`;
-    const netFormula = `=D${r}-E${r}`;
-    const balFormula =
-      `=SUMIFS(${pmuRef}!$J$3:$J$5000,${pmuRef}!$A$3:$A$5000,${startCond},${pmuRef}!$A$3:$A$5000,${endCond},${pmuRef}!$K$3:$K$5000,"<>annullato")` +
-      `+SUMIFS(${wedRef}!$K$3:$K$5000,${wedRef}!$A$3:$A$5000,${startCond},${wedRef}!$A$3:$A$5000,${endCond},${wedRef}!$M$3:$M$5000,"<>annullato")`;
-
+  // Annual Comparison Data Rows (Rows 8 .. 7 + n)
+  yearBlocks.forEach(block => {
+    const tRow = block.totalRowIndex + 1; // 1-based reference to block total row
     rows.push([
-      `${MONTH_NAMES_IT[m - 1]} ${year}`,
-      pmuCash,
-      wedCash,
-      totRev,
-      expFormula,
-      netFormula,
-      balFormula,
+      block.year,
+      `=B${tRow}`,
+      `=C${tRow}`,
+      `=D${tRow}`,
+      `=E${tRow}`,
+      `=F${tRow}`,
+      `=G${tRow}`,
+    ]);
+  });
+
+  // Annual Comparison Total Row (Row 8 + n)
+  rows.push([
+    'TOTALE TUTTI GLI ANNI',
+    `=SUM(B${annualFirstDataRow}:B${annualLastDataRow})`,
+    `=SUM(C${annualFirstDataRow}:C${annualLastDataRow})`,
+    `=SUM(D${annualFirstDataRow}:D${annualLastDataRow})`,
+    `=SUM(E${annualFirstDataRow}:E${annualLastDataRow})`,
+    `=SUM(F${annualFirstDataRow}:F${annualLastDataRow})`,
+    `=SUM(G${annualFirstDataRow}:G${annualLastDataRow})`,
+  ]);
+
+  // Per-Year Monthly Breakdown Blocks (16 rows each)
+  for (const block of yearBlocks) {
+    const yr = block.year;
+    rows.push([]); // Spacer row
+    rows.push([`DETTAGLIO MENSILE ${yr}`]);
+    rows.push(['Mese', 'PMU + Buoni (€)', 'Eventi (€)', 'Totale Ricavi (€)', 'Spese (€)', 'Utile Netto (€)', 'Da Saldare (€)']);
+
+    for (let m = 1; m <= 12; m++) {
+      const r = block.firstMonthIndex + m; // 1-based spreadsheet row
+      const nextYear = m === 12 ? yr + 1 : yr;
+      const nextMonth = m === 12 ? 1 : m + 1;
+      const startCond = `">="&DATE(${yr};${m};1)`;
+      const endCond = `"<"&DATE(${nextYear};${nextMonth};1)`;
+
+      const pmuCash =
+        `=SUMIFS(${pmuRef}!$H:$H;${pmuRef}!$A:$A;${startCond};${pmuRef}!$A:$A;${endCond};${pmuRef}!$K:$K;"<>annullato")` +
+        `+SUMIFS(${vouRef}!$D:$D;${vouRef}!$A:$A;${startCond};${vouRef}!$A:$A;${endCond})`;
+
+      const wedCash =
+        `=SUMIFS(${wedRef}!$I:$I;${wedRef}!$A:$A;${startCond};${wedRef}!$A:$A;${endCond};${wedRef}!$M:$M;"<>annullato")`;
+
+      const totRev = `=B${r}+C${r}`;
+      const expFormula = `=SUMIFS(${expRef}!$D:$D;${expRef}!$A:$A;${startCond};${expRef}!$A:$A;${endCond})`;
+      const netFormula = `=D${r}-E${r}`;
+      const balFormula =
+        `=SUMIFS(${pmuRef}!$J:$J;${pmuRef}!$A:$A;${startCond};${pmuRef}!$A:$A;${endCond};${pmuRef}!$K:$K;"<>annullato")` +
+        `+SUMIFS(${wedRef}!$K:$K;${wedRef}!$A:$A;${startCond};${wedRef}!$A:$A;${endCond};${wedRef}!$M:$M;"<>annullato")`;
+
+      rows.push([
+        `${MONTH_NAMES_IT[m - 1]} ${yr}`,
+        pmuCash,
+        wedCash,
+        totRev,
+        expFormula,
+        netFormula,
+        balFormula,
+      ]);
+    }
+
+    const mStartRow = block.firstMonthIndex + 1;
+    const mEndRow = block.lastMonthIndex + 1;
+    rows.push([
+      `TOTALE ${yr}`,
+      `=SUM(B${mStartRow}:B${mEndRow})`,
+      `=SUM(C${mStartRow}:C${mEndRow})`,
+      `=SUM(D${mStartRow}:D${mEndRow})`,
+      `=SUM(E${mStartRow}:E${mEndRow})`,
+      `=SUM(F${mStartRow}:F${mEndRow})`,
+      `=SUM(G${mStartRow}:G${mEndRow})`,
     ]);
   }
 
-  // Row 20: Totals
-  rows.push([
-    `TOTALE ${year}`,
-    '=SUM(B8:B19)',
-    '=SUM(C8:C19)',
-    '=SUM(D8:D19)',
-    '=SUM(E8:E19)',
-    '=SUM(F8:F19)',
-    '=SUM(G8:G19)',
-  ]);
-
-  return rows;
+  return {
+    rows,
+    layout: {
+      annualHeaderRowIndex,
+      annualFirstDataIndex,
+      annualLastDataIndex,
+      annualTotalRowIndex,
+      yearBlocks,
+      totalRowCount: rows.length,
+    },
+  };
 }
 
 // ============================================================================
@@ -1145,8 +1245,10 @@ export async function runGoogleSheetsSync(options: {
       snapshots = { ...EMPTY_SNAPSHOTS };
     }
 
-    // Fast-path for cron (or background polling) when nothing changed on Drive and App is clean
-    if (spreadsheetId && !force && !prevState.dirty_from_app && source === 'cron') {
+    const templateUpgraded = (prevState.template_version || 1) < SHEET_TEMPLATE_VERSION;
+
+    // Fast-path for cron (or background polling) when nothing changed on Drive, App is clean, and template is up to date
+    if (spreadsheetId && !force && !prevState.dirty_from_app && !templateUpgraded && source === 'cron') {
       const meta = await getDriveFileMetadata(accessToken, spreadsheetId);
       if (meta && !meta.trashed) {
         if (meta.modifiedTime && meta.modifiedTime === prevState.last_sheet_modified_time) {
@@ -1156,6 +1258,7 @@ export async function runGoogleSheetsSync(options: {
             spreadsheetId,
             spreadsheetUrl: meta.webViewLink || spreadsheetUrl,
             dataChanged: false,
+            templateVersion: SHEET_TEMPLATE_VERSION,
           };
         }
       } else {
@@ -1182,6 +1285,7 @@ export async function runGoogleSheetsSync(options: {
           status: 'noop',
           summary: 'Foglio Google Master non ancora inizializzato.',
           dataChanged: false,
+          templateVersion: SHEET_TEMPLATE_VERSION,
         };
       }
       if (!createIfMissing && source === 'app') {
@@ -1190,6 +1294,7 @@ export async function runGoogleSheetsSync(options: {
           status: 'noop',
           summary: 'Foglio Google Master non ancora creato.',
           dataChanged: false,
+          templateVersion: SHEET_TEMPLATE_VERSION,
         };
       }
 
@@ -1802,6 +1907,7 @@ export async function runGoogleSheetsSync(options: {
     const needsSheetWrite =
       force ||
       isInitialBuild ||
+      templateUpgraded ||
       prevState.dirty_from_app ||
       pmuRec.sheetNeedsRewrite ||
       wedRec.sheetNeedsRewrite ||
@@ -1809,6 +1915,8 @@ export async function runGoogleSheetsSync(options: {
       vouRec.sheetNeedsRewrite;
 
     let newModifiedTime = driveMeta?.modifiedTime;
+    let formulaErrors: number | undefined;
+    let firstFormulaError: string | undefined;
     const now = new Date();
     const syncedLabel = formatRomeDateTimeLabel(now);
     const currentYear = Number(formatRomeTodayIso(now).slice(0, 4));
@@ -1828,6 +1936,27 @@ export async function runGoogleSheetsSync(options: {
         b.purchase_date.localeCompare(a.purchase_date)
       );
 
+      const yearSet = new Set<number>([currentYear]);
+      const addYearFromStr = (iso?: string | null) => {
+        if (!iso || iso.length < 4) return;
+        const yr = parseInt(iso.slice(0, 4), 10);
+        if (Number.isInteger(yr) && yr >= 2000 && yr <= 2100) {
+          yearSet.add(yr);
+        }
+      };
+      sortedPmus.forEach(a => addYearFromStr(a.appointment_date));
+      sortedWeddings.forEach(w => addYearFromStr(w.wedding_date));
+      sortedExpenses.forEach(e => addYearFromStr(e.date));
+      sortedVouchers.forEach(v => addYearFromStr(v.purchase_date));
+      const summaryYears = Array.from(yearSet).sort((a, b) => b - a);
+
+      const summaryBuilt = buildSummaryTabRows({
+        years: summaryYears,
+        currentYear,
+        yearlyTarget,
+        syncedLabel,
+      });
+
       const writeRes = await writeAllTabsAndFormat(accessToken, spreadsheetId, structure, {
         pmuDataRows: sortedPmus.map((a, idx) =>
           serializePmuRow(a, 3 + idx, locById, fallbackLocation.name)
@@ -1840,14 +1969,15 @@ export async function runGoogleSheetsSync(options: {
         voucherDataRows: sortedVouchers.map((v, idx) => serializeVoucherRow(v, 3 + idx)),
         voucherDraftRows: vouDraftRows,
         listsRows: buildListsTabRows(allClientsList, locations, servicePricesRes.rows),
-        summaryRows: buildSummaryTabRows({ year: currentYear, yearlyTarget, syncedLabel }),
-        summaryYear: currentYear,
-        summaryYearlyTarget: yearlyTarget,
+        summaryRows: summaryBuilt.rows,
+        summaryLayout: summaryBuilt.layout,
       });
 
       if (writeRes.modifiedTime) {
         newModifiedTime = writeRes.modifiedTime;
       }
+      formulaErrors = writeRes.summaryFormulaErrors;
+      firstFormulaError = writeRes.firstFormulaError;
     }
 
     const summaryParts: string[] = [];
@@ -1865,6 +1995,7 @@ export async function runGoogleSheetsSync(options: {
       spreadsheet_id: spreadsheetId,
       spreadsheet_url: spreadsheetUrl,
       owner_email: currentEmail || prevState.owner_email,
+      template_version: SHEET_TEMPLATE_VERSION,
       last_sheet_modified_time: newModifiedTime,
       dirty_from_app: false,
       app_last_mutated_at: prevState.app_last_mutated_at || Date.now(),
@@ -1887,6 +2018,9 @@ export async function runGoogleSheetsSync(options: {
       dataChanged: dbChanged,
       summary: summaryText,
       warning: warningMsg,
+      templateVersion: SHEET_TEMPLATE_VERSION,
+      formulaErrors,
+      firstFormulaError,
     };
   } catch (err: any) {
     if (err instanceof GoogleSheetsApiError) {

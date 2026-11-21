@@ -164,4 +164,7 @@ export interface MasterSheetSyncResult {
   error?: string;
   sheetsApiDisabled?: boolean;
   scopeMissing?: boolean;
+  templateVersion?: number;
+  formulaErrors?: number;
+  firstFormulaError?: string;
 }

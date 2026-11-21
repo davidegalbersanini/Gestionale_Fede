@@ -259,7 +259,7 @@ export async function ensureSpreadsheetStructure(
   spreadsheetId: string
 ): Promise<SpreadsheetStructure> {
   const fields =
-    'spreadsheetId,spreadsheetUrl,sheets(properties(sheetId,title,index,hidden,gridProperties),protectedRanges(protectedRangeId,description),conditionalFormats)';
+    'spreadsheetId,spreadsheetUrl,properties(locale,timeZone),sheets(properties(sheetId,title,index,hidden,gridProperties),protectedRanges(protectedRangeId,description),conditionalFormats)';
 
   const raw = await googleFetchJson<any>(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}?fields=${encodeURIComponent(fields)}`,
@@ -280,7 +280,7 @@ export async function ensureSpreadsheetStructure(
             index: i,
             hidden: spec.hidden,
             gridProperties: {
-              rowCount: spec.title === SHEET_TABS.SUMMARY ? 120 : 1200,
+              rowCount: spec.title === SHEET_TABS.SUMMARY ? 150 : 1200,
               columnCount: Math.max(spec.colCount + 2, 18),
               frozenRowCount: spec.hidden ? 1 : 2,
             },
@@ -303,8 +303,19 @@ export async function ensureSpreadsheetStructure(
     structure = parseStructureResponse(refreshed);
   }
 
-  // Ensure exact tab order (e.g. Riepilogo must be after all other visible tabs) & frozen rows
+  // Ensure exact tab order (e.g. Riepilogo must be after all other visible tabs) & it_IT locale for ';' formulas
   const orderRequests: any[] = [];
+  if (raw.properties?.locale !== 'it_IT' || raw.properties?.timeZone !== 'Europe/Rome') {
+    orderRequests.push({
+      updateSpreadsheetProperties: {
+        properties: {
+          locale: 'it_IT',
+          timeZone: 'Europe/Rome',
+        },
+        fields: 'locale,timeZone',
+      },
+    });
+  }
   ORDERED_TAB_SPECS.forEach((spec, targetIdx) => {
     const meta = structure.tabs[spec.title];
     if (!meta) return;
@@ -350,10 +361,10 @@ export async function readAllBidirectionalTabs(
   spreadsheetId: string
 ): Promise<RawBidirectionalTabs> {
   const ranges = [
-    `'${SHEET_TABS.PMU}'!A3:O5000`,
-    `'${SHEET_TABS.WEDDINGS}'!A3:P5000`,
-    `'${SHEET_TABS.EXPENSES}'!A3:F5000`,
-    `'${SHEET_TABS.VOUCHERS}'!A3:H5000`,
+    `'${SHEET_TABS.PMU}'!A3:O`,
+    `'${SHEET_TABS.WEDDINGS}'!A3:P`,
+    `'${SHEET_TABS.EXPENSES}'!A3:F`,
+    `'${SHEET_TABS.VOUCHERS}'!A3:H`,
   ];
 
   const params = new URLSearchParams({
@@ -378,6 +389,24 @@ export async function readAllBidirectionalTabs(
   };
 }
 
+export interface SummaryYearBlockLayout {
+  year: number;
+  bannerRowIndex: number;
+  headerRowIndex: number;
+  firstMonthIndex: number;
+  lastMonthIndex: number;
+  totalRowIndex: number;
+}
+
+export interface SummaryLayoutMeta {
+  annualHeaderRowIndex: number;
+  annualFirstDataIndex: number;
+  annualLastDataIndex: number;
+  annualTotalRowIndex: number;
+  yearBlocks: SummaryYearBlockLayout[];
+  totalRowCount: number;
+}
+
 export interface MasterSheetWritePayload {
   pmuDataRows: any[][];
   pmuDraftRows: any[][];
@@ -389,8 +418,7 @@ export interface MasterSheetWritePayload {
   voucherDraftRows: any[][];
   listsRows: any[][];
   summaryRows: any[][];
-  summaryYear: number;
-  summaryYearlyTarget: number;
+  summaryLayout: SummaryLayoutMeta;
 }
 
 function makeSolidBg(r: number, g: number, b: number) {
@@ -471,55 +499,55 @@ function buildConditionalRule(
   };
 }
 
-function buildPmuTemplateRow(rowNum: number): any[] {
+export function buildPmuTemplateRow(rowNum: number): any[] {
   return [
     '', // A: Data
     '', // B: Ora Inizio
-    `=IF(B${rowNum}="","",IFERROR(TEXT(IF(ISNUMBER(B${rowNum}),B${rowNum},TIMEVALUE(B${rowNum}))+TIME(2,0,0),"hh:mm"),""))`, // C: Ora Fine
+    `=IF(B${rowNum}="";"";IFERROR(TEXT(IF(ISNUMBER(B${rowNum});B${rowNum};TIMEVALUE(B${rowNum}))+TIME(2;0;0);"hh:mm");""))`, // C: Ora Fine
     '', // D: Cliente
     '', // E: Sede
     '', // F: Trattamento
-    `=IF(OR(E${rowNum}="",F${rowNum}=""),"",IFERROR(INDEX('${SHEET_TABS.LISTS}'!$E$2:$E$1500,MATCH(E${rowNum}&"|"&F${rowNum},'${SHEET_TABS.LISTS}'!$D$2:$D$1500,0)),""))`, // G: Totale auto da listino
+    `=IF(OR(E${rowNum}="";F${rowNum}="");"";IFERROR(INDEX('${SHEET_TABS.LISTS}'!$E:$E;MATCH(E${rowNum}&"|"&F${rowNum};'${SHEET_TABS.LISTS}'!$D:$D;0));""))`, // G: Totale auto da listino
     '', // H: Incassato
     '', // I: Buono Usato
-    `=IF(AND(A${rowNum}="",D${rowNum}=""),"",MAX(0,IF(ISNUMBER(G${rowNum}),G${rowNum},0)-IF(ISNUMBER(H${rowNum}),H${rowNum},0)-IF(ISNUMBER(I${rowNum}),I${rowNum},0)))`, // J: Da Saldare
-    `=IF(A${rowNum}="","",IF(A${rowNum}<TODAY(),"completato","programmato"))`, // K: Stato
+    `=IF(AND(A${rowNum}="";D${rowNum}="");"";MAX(0;IF(ISNUMBER(G${rowNum});G${rowNum};0)-IF(ISNUMBER(H${rowNum});H${rowNum};0)-IF(ISNUMBER(I${rowNum});I${rowNum};0)))`, // J: Da Saldare
+    `=IF(A${rowNum}="";"";IF(A${rowNum}<TODAY();"completato";"programmato"))`, // K: Stato
     '', // L: Data Ritocco
-    `=IF(AND(A${rowNum}="",D${rowNum}=""),"","Sì")`, // M: Calendar
+    `=IF(AND(A${rowNum}="";D${rowNum}="");"";"Sì")`, // M: Calendar
     '', // N: Note
     '', // O: ID
   ];
 }
 
-function buildWeddingTemplateRow(rowNum: number): any[] {
+export function buildWeddingTemplateRow(rowNum: number): any[] {
   return [
     '', // A: Data Evento
     '', // B: Ora Inizio
-    `=IF(B${rowNum}="","",IFERROR(TEXT(IF(ISNUMBER(B${rowNum}),B${rowNum},TIMEVALUE(B${rowNum}))+TIME(3,0,0),"hh:mm"),""))`, // C: Ora Fine
+    `=IF(B${rowNum}="";"";IFERROR(TEXT(IF(ISNUMBER(B${rowNum});B${rowNum};TIMEVALUE(B${rowNum}))+TIME(3;0;0);"hh:mm");""))`, // C: Ora Fine
     '', // D: Tipologia
     '', // E: Cliente / Sposa
     '', // F: Location / Indirizzo
-    `=IF(AND(A${rowNum}="",E${rowNum}=""),"",1)`, // G: Persone
+    `=IF(AND(A${rowNum}="";E${rowNum}="");"";1)`, // G: Persone
     '', // H: Totale
     '', // I: Acconto
     '', // J: Buono Usato
-    `=IF(AND(A${rowNum}="",E${rowNum}=""),"",MAX(0,IF(ISNUMBER(H${rowNum}),H${rowNum},0)-IF(ISNUMBER(I${rowNum}),I${rowNum},0)-IF(ISNUMBER(J${rowNum}),J${rowNum},0)))`, // K: Da Saldare
+    `=IF(AND(A${rowNum}="";E${rowNum}="");"";MAX(0;IF(ISNUMBER(H${rowNum});H${rowNum};0)-IF(ISNUMBER(I${rowNum});I${rowNum};0)-IF(ISNUMBER(J${rowNum});J${rowNum};0)))`, // K: Da Saldare
     '', // L: Data Prova
-    `=IF(A${rowNum}="","",IF(A${rowNum}<TODAY(),"completato","programmato"))`, // M: Stato
-    `=IF(AND(A${rowNum}="",E${rowNum}=""),"","Sì")`, // N: Calendar
+    `=IF(A${rowNum}="";"";IF(A${rowNum}<TODAY();"completato";"programmato"))`, // M: Stato
+    `=IF(AND(A${rowNum}="";E${rowNum}="");"";"Sì")`, // N: Calendar
     '', // O: Note
     '', // P: ID
   ];
 }
 
-function buildVoucherTemplateRow(rowNum: number): any[] {
+export function buildVoucherTemplateRow(rowNum: number): any[] {
   return [
     '', // A: Data Acquisto
     '', // B: Acquirente
     '', // C: Beneficiario
     '', // D: Valore Iniziale
-    `=IF(D${rowNum}="","",D${rowNum})`, // E: Valore Rimanente default = Iniziale
-    `=IF(AND(A${rowNum}="",B${rowNum}=""),"",IF(IF(ISNUMBER(E${rowNum}),E${rowNum},0)<=0,"Esaurito",IF(IF(ISNUMBER(E${rowNum}),E${rowNum},0)<IF(ISNUMBER(D${rowNum}),D${rowNum},0),"Parzialmente Usato","Attivo")))`, // F: Stato live
+    `=IF(D${rowNum}="";"";D${rowNum})`, // E: Valore Rimanente default = Iniziale
+    `=IF(AND(A${rowNum}="";B${rowNum}="");"";IF(IF(ISNUMBER(E${rowNum});E${rowNum};0)<=0;"Esaurito";IF(IF(ISNUMBER(E${rowNum});E${rowNum};0)<IF(ISNUMBER(D${rowNum});D${rowNum};0);"Parzialmente Usato";"Attivo")))`, // F: Stato live
     '', // G: Note
     '', // H: ID
   ];
@@ -530,7 +558,7 @@ export async function writeAllTabsAndFormat(
   spreadsheetId: string,
   structure: SpreadsheetStructure,
   payload: MasterSheetWritePayload
-): Promise<{ modifiedTime?: string }> {
+): Promise<{ modifiedTime?: string; summaryFormulaErrors: number; firstFormulaError?: string }> {
   const pmuHeaders = [
     'Data',
     'Ora Inizio',
@@ -620,7 +648,7 @@ export async function writeAllTabsAndFormat(
     [SHEET_TABS.WEDDINGS]: Math.max(1200, wedCombined.rows.length + 100),
     [SHEET_TABS.EXPENSES]: Math.max(1200, expCombined.rows.length + 100),
     [SHEET_TABS.VOUCHERS]: Math.max(1200, vouCombined.rows.length + 100),
-    [SHEET_TABS.SUMMARY]: 120,
+    [SHEET_TABS.SUMMARY]: Math.max(150, payload.summaryRows.length + 30),
     [SHEET_TABS.LISTS]: Math.max(1200, payload.listsRows.length + 100),
   };
 
@@ -651,12 +679,12 @@ export async function writeAllTabsAndFormat(
       method: 'POST',
       body: JSON.stringify({
         ranges: [
-          `'${SHEET_TABS.PMU}'!A1:O5000`,
-          `'${SHEET_TABS.WEDDINGS}'!A1:P5000`,
-          `'${SHEET_TABS.EXPENSES}'!A1:F5000`,
-          `'${SHEET_TABS.VOUCHERS}'!A1:H5000`,
-          `'${SHEET_TABS.SUMMARY}'!A1:G120`,
-          `'${SHEET_TABS.LISTS}'!A1:E5000`,
+          `'${SHEET_TABS.PMU}'!A1:O`,
+          `'${SHEET_TABS.WEDDINGS}'!A1:P`,
+          `'${SHEET_TABS.EXPENSES}'!A1:F`,
+          `'${SHEET_TABS.VOUCHERS}'!A1:H`,
+          `'${SHEET_TABS.SUMMARY}'!A1:G`,
+          `'${SHEET_TABS.LISTS}'!A1:E`,
         ],
       }),
     }
@@ -965,19 +993,19 @@ export async function writeAllTabsAndFormat(
     batchRequests.push({
       setDataValidation: {
         range: { sheetId: pmuMeta.sheetId, startRowIndex: 2, endRowIndex: endIdx, startColumnIndex: 3, endColumnIndex: 4 },
-        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$A$2:$A$2500`, false),
+        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$A$2:$A`, false),
       },
     });
     batchRequests.push({
       setDataValidation: {
         range: { sheetId: pmuMeta.sheetId, startRowIndex: 2, endRowIndex: endIdx, startColumnIndex: 4, endColumnIndex: 5 },
-        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$B$2:$B$150`, false),
+        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$B$2:$B`, false),
       },
     });
     batchRequests.push({
       setDataValidation: {
         range: { sheetId: pmuMeta.sheetId, startRowIndex: 2, endRowIndex: endIdx, startColumnIndex: 5, endColumnIndex: 6 },
-        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$C$2:$C$400`, false),
+        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$C$2:$C`, false),
       },
     });
     batchRequests.push({
@@ -1033,7 +1061,7 @@ export async function writeAllTabsAndFormat(
     batchRequests.push({
       setDataValidation: {
         range: { sheetId: wedMeta.sheetId, startRowIndex: 2, endRowIndex: endIdx, startColumnIndex: 4, endColumnIndex: 5 },
-        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$A$2:$A$2500`, false),
+        rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$A$2:$A`, false),
       },
     });
     batchRequests.push({
@@ -1109,7 +1137,7 @@ export async function writeAllTabsAndFormat(
       batchRequests.push({
         setDataValidation: {
           range: { sheetId: vouMeta.sheetId, startRowIndex: 2, endRowIndex: endIdx, startColumnIndex: c, endColumnIndex: c + 1 },
-          rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$A$2:$A$2500`, false),
+          rule: buildRangeDropdownValidation(`='${SHEET_TABS.LISTS}'!$A$2:$A`, false),
         },
       });
     });
@@ -1120,11 +1148,14 @@ export async function writeAllTabsAndFormat(
     );
   }
 
-  // --- Riepilogo Tab (Read-Only, last visible tab) ---
+  // --- Riepilogo Tab (Read-Only, multi-year, last visible tab) ---
   const sumMeta = structure.tabs[SHEET_TABS.SUMMARY];
   if (sumMeta) {
     const sid = sumMeta.sheetId;
-    [200, 135, 135, 145, 130, 145, 135].forEach((px, idx) => {
+    const summaryClearRows = Math.max(150, payload.summaryRows.length + 30);
+    const layout = payload.summaryLayout;
+
+    [220, 145, 145, 150, 135, 145, 145].forEach((px, idx) => {
       batchRequests.push({
         updateDimensionProperties: {
           range: { sheetId: sid, dimension: 'COLUMNS', startIndex: idx, endIndex: idx + 1 },
@@ -1133,8 +1164,11 @@ export async function writeAllTabsAndFormat(
         },
       });
     });
+
     batchRequests.push({
-      unmergeCells: { range: { sheetId: sid, startRowIndex: 0, endRowIndex: 40, startColumnIndex: 0, endColumnIndex: 7 } },
+      unmergeCells: {
+        range: { sheetId: sid, startRowIndex: 0, endRowIndex: summaryClearRows, startColumnIndex: 0, endColumnIndex: 7 },
+      },
     });
     batchRequests.push({
       mergeCells: { range: { sheetId: sid, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 7 }, mergeType: 'MERGE_ALL' },
@@ -1142,6 +1176,24 @@ export async function writeAllTabsAndFormat(
     batchRequests.push({
       mergeCells: { range: { sheetId: sid, startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: 7 }, mergeType: 'MERGE_ALL' },
     });
+
+    // Row heights (Row 1, Row 2, KPI Header Row 4, KPI Values Row 5)
+    [
+      [0, 30],
+      [1, 24],
+      [3, 34],
+      [4, 32],
+    ].forEach(([rIdx, px]) => {
+      batchRequests.push({
+        updateDimensionProperties: {
+          range: { sheetId: sid, dimension: 'ROWS', startIndex: rIdx, endIndex: rIdx + 1 },
+          properties: { pixelSize: px },
+          fields: 'pixelSize',
+        },
+      });
+    });
+
+    // Banner Row 1 & Subtitle Row 2
     batchRequests.push({
       repeatCell: {
         range: { sheetId: sid, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 7 },
@@ -1170,10 +1222,11 @@ export async function writeAllTabsAndFormat(
         fields: 'userEnteredFormat(backgroundColor,textFormat,verticalAlignment,horizontalAlignment)',
       },
     });
+
     // Reset body format
     batchRequests.push({
       repeatCell: {
-        range: { sheetId: sid, startRowIndex: 2, endRowIndex: 45, startColumnIndex: 0, endColumnIndex: 7 },
+        range: { sheetId: sid, startRowIndex: 2, endRowIndex: summaryClearRows, startColumnIndex: 0, endColumnIndex: 7 },
         cell: {
           userEnteredFormat: {
             backgroundColor: makeSolidBg(255, 255, 255),
@@ -1185,7 +1238,8 @@ export async function writeAllTabsAndFormat(
         fields: 'userEnteredFormat(backgroundColor,textFormat,verticalAlignment,horizontalAlignment)',
       },
     });
-    // KPI headers (Row 4) & KPI table currency values
+
+    // Section 1: KPI headers (Row 4) & KPI values (Row 5)
     batchRequests.push({
       repeatCell: {
         range: { sheetId: sid, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 0, endColumnIndex: 7 },
@@ -1194,9 +1248,11 @@ export async function writeAllTabsAndFormat(
             backgroundColor: makeSolidBg(52, 98, 77),
             textFormat: { foregroundColor: makeSolidBg(255, 255, 255), bold: true, fontSize: 10 },
             horizontalAlignment: 'CENTER',
+            verticalAlignment: 'MIDDLE',
+            wrapStrategy: 'WRAP',
           },
         },
-        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
+        fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)',
       },
     });
     batchRequests.push({
@@ -1227,10 +1283,24 @@ export async function writeAllTabsAndFormat(
         fields: 'userEnteredFormat(backgroundColor,textFormat,numberFormat,horizontalAlignment)',
       },
     });
-    // Monthly Table Header (Row 7, index 6) & rows 8..20 (indices 7..20)
+
+    // Section 2: Annual Comparison Table
+    batchRequests.push({
+      updateDimensionProperties: {
+        range: { sheetId: sid, dimension: 'ROWS', startIndex: layout.annualHeaderRowIndex, endIndex: layout.annualHeaderRowIndex + 1 },
+        properties: { pixelSize: 28 },
+        fields: 'pixelSize',
+      },
+    });
     batchRequests.push({
       repeatCell: {
-        range: { sheetId: sid, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 7 },
+        range: {
+          sheetId: sid,
+          startRowIndex: layout.annualHeaderRowIndex,
+          endRowIndex: layout.annualHeaderRowIndex + 1,
+          startColumnIndex: 0,
+          endColumnIndex: 7,
+        },
         cell: {
           userEnteredFormat: {
             backgroundColor: makeSolidBg(68, 64, 60),
@@ -1243,14 +1313,45 @@ export async function writeAllTabsAndFormat(
     });
     batchRequests.push({
       repeatCell: {
-        range: { sheetId: sid, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 1 },
+        range: {
+          sheetId: sid,
+          startRowIndex: layout.annualHeaderRowIndex,
+          endRowIndex: layout.annualHeaderRowIndex + 1,
+          startColumnIndex: 0,
+          endColumnIndex: 1,
+        },
         cell: { userEnteredFormat: { horizontalAlignment: 'LEFT' } },
         fields: 'userEnteredFormat.horizontalAlignment',
       },
     });
     batchRequests.push({
       repeatCell: {
-        range: { sheetId: sid, startRowIndex: 7, endRowIndex: 19, startColumnIndex: 1, endColumnIndex: 7 },
+        range: {
+          sheetId: sid,
+          startRowIndex: layout.annualFirstDataIndex,
+          endRowIndex: layout.annualLastDataIndex + 1,
+          startColumnIndex: 0,
+          endColumnIndex: 1,
+        },
+        cell: {
+          userEnteredFormat: {
+            numberFormat: { type: 'NUMBER', pattern: '0' },
+            textFormat: { bold: true },
+            horizontalAlignment: 'LEFT',
+          },
+        },
+        fields: 'userEnteredFormat(numberFormat,textFormat,horizontalAlignment)',
+      },
+    });
+    batchRequests.push({
+      repeatCell: {
+        range: {
+          sheetId: sid,
+          startRowIndex: layout.annualFirstDataIndex,
+          endRowIndex: layout.annualLastDataIndex + 1,
+          startColumnIndex: 1,
+          endColumnIndex: 7,
+        },
         cell: {
           userEnteredFormat: {
             numberFormat: { type: 'CURRENCY', pattern: '#,##0.00 "€"' },
@@ -1262,7 +1363,13 @@ export async function writeAllTabsAndFormat(
     });
     batchRequests.push({
       repeatCell: {
-        range: { sheetId: sid, startRowIndex: 19, endRowIndex: 20, startColumnIndex: 0, endColumnIndex: 7 },
+        range: {
+          sheetId: sid,
+          startRowIndex: layout.annualTotalRowIndex,
+          endRowIndex: layout.annualTotalRowIndex + 1,
+          startColumnIndex: 0,
+          endColumnIndex: 7,
+        },
         cell: {
           userEnteredFormat: {
             backgroundColor: makeSolidBg(220, 233, 226),
@@ -1274,7 +1381,13 @@ export async function writeAllTabsAndFormat(
     });
     batchRequests.push({
       repeatCell: {
-        range: { sheetId: sid, startRowIndex: 19, endRowIndex: 20, startColumnIndex: 1, endColumnIndex: 7 },
+        range: {
+          sheetId: sid,
+          startRowIndex: layout.annualTotalRowIndex,
+          endRowIndex: layout.annualTotalRowIndex + 1,
+          startColumnIndex: 1,
+          endColumnIndex: 7,
+        },
         cell: {
           userEnteredFormat: {
             numberFormat: { type: 'CURRENCY', pattern: '#,##0.00 "€"' },
@@ -1284,6 +1397,143 @@ export async function writeAllTabsAndFormat(
         fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
       },
     });
+
+    // Section 3: Per-Year Monthly Breakdown Blocks
+    for (const block of layout.yearBlocks) {
+      batchRequests.push({
+        mergeCells: {
+          range: {
+            sheetId: sid,
+            startRowIndex: block.bannerRowIndex,
+            endRowIndex: block.bannerRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: 7,
+          },
+          mergeType: 'MERGE_ALL',
+        },
+      });
+      batchRequests.push({
+        updateDimensionProperties: {
+          range: { sheetId: sid, dimension: 'ROWS', startIndex: block.bannerRowIndex, endIndex: block.bannerRowIndex + 1 },
+          properties: { pixelSize: 26 },
+          fields: 'pixelSize',
+        },
+      });
+      batchRequests.push({
+        repeatCell: {
+          range: {
+            sheetId: sid,
+            startRowIndex: block.bannerRowIndex,
+            endRowIndex: block.bannerRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: 7,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: makeSolidBg(52, 98, 77),
+              textFormat: { foregroundColor: makeSolidBg(255, 255, 255), bold: true, fontSize: 10 },
+              verticalAlignment: 'MIDDLE',
+              horizontalAlignment: 'LEFT',
+            },
+          },
+          fields: 'userEnteredFormat(backgroundColor,textFormat,verticalAlignment,horizontalAlignment)',
+        },
+      });
+      batchRequests.push({
+        updateDimensionProperties: {
+          range: { sheetId: sid, dimension: 'ROWS', startIndex: block.headerRowIndex, endIndex: block.headerRowIndex + 1 },
+          properties: { pixelSize: 26 },
+          fields: 'pixelSize',
+        },
+      });
+      batchRequests.push({
+        repeatCell: {
+          range: {
+            sheetId: sid,
+            startRowIndex: block.headerRowIndex,
+            endRowIndex: block.headerRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: 7,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: makeSolidBg(68, 64, 60),
+              textFormat: { foregroundColor: makeSolidBg(255, 255, 255), bold: true, fontSize: 10 },
+              horizontalAlignment: 'RIGHT',
+            },
+          },
+          fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
+        },
+      });
+      batchRequests.push({
+        repeatCell: {
+          range: {
+            sheetId: sid,
+            startRowIndex: block.headerRowIndex,
+            endRowIndex: block.headerRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: 1,
+          },
+          cell: { userEnteredFormat: { horizontalAlignment: 'LEFT' } },
+          fields: 'userEnteredFormat.horizontalAlignment',
+        },
+      });
+      batchRequests.push({
+        repeatCell: {
+          range: {
+            sheetId: sid,
+            startRowIndex: block.firstMonthIndex,
+            endRowIndex: block.lastMonthIndex + 1,
+            startColumnIndex: 1,
+            endColumnIndex: 7,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'CURRENCY', pattern: '#,##0.00 "€"' },
+              horizontalAlignment: 'RIGHT',
+            },
+          },
+          fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
+        },
+      });
+      batchRequests.push({
+        repeatCell: {
+          range: {
+            sheetId: sid,
+            startRowIndex: block.totalRowIndex,
+            endRowIndex: block.totalRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: 7,
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: makeSolidBg(220, 233, 226),
+              textFormat: { foregroundColor: makeSolidBg(27, 58, 43), bold: true, fontSize: 10 },
+            },
+          },
+          fields: 'userEnteredFormat(backgroundColor,textFormat)',
+        },
+      });
+      batchRequests.push({
+        repeatCell: {
+          range: {
+            sheetId: sid,
+            startRowIndex: block.totalRowIndex,
+            endRowIndex: block.totalRowIndex + 1,
+            startColumnIndex: 1,
+            endColumnIndex: 7,
+          },
+          cell: {
+            userEnteredFormat: {
+              numberFormat: { type: 'CURRENCY', pattern: '#,##0.00 "€"' },
+              horizontalAlignment: 'RIGHT',
+            },
+          },
+          fields: 'userEnteredFormat(numberFormat,horizontalAlignment)',
+        },
+      });
+    }
+
     // Protect entire Riepilogo sheet (read-only warningOnly)
     batchRequests.push({
       addProtectedRange: {
@@ -1318,6 +1568,33 @@ export async function writeAllTabsAndFormat(
     );
   }
 
+  // Lightweight formula-error readback on Riepilogo and sample PMU balance cells
+  let summaryFormulaErrors = 0;
+  let firstFormulaError: string | undefined;
+  try {
+    const verifyParams = new URLSearchParams({ valueRenderOption: 'FORMATTED_VALUE' });
+    verifyParams.append('ranges', `'${SHEET_TABS.SUMMARY}'!A4:G${Math.max(5, payload.summaryRows.length)}`);
+    verifyParams.append('ranges', `'${SHEET_TABS.PMU}'!J3:J5`);
+    const verifyRes = await googleFetchJson<{ valueRanges?: Array<{ values?: any[][] }> }>(
+      `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchGet?${verifyParams.toString()}`,
+      accessToken
+    );
+    const errRegex = /^#(ERROR!|REF!|NAME\?|VALUE!|DIV\/0!|N\/A|NUM!)/i;
+    for (const vr of verifyRes.valueRanges || []) {
+      for (const row of vr.values || []) {
+        for (const cell of row || []) {
+          const text = typeof cell === 'string' ? cell.trim() : '';
+          if (errRegex.test(text)) {
+            summaryFormulaErrors += 1;
+            if (!firstFormulaError) firstFormulaError = text;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read back formula verification:', e);
+  }
+
   const freshMeta = await getDriveFileMetadata(accessToken, spreadsheetId);
-  return { modifiedTime: freshMeta?.modifiedTime };
+  return { modifiedTime: freshMeta?.modifiedTime, summaryFormulaErrors, firstFormulaError };
 }

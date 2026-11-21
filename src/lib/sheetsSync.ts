@@ -36,12 +36,13 @@ import {
   SHEET_TABS,
   SummaryLayoutMeta,
   SummaryYearBlockLayout,
+  TOP_TEMPLATE_ROWS,
   writeAllTabsAndFormat,
 } from '@/lib/googleSheets';
 
 export const SYNC_STATE_SETTINGS_KEY = 'google_sheets_sync_state';
 export const MAX_BULK_DELETES = 5;
-export const SHEET_TEMPLATE_VERSION = 2;
+export const SHEET_TEMPLATE_VERSION = 3;
 
 const DEFAULT_PMU_TREATMENTS = [
   'Ritocco',
@@ -1959,14 +1960,14 @@ export async function runGoogleSheetsSync(options: {
 
       const writeRes = await writeAllTabsAndFormat(accessToken, spreadsheetId, structure, {
         pmuDataRows: sortedPmus.map((a, idx) =>
-          serializePmuRow(a, 3 + idx, locById, fallbackLocation.name)
+          serializePmuRow(a, 3 + TOP_TEMPLATE_ROWS + idx, locById, fallbackLocation.name)
         ),
         pmuDraftRows,
-        weddingDataRows: sortedWeddings.map((w, idx) => serializeWeddingRow(w, 3 + idx)),
+        weddingDataRows: sortedWeddings.map((w, idx) => serializeWeddingRow(w, 3 + TOP_TEMPLATE_ROWS + idx)),
         weddingDraftRows: wedDraftRows,
         expenseDataRows: sortedExpenses.map(serializeExpenseRow),
         expenseDraftRows: expDraftRows,
-        voucherDataRows: sortedVouchers.map((v, idx) => serializeVoucherRow(v, 3 + idx)),
+        voucherDataRows: sortedVouchers.map((v, idx) => serializeVoucherRow(v, 3 + TOP_TEMPLATE_ROWS + idx)),
         voucherDraftRows: vouDraftRows,
         listsRows: buildListsTabRows(allClientsList, locations, servicePricesRes.rows),
         summaryRows: summaryBuilt.rows,

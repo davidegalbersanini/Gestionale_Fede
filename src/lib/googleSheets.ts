@@ -11,7 +11,8 @@ export const SHEET_TABS = {
 
 export const MASTER_SPREADSHEET_TITLE = 'Gestionale Fede — Database Master';
 export const DRIVE_FOLDER_NAME = 'Gestionale Fede';
-export const TEMPLATE_EXTRA_ROWS = 50;
+export const TOP_TEMPLATE_ROWS = 5;
+export const TEMPLATE_EXTRA_ROWS = 25;
 export const PROTECTED_PREFIX = 'Gestionale Fede:';
 
 export const TIME_DROPDOWN_OPTIONS: string[] = Array.from({ length: 27 }, (_, idx) => {
@@ -606,38 +607,46 @@ export async function writeAllTabsAndFormat(
     'ID',
   ];
 
-  // Combine data rows + untouched draft rows + blank formula template rows
+  // Combine top blank template rows (Rows 3..7) + data rows + untouched draft rows + bottom template rows
   const combineBidirectionalRows = (
     dataRows: any[][],
     draftRows: any[][],
+    colCount: number,
     templateBuilder?: (rowNum: number) => any[]
   ) => {
     const startRow = 3;
+    const topTemplates: any[][] = [];
+    for (let i = 0; i < TOP_TEMPLATE_ROWS; i++) {
+      const rNum = startRow + i;
+      topTemplates.push(templateBuilder ? templateBuilder(rNum) : Array(colCount).fill(''));
+    }
     const base = [...dataRows, ...draftRows];
-    const templates: any[][] = [];
+    const bottomTemplates: any[][] = [];
     if (templateBuilder) {
       for (let i = 0; i < TEMPLATE_EXTRA_ROWS; i++) {
-        const rNum = startRow + base.length + i;
-        templates.push(templateBuilder(rNum));
+        const rNum = startRow + TOP_TEMPLATE_ROWS + base.length + i;
+        bottomTemplates.push(templateBuilder(rNum));
       }
     }
     return {
-      rows: [...base, ...templates],
-      totalEndRow: startRow + base.length + (templateBuilder ? TEMPLATE_EXTRA_ROWS : 50) - 1,
-      activeRowCount: base.length + TEMPLATE_EXTRA_ROWS,
+      rows: [...topTemplates, ...base, ...bottomTemplates],
+      totalEndRow: startRow + TOP_TEMPLATE_ROWS + base.length + (templateBuilder ? TEMPLATE_EXTRA_ROWS : 50) - 1,
+      activeRowCount: TOP_TEMPLATE_ROWS + base.length + TEMPLATE_EXTRA_ROWS,
     };
   };
 
-  const pmuCombined = combineBidirectionalRows(payload.pmuDataRows, payload.pmuDraftRows, buildPmuTemplateRow);
+  const pmuCombined = combineBidirectionalRows(payload.pmuDataRows, payload.pmuDraftRows, 15, buildPmuTemplateRow);
   const wedCombined = combineBidirectionalRows(
     payload.weddingDataRows,
     payload.weddingDraftRows,
+    16,
     buildWeddingTemplateRow
   );
-  const expCombined = combineBidirectionalRows(payload.expenseDataRows, payload.expenseDraftRows);
+  const expCombined = combineBidirectionalRows(payload.expenseDataRows, payload.expenseDraftRows, 6);
   const vouCombined = combineBidirectionalRows(
     payload.voucherDataRows,
     payload.voucherDraftRows,
+    8,
     buildVoucherTemplateRow
   );
 
@@ -700,7 +709,7 @@ export async function writeAllTabsAndFormat(
       range: `'${SHEET_TABS.PMU}'!A1`,
       values: [
         [
-          'PMU & TRATTAMENTI — Compila dalle righe libere in fondo (Sede/Trattamento autocompilano il Prezzo, Totale-Incassato-Buono calcola Da Saldare)',
+          'PMU & TRATTAMENTI — Compila le 5 righe vuote in cima (righe 3–7) o inserisci una riga (Sede/Trattamento autocompilano il Prezzo)',
         ],
         pmuHeaders,
         ...pmuCombined.rows,
@@ -710,7 +719,7 @@ export async function writeAllTabsAndFormat(
       range: `'${SHEET_TABS.WEDDINGS}'!A1`,
       values: [
         [
-          'EVENTI & CERIMONIE — Aggiungi o modifica liberamente: App e Google Calendar si sincronizzano ogni 5 minuti',
+          'EVENTI & CERIMONIE — Compila le righe vuote in cima (righe 3–7): App e Google Calendar si sincronizzano ogni 5 minuti',
         ],
         weddingHeaders,
         ...wedCombined.rows,
@@ -719,7 +728,7 @@ export async function writeAllTabsAndFormat(
     {
       range: `'${SHEET_TABS.EXPENSES}'!A1`,
       values: [
-        ['SPESE & USCITE — Inserisci spese di studio, materiali e attrezzature con categoria a tendina'],
+        ['SPESE & USCITE — Compila le righe vuote in cima (righe 3–7) con categoria a tendina'],
         expenseHeaders,
         ...expCombined.rows,
       ],
@@ -727,7 +736,7 @@ export async function writeAllTabsAndFormat(
     {
       range: `'${SHEET_TABS.VOUCHERS}'!A1`,
       values: [
-        ['BUONI REGALO — Stato e Valore Rimanente si aggiornano automaticamente all’utilizzo sugli appuntamenti'],
+        ['BUONI REGALO — Compila le righe vuote in cima (righe 3–7): Stato e Valore Rimanente si aggiornano in automatico'],
         voucherHeaders,
         ...vouCombined.rows,
       ],
@@ -941,7 +950,7 @@ export async function writeAllTabsAndFormat(
       });
     }
 
-    // Subtle styling + warningOnly protection on ID column
+    // Subtle styling on ID column (no warningOnly protection so inserting/adding rows never triggers popups)
     batchRequests.push({
       repeatCell: {
         range: { sheetId, startRowIndex: 2, endRowIndex: endRow, startColumnIndex: idCol, endColumnIndex: idCol + 1 },
@@ -953,15 +962,6 @@ export async function writeAllTabsAndFormat(
           },
         },
         fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)',
-      },
-    });
-    batchRequests.push({
-      addProtectedRange: {
-        protectedRange: {
-          range: { sheetId, startColumnIndex: idCol, endColumnIndex: idCol + 1 },
-          description: `${PROTECTED_PREFIX} Colonna ID protetta (conferma prima di eliminare righe)`,
-          warningOnly: true,
-        },
       },
     });
   };
@@ -1574,7 +1574,7 @@ export async function writeAllTabsAndFormat(
   try {
     const verifyParams = new URLSearchParams({ valueRenderOption: 'FORMATTED_VALUE' });
     verifyParams.append('ranges', `'${SHEET_TABS.SUMMARY}'!A4:G${Math.max(5, payload.summaryRows.length)}`);
-    verifyParams.append('ranges', `'${SHEET_TABS.PMU}'!J3:J5`);
+    verifyParams.append('ranges', `'${SHEET_TABS.PMU}'!J3:J10`);
     const verifyRes = await googleFetchJson<{ valueRanges?: Array<{ values?: any[][] }> }>(
       `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchGet?${verifyParams.toString()}`,
       accessToken

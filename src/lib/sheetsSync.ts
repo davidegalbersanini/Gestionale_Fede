@@ -42,7 +42,7 @@ import {
 
 export const SYNC_STATE_SETTINGS_KEY = 'google_sheets_sync_state';
 export const MAX_BULK_DELETES = 5;
-export const SHEET_TEMPLATE_VERSION = 3;
+export const SHEET_TEMPLATE_VERSION = 4;
 
 const DEFAULT_PMU_TREATMENTS = [
   'Ritocco',

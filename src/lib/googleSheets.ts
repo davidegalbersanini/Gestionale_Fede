@@ -530,7 +530,7 @@ export function buildWeddingTemplateRow(rowNum: number): any[] {
     '', // F: Location / Indirizzo
     `=IF(AND(A${rowNum}="";E${rowNum}="");"";1)`, // G: Persone
     '', // H: Totale
-    '', // I: Acconto
+    '', // I: Incassato
     '', // J: Buono Usato
     `=IF(AND(A${rowNum}="";E${rowNum}="");"";MAX(0;IF(ISNUMBER(H${rowNum});H${rowNum};0)-IF(ISNUMBER(I${rowNum});I${rowNum};0)-IF(ISNUMBER(J${rowNum});J${rowNum};0)))`, // K: Da Saldare
     '', // L: Data Prova
@@ -586,7 +586,7 @@ export async function writeAllTabsAndFormat(
     'Location / Indirizzo',
     'Persone',
     'Totale (€)',
-    'Acconto (€)',
+    'Incassato (€)',
     'Buono Usato (€)',
     'Da Saldare (€)',
     'Data Prova',
